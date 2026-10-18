@@ -16,6 +16,8 @@ pub enum Mode {
     Quote,
     /// Type the text of a file with no time limit.
     Custom,
+    /// Type anything, with no target text. `Session::finish` ends the test.
+    Zen,
     Time(Duration),
     Words(usize),
 }
@@ -96,6 +98,7 @@ impl Session {
     /// An untimed test gets the same word count as the default words mode.
     pub fn new(mode: Mode, mut next_word: impl FnMut() -> String + 'static) -> Self {
         let count = match mode {
+            Mode::Zen => return Self::zen(),
             Mode::Words(n) => n,
             Mode::Untimed | Mode::Quote | Mode::Custom => 25,
             Mode::Time(_) => WORDS_AHEAD * 2,
@@ -123,6 +126,26 @@ impl Session {
             strict: Strict::Off,
             failed: false,
         }
+    }
+
+    /// A zen test: one empty word. Each typed letter is added to the target
+    /// too, so everything typed is correct.
+    pub fn zen() -> Self {
+        Self::from_words(Mode::Zen, &[""])
+    }
+
+    /// End the test now. Zen mode uses this; it has no last word.
+    pub fn finish(&mut self, now: Instant) {
+        if !self.is_started() || self.is_finished() {
+            return;
+        }
+        // Drop the empty word after a last space.
+        if self.current > 0 && self.typed[self.current].is_empty() {
+            self.words.pop();
+            self.typed.pop();
+            self.current -= 1;
+        }
+        self.end = Some(now);
     }
 
     pub fn set_strict(&mut self, strict: Strict) {
@@ -171,7 +194,7 @@ impl Session {
     pub fn remaining(&self, now: Instant) -> Option<Duration> {
         match self.mode {
             Mode::Time(limit) => Some(limit.saturating_sub(self.elapsed(now))),
-            Mode::Untimed | Mode::Quote | Mode::Custom | Mode::Words(_) => None,
+            Mode::Untimed | Mode::Quote | Mode::Custom | Mode::Zen | Mode::Words(_) => None,
         }
     }
 
@@ -198,6 +221,10 @@ impl Session {
     }
 
     fn type_char(&mut self, c: char, now: Instant) {
+        let zen = self.mode == Mode::Zen;
+        if zen {
+            self.words[self.current].push(c);
+        }
         let target = &self.words[self.current];
         let typed = &mut self.typed[self.current];
         if typed.len() >= target.len() + MAX_EXTRA {
@@ -219,7 +246,8 @@ impl Session {
         }
 
         // The last word ends the test when it is full length, also with errors.
-        if self.current == self.words.len() - 1
+        if !zen
+            && self.current == self.words.len() - 1
             && self.source.is_none()
             && typed.len() >= target.len()
         {
@@ -248,6 +276,11 @@ impl Session {
         }
         self.current += 1;
 
+        if self.mode == Mode::Zen {
+            self.words.push(Vec::new());
+            self.typed.push(Vec::new());
+            return;
+        }
         match self.source.as_mut() {
             None if self.current == self.words.len() => self.end = Some(now),
             None => {}
@@ -260,6 +293,30 @@ impl Session {
         }
     }
 
+    /// In zen mode, backspace can go back into any word, and the target
+    /// letters go with the typed ones.
+    fn zen_backspace(&mut self, whole_word: bool) {
+        if self.typed[self.current].is_empty() {
+            if self.current == 0 {
+                return;
+            }
+            self.words.pop();
+            self.typed.pop();
+            self.current -= 1;
+            if !whole_word {
+                return;
+            }
+        }
+        let i = self.current;
+        if whole_word {
+            self.words[i].clear();
+            self.typed[i].clear();
+        } else {
+            self.words[i].pop();
+            self.typed[i].pop();
+        }
+    }
+
     fn fail(&mut self, now: Instant) {
         self.failed = true;
         self.end = Some(now);
@@ -267,6 +324,10 @@ impl Session {
 
     fn backspace(&mut self, whole_word: bool) {
         if self.strict == Strict::NoBackspace {
+            return;
+        }
+        if self.mode == Mode::Zen {
+            self.zen_backspace(whole_word);
             return;
         }
         if self.typed[self.current].is_empty() {
@@ -604,6 +665,27 @@ mod tests {
             assert_eq!(Strict::parse(s.name()), Some(s));
         }
         assert_eq!(Strict::Master.next(), Strict::Off);
+    }
+
+    #[test]
+    fn zen_takes_any_text_and_ends_on_finish() {
+        let mut d = Driver::new(Session::zen());
+        d.s.finish(d.now);
+        assert!(!d.s.is_finished(), "finish before the start does nothing");
+        d.text("anything goes ");
+        assert!(!d.s.is_finished());
+        // The first backspace goes back over the space, the second deletes.
+        d.key(Key::Backspace);
+        d.key(Key::Backspace);
+        assert_eq!(d.typed(1), "goe");
+        d.text("s here ");
+        d.s.finish(d.now);
+        assert!(d.s.is_finished());
+        assert_eq!(d.s.words().len(), 3, "the empty last word is dropped");
+        let r = d.s.result();
+        assert_eq!(r.accuracy, 100.0);
+        assert_eq!(r.chars.correct, "anythinggoeshere".len());
+        assert_eq!(r.chars.incorrect + r.chars.missed + r.chars.extra, 0);
     }
 
     #[test]

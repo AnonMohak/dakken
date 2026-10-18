@@ -57,8 +57,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     let current_line = lines.iter().position(|l| l.contains(&current)).unwrap_or(0);
     let first = current_line.saturating_sub(1);
     // The pace caret runs at the personal best for this mode and options.
-    let pace = app
-        .pace
+    let pace = (app.pace && s.mode() != Mode::Zen)
         .then(|| app.history.best(&app.label()))
         .flatten()
         .and_then(|wpm| s.pace_position(wpm, now));
@@ -90,8 +89,14 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     }
 
     let screen = frame.area();
+    // Zen starts with an empty screen, so it also says how to end.
+    let hint_text = if s.mode() == Mode::Zen {
+        "• tab for menu · enter to finish"
+    } else {
+        "• tab for menu"
+    };
     let hint = Line::styled(
-        "• tab for menu",
+        hint_text,
         Style::new().fg(t.sub).add_modifier(Modifier::ITALIC),
     );
     let hint_area = Rect {

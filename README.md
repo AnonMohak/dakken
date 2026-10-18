@@ -6,6 +6,7 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Time mode (15, 30, 60, 120 s) and words mode (10, 25, 50, 100 words).
 - Quote mode: one quote from a public-domain book, poem or speech.
 - Custom mode: type the text of your own file, with `--file`.
+- Zen mode: type anything with no target text. `Enter` ends the test.
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
   quotes and parentheses.
 - Numbers mode: random numbers in place of some words.
@@ -54,6 +55,7 @@ dakken -t 60      # 60-second test
 dakken -w 25      # 25-word test
 dakken -q         # quote test
 dakken -f notes.txt  # type the text of a file
+dakken -z         # zen: type freely, Enter to finish
 dakken -l code    # untimed test with the code word list
 dakken -p         # untimed test with punctuation
 dakken -p -n      # untimed test with punctuation and numbers
@@ -70,6 +72,7 @@ The test starts when you type the first letter.
 |---|---|
 | `Tab` or `Esc` | Open or close the menu (`↑`/`↓` or `j`/`k`, then `Enter`) |
 | `Enter` (on the results) | Start a new test |
+| `Enter` (in zen mode) | End the test |
 | `p` (in the menu) | Turn punctuation on or off |
 | `n` (in the menu) | Turn numbers on or off |
 | `l` (in the menu) | Go to the next word list |
@@ -108,7 +111,7 @@ the same folder as the history. The next start uses them. Command-line flags
 change them for one run only, until you change a setting in the menu.
 
 ```toml
-mode = "time 30"     # untimed, quote, time N or words N
+mode = "time 30"     # untimed, quote, zen, time N or words N
 theme = "terminal"   # terminal, serika-dark, nord or dracula
 punctuation = false
 numbers = false

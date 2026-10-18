@@ -44,6 +44,10 @@ struct Cli {
     #[arg(short, long, value_name = "PATH", conflicts_with_all = ["time", "words", "quote"])]
     file: Option<PathBuf>,
 
+    /// Zen mode: type anything with no target text. Enter ends the test.
+    #[arg(short, long, conflicts_with_all = ["time", "words", "quote", "file"])]
+    zen: bool,
+
     /// Add capitals and punctuation to the words.
     #[arg(short, long)]
     punctuation: bool,
@@ -98,6 +102,7 @@ fn main() -> io::Result<()> {
         .map_or_else(Config::default, Config::load);
     match (cli.time, cli.words) {
         _ if cli.quote => config.mode = Mode::Quote,
+        _ if cli.zen => config.mode = Mode::Zen,
         (_, Some(n)) => config.mode = Mode::Words(n.max(1)),
         (Some(t), None) => config.mode = Mode::Time(Duration::from_secs(t.max(1))),
         (None, None) => {}

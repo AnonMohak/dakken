@@ -18,9 +18,10 @@ use crate::mistakes::{self, Mistakes};
 use crate::ui::{self, theme::Theme};
 
 /// The modes the menu offers, in menu order.
-pub const MODES: [Mode; 10] = [
+pub const MODES: [Mode; 11] = [
     Mode::Untimed,
     Mode::Quote,
+    Mode::Zen,
     Mode::Time(Duration::from_secs(15)),
     Mode::Time(Duration::from_secs(30)),
     Mode::Time(Duration::from_secs(60)),
@@ -36,6 +37,7 @@ pub fn mode_label(mode: Mode) -> String {
         Mode::Untimed => "untimed".to_string(),
         Mode::Quote => "quote".to_string(),
         Mode::Custom => "custom".to_string(),
+        Mode::Zen => "zen".to_string(),
         Mode::Time(d) => format!("time {}", d.as_secs()),
         Mode::Words(n) => format!("words {n}"),
     }
@@ -46,6 +48,7 @@ pub fn parse_mode(label: &str) -> Option<Mode> {
     match label.split_once(' ') {
         None if label == "untimed" => Some(Mode::Untimed),
         None if label == "quote" => Some(Mode::Quote),
+        None if label == "zen" => Some(Mode::Zen),
         Some(("time", n)) => Some(Mode::Time(Duration::from_secs(n.parse().ok()?))),
         Some(("words", n)) => Some(Mode::Words(n.parse().ok()?)),
         _ => None,
@@ -244,7 +247,8 @@ impl App {
             label.push_str(" · ");
             label.push_str(&custom.name);
         }
-        if matches!(self.mode, Mode::Quote | Mode::Custom) {
+        // These modes have their own text, so word options do not apply.
+        if matches!(self.mode, Mode::Quote | Mode::Custom | Mode::Zen) {
             if self.strict != Strict::Off {
                 label.push_str(" · ");
                 label.push_str(self.strict.name());
@@ -296,6 +300,10 @@ impl App {
         match self.screen {
             Screen::Typing => match key.code {
                 KeyCode::Tab | KeyCode::Esc => self.open_menu(),
+                KeyCode::Enter if self.mode == Mode::Zen => {
+                    self.session.finish(now);
+                    self.tick(now);
+                }
                 _ => {
                     if let Some(k) = engine_key(key) {
                         self.session.handle(k, now);
@@ -725,6 +733,19 @@ mod tests {
         assert!(matches!(a.screen, Screen::Results(_)));
         a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
         assert_eq!(a.session.words().len(), 3, "Enter restarts the same text");
+    }
+
+    #[test]
+    fn enter_finishes_a_zen_test() {
+        let mut a = app(&["hi"]);
+        a.mode = Mode::Zen;
+        a.session = Session::zen();
+        a.options.punctuation = true;
+        type_text(&mut a, "free text");
+        assert!(matches!(a.screen, Screen::Typing));
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Results(_)));
+        assert_eq!(a.history.records()[0].label, "zen");
     }
 
     #[test]
