@@ -17,6 +17,7 @@ pub struct WordGen<R> {
     rng: R,
     last: Option<&'static str>,
     punctuation: bool,
+    numbers: bool,
     /// The next word starts a sentence and gets a capital letter.
     sentence_start: bool,
 }
@@ -29,6 +30,7 @@ impl<R: Rng> WordGen<R> {
             rng,
             last: None,
             punctuation: false,
+            numbers: false,
             sentence_start: true,
         }
     }
@@ -39,15 +41,25 @@ impl<R: Rng> WordGen<R> {
         self
     }
 
+    /// Put a random number in place of some words, like monkeytype's numbers mode.
+    pub fn with_numbers(mut self, on: bool) -> Self {
+        self.numbers = on;
+        self
+    }
+
     pub fn next_word(&mut self) -> String {
-        let word = self.pick();
+        let word = if self.numbers && self.rng.random_range(0..100) < 10 {
+            self.number()
+        } else {
+            self.pick().to_string()
+        };
         if !self.punctuation {
-            return word.to_string();
+            return word;
         }
         let mut word = if self.sentence_start {
-            capitalize(word)
+            capitalize(&word)
         } else {
-            word.to_string()
+            word
         };
         self.sentence_start = false;
         match self.rng.random_range(0..100) {
@@ -67,6 +79,13 @@ impl<R: Rng> WordGen<R> {
     fn end_sentence(&mut self, word: &mut String, mark: char) {
         word.push(mark);
         self.sentence_start = true;
+    }
+
+    /// A number with 1 to 4 digits and no leading zero.
+    fn number(&mut self) -> String {
+        let len = self.rng.random_range(1..=4);
+        let low = if len == 1 { 0 } else { 10u32.pow(len - 1) };
+        self.rng.random_range(low..10u32.pow(len)).to_string()
     }
 
     fn pick(&mut self) -> &'static str {
@@ -154,6 +173,20 @@ mod tests {
                 .trim_start_matches(['"', '('])
                 .starts_with(|c: char| c.is_ascii_uppercase());
             assert_eq!(ends, starts, "{} {}", pair[0], pair[1]);
+        }
+    }
+
+    #[test]
+    fn numbers_replace_about_one_word_in_ten() {
+        let mut generator = WordGen::new(english(), StdRng::seed_from_u64(7)).with_numbers(true);
+        let words: Vec<String> = (0..1000).map(|_| generator.next_word()).collect();
+        let numbers: Vec<&String> = words
+            .iter()
+            .filter(|w| w.chars().all(|c| c.is_ascii_digit()))
+            .collect();
+        assert!((50..150).contains(&numbers.len()), "{}", numbers.len());
+        for n in numbers {
+            assert!(n.len() <= 4 && (n.len() == 1 || !n.starts_with('0')), "{n}");
         }
     }
 

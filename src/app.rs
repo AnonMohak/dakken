@@ -30,6 +30,13 @@ pub fn mode_label(mode: Mode) -> String {
     }
 }
 
+/// Changes to the words, which the menu turns on and off.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Options {
+    pub punctuation: bool,
+    pub numbers: bool,
+}
+
 pub enum Screen {
     Typing,
     Results(TestResult),
@@ -38,7 +45,7 @@ pub enum Screen {
 
 pub struct App {
     pub mode: Mode,
-    pub punctuation: bool,
+    pub options: Options,
     /// Terminal width. Untimed tests get the words that fit on the screen.
     pub width: u16,
     pub session: Session,
@@ -47,18 +54,18 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(mode: Mode, punctuation: bool, width: u16) -> Self {
+    pub fn new(mode: Mode, options: Options, width: u16) -> Self {
         Self {
-            punctuation,
+            options,
             width,
-            ..Self::with_session(mode, new_session(mode, punctuation, width))
+            ..Self::with_session(mode, new_session(mode, options, width))
         }
     }
 
     pub fn with_session(mode: Mode, session: Session) -> Self {
         Self {
             mode,
-            punctuation: false,
+            options: Options::default(),
             width: 80,
             session,
             screen: Screen::Typing,
@@ -67,7 +74,7 @@ impl App {
     }
 
     fn restart(&mut self) {
-        self.session = new_session(self.mode, self.punctuation, self.width);
+        self.session = new_session(self.mode, self.options, self.width);
         self.screen = Screen::Typing;
     }
 
@@ -75,15 +82,18 @@ impl App {
     pub fn on_resize(&mut self, width: u16) {
         self.width = width;
         if self.mode == Mode::Untimed && !self.session.is_started() {
-            self.session = new_session(self.mode, self.punctuation, width);
+            self.session = new_session(self.mode, self.options, width);
         }
     }
 
     /// The mode and its options, for example "time 30 · punctuation".
     pub fn label(&self) -> String {
         let mut label = mode_label(self.mode);
-        if self.punctuation {
+        if self.options.punctuation {
             label.push_str(" · punctuation");
+        }
+        if self.options.numbers {
+            label.push_str(" · numbers");
         }
         label
     }
@@ -134,10 +144,14 @@ impl App {
                     self.mode = MODES[selected];
                     self.restart();
                 }
+                // New words are needed, so these start a new test.
                 KeyCode::Char('p') => {
-                    // New words are needed, so start a new test.
-                    self.punctuation = !self.punctuation;
-                    self.session = new_session(self.mode, self.punctuation, self.width);
+                    self.options.punctuation = !self.options.punctuation;
+                    self.session = new_session(self.mode, self.options, self.width);
+                }
+                KeyCode::Char('n') => {
+                    self.options.numbers = !self.options.numbers;
+                    self.session = new_session(self.mode, self.options, self.width);
                 }
                 KeyCode::Esc => {
                     self.screen = if self.session.is_finished() {
@@ -157,8 +171,10 @@ impl App {
     }
 }
 
-fn new_session(mode: Mode, punctuation: bool, width: u16) -> Session {
-    let mut words = WordGen::new(words::english(), rand::rng()).with_punctuation(punctuation);
+fn new_session(mode: Mode, options: Options, width: u16) -> Session {
+    let mut words = WordGen::new(words::english(), rand::rng())
+        .with_punctuation(options.punctuation)
+        .with_numbers(options.numbers);
     if mode == Mode::Untimed {
         return Session::from_words(mode, &ui::screen_words(width, || words.next_word()));
     }
@@ -247,7 +263,7 @@ mod tests {
             press(KeyCode::Char('p'), KeyModifiers::NONE),
             Instant::now(),
         );
-        assert!(a.punctuation);
+        assert!(a.options.punctuation);
         assert!(matches!(a.screen, Screen::Menu { .. }));
         assert!(!a.session.is_started());
         assert!(a.label().ends_with(" · punctuation"));
@@ -258,12 +274,24 @@ mod tests {
             press(KeyCode::Char('p'), KeyModifiers::NONE),
             Instant::now(),
         );
-        assert!(!a.punctuation);
+        assert!(!a.options.punctuation);
+    }
+
+    #[test]
+    fn n_in_menu_toggles_numbers() {
+        let mut a = app(&["hi"]);
+        a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
+        a.on_key(
+            press(KeyCode::Char('n'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(a.options.numbers && !a.options.punctuation);
+        assert!(a.label().ends_with(" · numbers"));
     }
 
     #[test]
     fn untimed_test_fits_on_the_screen_and_follows_resize() {
-        let mut a = App::new(Mode::Untimed, false, 40);
+        let mut a = App::new(Mode::Untimed, Options::default(), 40);
         let narrow = a.session.words().len();
         a.on_resize(120);
         assert!(a.session.words().len() > narrow);

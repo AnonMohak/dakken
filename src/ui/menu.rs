@@ -6,9 +6,9 @@ use ratatui::{
 };
 
 use super::{column, theme};
-use crate::app::{MODES, mode_label};
+use crate::app::{MODES, Options, mode_label};
 
-pub fn draw(frame: &mut Frame, selected: usize, punctuation: bool) {
+pub fn draw(frame: &mut Frame, selected: usize, options: Options) {
     let mut lines = vec![
         Line::styled("mode", Style::new().fg(theme::SUB)),
         Line::default(),
@@ -28,19 +28,26 @@ pub fn draw(frame: &mut Frame, selected: usize, punctuation: bool) {
         lines.push(line);
     }
     lines.push(Line::default());
-    lines.push(Line::styled(
-        format!("punctuation {}", if punctuation { "on" } else { "off" }),
-        Style::new().fg(if punctuation {
-            theme::MAIN
-        } else {
-            theme::TEXT
-        }),
-    ));
+    lines.push(toggle("punctuation", options.punctuation));
+    lines.push(toggle("numbers", options.numbers));
     lines.push(Line::default());
     lines.push(Line::styled(
-        "↑↓ select · enter start · p punctuation · esc back",
+        "↑↓ select · enter start · esc back",
+        Style::new().fg(theme::SUB),
+    ));
+    lines.push(Line::styled(
+        "p punctuation · n numbers",
         Style::new().fg(theme::SUB),
     ));
     let area = column(frame.area(), lines.len() as u16);
     frame.render_widget(Paragraph::new(lines).centered(), area);
+}
+
+fn toggle(name: &str, on: bool) -> Line<'static> {
+    let (state, color) = if on {
+        ("on", theme::MAIN)
+    } else {
+        ("off", theme::TEXT)
+    };
+    Line::styled(format!("{name} {state}"), Style::new().fg(color))
 }

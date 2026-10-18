@@ -6,6 +6,7 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Time mode (15, 30, 60, 120 s) and words mode (10, 25, 50, 100 words).
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
   quotes and parentheses.
+- Numbers mode: random numbers in place of some words.
 - Monkeytype rules: wrong letters in red, extra letters in dark red,
   backspace into a previous word only if it has an error.
 - Colors from your terminal's palette, so the test follows your shell theme.
@@ -29,6 +30,7 @@ typer            # untimed test: the words on the screen
 typer -t 60      # 60-second test
 typer -w 25      # 25-word test
 typer -p         # untimed test with punctuation
+typer -p -n      # untimed test with punctuation and numbers
 typer --keys     # print raw key events (to check your terminal)
 ```
 
@@ -39,6 +41,7 @@ The test starts when you type the first letter.
 | `Tab` | Restart the test |
 | `Esc` | Open the mode menu (`↑`/`↓` or `j`/`k`, then `Enter`) |
 | `p` (in the menu) | Turn punctuation on or off |
+| `n` (in the menu) | Turn numbers on or off |
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
 | `Ctrl+C` | Quit |
 

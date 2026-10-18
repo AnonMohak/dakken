@@ -12,7 +12,7 @@ use ratatui::crossterm::{
     execute, terminal,
 };
 
-use app::App;
+use app::{App, Options};
 use engine::Mode;
 
 /// A monkeytype-style typing test for the terminal.
@@ -31,6 +31,10 @@ struct Cli {
     #[arg(short, long)]
     punctuation: bool,
 
+    /// Put random numbers in place of some words.
+    #[arg(short, long)]
+    numbers: bool,
+
     /// Print each key event, to check how the terminal sends keys.
     #[arg(long)]
     keys: bool,
@@ -47,7 +51,11 @@ fn main() -> io::Result<()> {
         (None, None) => Mode::Untimed,
     };
     let (width, _) = terminal::size()?;
-    run(App::new(mode, cli.punctuation, width))
+    let options = Options {
+        punctuation: cli.punctuation,
+        numbers: cli.numbers,
+    };
+    run(App::new(mode, options, width))
 }
 
 fn run(mut app: App) -> io::Result<()> {
