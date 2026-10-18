@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- speed lines trail the key -->
+  <g stroke="#2dd4bf" stroke-linecap="round">
+    <line x1="1"  y1="22" x2="13" y2="22" stroke-width="3.2"/>
+    <line x1="5"  y1="32" x2="12" y2="32" stroke-width="3.2" opacity=".7"/>
+    <line x1="0"  y1="42" x2="9" y2="42" stroke-width="3.2" opacity=".45"/>
+  </g>
+  <!-- keycap, skewed forward -->
+  <g transform="skewX(-12) translate(5 0)">
+    <rect x="18" y="12" width="40" height="42" rx="9" fill="#0f5f59"/>
+    <rect x="18" y="10" width="40" height="36" rx="9" fill="#2dd4bf"/>
+    <rect x="23" y="13" width="30" height="27" rx="6" fill="#5eead4"/>
+    <!-- legend: a forward chevron, the keystroke -->
+    <path d="M32 19 L42 26.5 L32 34" fill="none" stroke="#0b2a28" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

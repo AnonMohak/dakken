@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/brand/logo.svg" width="128" alt="dakken logo: a teal keycap with speed lines">
+</p>
+
 # dakken
 
 A typing-speed test for the terminal, in the style of [monkeytype](https://monkeytype.com).
