@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "description": "A monkeytype-style typing test for the terminal",
+    "homepage": "https://github.com/AnonMohak/dakken",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/AnonMohak/dakken/releases/download/v0.2.0/dakken-v0.2.0-x86_64-pc-windows-msvc.exe#/dakken.exe",
+            "hash": "6aa34b3261f76d6879ed0de3fe8a3da63d28d532234fbc97334de25986684235"
+        }
+    },
+    "bin": "dakken.exe",
+    "checkver": "github",
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/AnonMohak/dakken/releases/download/v$version/dakken-v$version-x86_64-pc-windows-msvc.exe#/dakken.exe"
+            }
+        }
+    }
+}

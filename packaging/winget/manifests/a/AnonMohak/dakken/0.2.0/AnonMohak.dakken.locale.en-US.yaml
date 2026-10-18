@@ -1,0 +1,15 @@
+PackageIdentifier: AnonMohak.dakken
+PackageVersion: 0.2.0
+PackageLocale: en-US
+Publisher: AnonMohak
+PackageName: dakken
+PackageUrl: https://github.com/AnonMohak/dakken
+License: MIT
+LicenseUrl: https://github.com/AnonMohak/dakken/blob/master/LICENSE
+ShortDescription: A monkeytype-style typing test for the terminal
+Tags:
+- typing
+- terminal
+- tui
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

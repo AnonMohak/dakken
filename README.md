@@ -42,6 +42,19 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 
 ## Install
 
+**Scoop (Windows):**
+
+```powershell
+scoop install https://raw.githubusercontent.com/AnonMohak/dakken/master/packaging/scoop/dakken.json
+```
+
+**Homebrew (Apple Silicon macOS, Linux x86-64):**
+
+```sh
+brew tap AnonMohak/dakken https://github.com/AnonMohak/dakken
+brew install AnonMohak/dakken/dakken
+```
+
 **Download:** get the file for your system from
 [Releases](https://github.com/AnonMohak/dakken/releases). On Windows, rename it
 to `dakken.exe` and put it in a folder on your `PATH`.
@@ -191,6 +204,9 @@ Remove-Item Env:VCINSTALLDIR, Env:VSINSTALLDIR
 cargo test      # engine, app and screen tests
 cargo clippy --all-targets
 ```
+
+`packaging/` has the Scoop manifest and winget manifests, and `Formula/` has
+the Homebrew formula. Update their version and SHA256 hashes for each release.
 
 CI runs the tests on Windows, Linux and macOS. To publish a release, push a
 tag such as `v0.2.0`: the release workflow builds the binaries and adds them
