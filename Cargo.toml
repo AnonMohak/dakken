@@ -2,12 +2,12 @@
 name = "dakken"
 version = "0.3.0"
 edition = "2024"
-description = "A monkeytype-style typing test for the terminal"
+description = "A typing-speed test for the terminal"
 license = "MIT"
 repository = "https://github.com/AnonMohak/dakken"
 homepage = "https://github.com/AnonMohak/dakken"
 readme = "README.md"
-keywords = ["typing", "tui", "terminal", "monkeytype", "wpm"]
+keywords = ["typing", "tui", "terminal", "typing-test", "wpm"]
 categories = ["command-line-utilities", "games"]
 include = ["src/**/*", "assets/**/*", "build.rs", "README.md", "LICENSE", "Cargo.toml", "Cargo.lock"]
 

@@ -61,7 +61,7 @@ impl QuoteLength {
     }
 }
 
-/// Rules that make a test harder, like monkeytype's.
+/// Rules that make a test harder.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Strict {
     #[default]

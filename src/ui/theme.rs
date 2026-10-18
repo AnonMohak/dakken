@@ -30,7 +30,7 @@ pub const THEMES: [Theme; 4] = [
         error: Color::LightRed,
         error_extra: Color::Red,
     },
-    // Monkeytype's default theme.
+    // Dark gray with a gold accent.
     Theme {
         name: "serika-dark",
         bg: Some(rgb(0x323437)),

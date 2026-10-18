@@ -1,6 +1,6 @@
 {
     "version": "0.3.0",
-    "description": "A monkeytype-style typing test for the terminal",
+    "description": "A typing-speed test for the terminal",
     "homepage": "https://github.com/AnonMohak/dakken",
     "license": "MIT",
     "architecture": {

@@ -1,5 +1,5 @@
 class Dakken < Formula
-  desc "Monkeytype-style typing test for the terminal"
+  desc "Typing-speed test for the terminal"
   homepage "https://github.com/AnonMohak/dakken"
   version "0.3.0"
   license "MIT"

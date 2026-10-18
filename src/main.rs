@@ -28,7 +28,7 @@ use keystats::KeyStats;
 use mistakes::Mistakes;
 use ui::theme::Theme;
 
-/// A monkeytype-style typing test for the terminal.
+/// A typing-speed test for the terminal.
 #[derive(Parser)]
 #[command(version, about)]
 struct Cli {

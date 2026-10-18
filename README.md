@@ -4,7 +4,7 @@
 
 # dakken
 
-A typing-speed test for the terminal, in the style of [monkeytype](https://monkeytype.com).
+A typing-speed test for the terminal.
 
 - Untimed mode (the default): type the words that fill the screen, with no
   time limit. The text fills 70% of the terminal, with an empty row between
@@ -24,7 +24,7 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
   that have the most errors (then the slowest) in your key stats.
 - Practise your mistakes: the `mistakes` list uses the words you typed wrong
   in past tests. A word leaves the list when you type it right there.
-- Monkeytype rules: wrong and missed letters in red, extra letters in dark red,
+- Clear errors: wrong and missed letters in red, extra letters in dark red,
   backspace into a previous word only if it has an error.
 - Mistakes do not stop you: the test ends when the last word has all its
   letters, also if some are wrong. Accuracy shows the errors.
@@ -35,7 +35,7 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Practise Dvorak or Colemak on a QWERTY keyboard: each key gives the
   character at the same place on that layout. Your system layout must be
   US QWERTY for this.
-- Strict modes, like monkeytype: `stop-on-error` (only the correct key moves
+- Strict modes: `stop-on-error` (only the correct key moves
   the caret), `no-backspace`, and `master` (the first wrong key fails the
   test; a failed test is not saved).
 - Optional pace caret: a gray letter that moves at your personal-best speed
@@ -190,7 +190,7 @@ If it is empty, the `mistakes` list uses the English words.
 - **WPM:** (letters in correct words + the spaces after them) ÷ 5 ÷ minutes.
 - **Raw WPM:** all typed letters and spaces ÷ 5 ÷ minutes.
 - **Accuracy:** correct key presses ÷ all key presses.
-- **Consistency:** monkeytype's formula, `100 × (1 − tanh(cv + cv³/3 + cv⁵/5))`,
+- **Consistency:** `100 × (1 − tanh(cv + cv³/3 + cv⁵/5))`,
   where `cv` is the standard deviation ÷ mean of the raw WPM in each second.
 - **Characters:** correct / incorrect / extra / missed.
 

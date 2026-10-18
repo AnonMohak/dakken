@@ -13,7 +13,7 @@ pub struct Press {
     pub word: usize,
 }
 
-/// Final character counts, the same groups monkeytype shows.
+/// Final character counts: correct, incorrect, extra and missed.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct CharCounts {
     pub correct: usize,
@@ -101,7 +101,7 @@ pub fn wpm_over_time(presses: &[Press], duration: Duration) -> Vec<f64> {
         .collect()
 }
 
-/// Monkeytype's consistency score: kogasa(stddev / mean) of raw WPM per second.
+/// Consistency score: kogasa(stddev / mean) of raw WPM per second.
 pub fn consistency(raw_per_second: &[f64]) -> f64 {
     if raw_per_second.is_empty() {
         return 0.0;

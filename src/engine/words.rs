@@ -126,13 +126,13 @@ impl<R: Rng> WordGen<R> {
         }
     }
 
-    /// Add capitals and punctuation, like monkeytype's punctuation mode.
+    /// Add capitals and punctuation, for punctuation mode.
     pub fn with_punctuation(mut self, on: bool) -> Self {
         self.punctuation = on;
         self
     }
 
-    /// Put a random number in place of some words, like monkeytype's numbers mode.
+    /// Put a random number in place of some words, for numbers mode.
     pub fn with_numbers(mut self, on: bool) -> Self {
         self.numbers = on;
         self

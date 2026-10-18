@@ -6,7 +6,7 @@ PackageName: dakken
 PackageUrl: https://github.com/AnonMohak/dakken
 License: MIT
 LicenseUrl: https://github.com/AnonMohak/dakken/blob/master/LICENSE
-ShortDescription: A monkeytype-style typing test for the terminal
+ShortDescription: A typing-speed test for the terminal
 Tags:
 - typing
 - terminal
