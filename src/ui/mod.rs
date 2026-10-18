@@ -38,7 +38,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     match &app.screen {
         Screen::Typing => typing::draw(frame, app, now),
         Screen::Results(result) => results::draw(frame, app, result),
-        Screen::Menu { selected } => menu::draw(frame, *selected),
+        Screen::Menu { selected } => menu::draw(frame, *selected, app.punctuation),
     }
 }
 
@@ -137,5 +137,6 @@ mod tests {
             out.contains("time 15") && out.contains("words 100"),
             "{out}"
         );
+        assert!(out.contains("punctuation off"), "{out}");
     }
 }

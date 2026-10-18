@@ -10,7 +10,7 @@ use ratatui::{
 };
 
 use super::{column, theme};
-use crate::app::{App, mode_label};
+use crate::app::App;
 use crate::engine::Mode;
 
 /// Number of word lines on screen, like monkeytype.
@@ -37,7 +37,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
             ),
         ])
     } else {
-        Line::styled(mode_label(app.mode), Style::new().fg(theme::SUB))
+        Line::styled(app.label(), Style::new().fg(theme::SUB))
     };
     frame.render_widget(Paragraph::new(status), row(area, 0));
 

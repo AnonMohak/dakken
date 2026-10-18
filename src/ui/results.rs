@@ -6,7 +6,7 @@ use ratatui::{
 };
 
 use super::{column, theme};
-use crate::app::{App, mode_label};
+use crate::app::App;
 use crate::engine::stats::TestResult;
 
 pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
@@ -43,7 +43,7 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
             label("time "),
             value(format!("{:.0}s", r.duration.as_secs_f64())),
         ]),
-        Line::from(label(&format!("{} · english", mode_label(app.mode)))),
+        Line::from(label(&format!("{} · english", app.label()))),
         Line::default(),
         Line::default(),
         Line::from(label("tab restart · esc menu · ctrl+c quit")),

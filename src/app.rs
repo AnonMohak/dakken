@@ -35,19 +35,24 @@ pub enum Screen {
 
 pub struct App {
     pub mode: Mode,
+    pub punctuation: bool,
     pub session: Session,
     pub screen: Screen,
     pub quit: bool,
 }
 
 impl App {
-    pub fn new(mode: Mode) -> Self {
-        Self::with_session(mode, new_session(mode))
+    pub fn new(mode: Mode, punctuation: bool) -> Self {
+        Self {
+            punctuation,
+            ..Self::with_session(mode, new_session(mode, punctuation))
+        }
     }
 
     pub fn with_session(mode: Mode, session: Session) -> Self {
         Self {
             mode,
+            punctuation: false,
             session,
             screen: Screen::Typing,
             quit: false,
@@ -55,8 +60,17 @@ impl App {
     }
 
     fn restart(&mut self) {
-        self.session = new_session(self.mode);
+        self.session = new_session(self.mode, self.punctuation);
         self.screen = Screen::Typing;
+    }
+
+    /// The mode and its options, for example "time 30 · punctuation".
+    pub fn label(&self) -> String {
+        let mut label = mode_label(self.mode);
+        if self.punctuation {
+            label.push_str(" · punctuation");
+        }
+        label
     }
 
     /// Show the results screen if the test ended. Call this on each frame.
@@ -105,6 +119,11 @@ impl App {
                     self.mode = MODES[selected];
                     self.restart();
                 }
+                KeyCode::Char('p') => {
+                    // New words are needed, so start a new test.
+                    self.punctuation = !self.punctuation;
+                    self.session = new_session(self.mode, self.punctuation);
+                }
                 KeyCode::Esc => {
                     self.screen = if self.session.is_finished() {
                         Screen::Results(self.session.result())
@@ -123,9 +142,9 @@ impl App {
     }
 }
 
-fn new_session(mode: Mode) -> Session {
-    let mut words = WordGen::new(words::english(), rand::rng());
-    Session::new(mode, move || words.next_word().to_string())
+fn new_session(mode: Mode, punctuation: bool) -> Session {
+    let mut words = WordGen::new(words::english(), rand::rng()).with_punctuation(punctuation);
+    Session::new(mode, move || words.next_word())
 }
 
 fn engine_key(key: KeyEvent) -> Option<Key> {
@@ -199,6 +218,29 @@ mod tests {
         a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
         assert!(matches!(a.screen, Screen::Typing));
         assert_eq!(a.mode, MODES[MODES.len() - 1]);
+    }
+
+    #[test]
+    fn p_in_menu_toggles_punctuation_and_starts_a_new_test() {
+        let mut a = app(&["hi", "there"]);
+        type_text(&mut a, "h");
+        a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
+        a.on_key(
+            press(KeyCode::Char('p'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(a.punctuation);
+        assert!(matches!(a.screen, Screen::Menu { .. }));
+        assert!(!a.session.is_started());
+        assert!(a.label().ends_with(" · punctuation"));
+        a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Typing));
+        a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
+        a.on_key(
+            press(KeyCode::Char('p'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(!a.punctuation);
     }
 
     #[test]

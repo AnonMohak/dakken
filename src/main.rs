@@ -27,6 +27,10 @@ struct Cli {
     #[arg(short, long, value_name = "COUNT")]
     words: Option<usize>,
 
+    /// Add capitals and punctuation to the words.
+    #[arg(short, long)]
+    punctuation: bool,
+
     /// Print each key event, to check how the terminal sends keys.
     #[arg(long)]
     keys: bool,
@@ -41,7 +45,7 @@ fn main() -> io::Result<()> {
         (_, Some(n)) => Mode::Words(n.max(1)),
         (t, None) => Mode::Time(Duration::from_secs(t.unwrap_or(30).max(1))),
     };
-    run(App::new(mode))
+    run(App::new(mode, cli.punctuation))
 }
 
 fn run(mut app: App) -> io::Result<()> {

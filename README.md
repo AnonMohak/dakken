@@ -3,6 +3,8 @@
 A typing-speed test for the terminal, in the style of [monkeytype](https://monkeytype.com).
 
 - Time mode (15, 30, 60, 120 s) and words mode (10, 25, 50, 100 words).
+- Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
+  quotes and parentheses.
 - Monkeytype colors and rules: wrong letters in red, extra letters in dark red,
   backspace into a previous word only if it has an error.
 - Results: WPM, raw WPM, accuracy, consistency, and character counts.
@@ -24,6 +26,7 @@ cargo install --path .
 typer            # 30-second test
 typer -t 60      # 60-second test
 typer -w 25      # 25-word test
+typer -p         # 30-second test with punctuation
 typer --keys     # print raw key events (to check your terminal)
 ```
 
@@ -33,6 +36,7 @@ The test starts when you type the first letter.
 |---|---|
 | `Tab` | Restart the test |
 | `Esc` | Open the mode menu (`↑`/`↓` or `j`/`k`, then `Enter`) |
+| `p` (in the menu) | Turn punctuation on or off |
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
 | `Ctrl+C` | Quit |
 

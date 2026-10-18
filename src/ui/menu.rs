@@ -8,7 +8,7 @@ use ratatui::{
 use super::{column, theme};
 use crate::app::{MODES, mode_label};
 
-pub fn draw(frame: &mut Frame, selected: usize) {
+pub fn draw(frame: &mut Frame, selected: usize, punctuation: bool) {
     let mut lines = vec![
         Line::styled("mode", Style::new().fg(theme::SUB)),
         Line::default(),
@@ -29,7 +29,16 @@ pub fn draw(frame: &mut Frame, selected: usize) {
     }
     lines.push(Line::default());
     lines.push(Line::styled(
-        "↑↓ select · enter start · esc back",
+        format!("punctuation {}", if punctuation { "on" } else { "off" }),
+        Style::new().fg(if punctuation {
+            theme::MAIN
+        } else {
+            theme::TEXT
+        }),
+    ));
+    lines.push(Line::default());
+    lines.push(Line::styled(
+        "↑↓ select · enter start · p punctuation · esc back",
         Style::new().fg(theme::SUB),
     ));
     let area = column(frame.area(), lines.len() as u16);
