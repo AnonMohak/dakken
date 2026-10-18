@@ -7,12 +7,15 @@ use crate::engine::{
     stats::TestResult,
     words::{self, WordGen},
 };
+use rand::seq::IndexedRandom;
+
 use crate::history::{History, Record};
 use crate::ui;
 
 /// The modes the menu offers, in menu order.
-pub const MODES: [Mode; 9] = [
+pub const MODES: [Mode; 10] = [
     Mode::Untimed,
+    Mode::Quote,
     Mode::Time(Duration::from_secs(15)),
     Mode::Time(Duration::from_secs(30)),
     Mode::Time(Duration::from_secs(60)),
@@ -26,6 +29,7 @@ pub const MODES: [Mode; 9] = [
 pub fn mode_label(mode: Mode) -> String {
     match mode {
         Mode::Untimed => "untimed".to_string(),
+        Mode::Quote => "quote".to_string(),
         Mode::Time(d) => format!("time {}", d.as_secs()),
         Mode::Words(n) => format!("words {n}"),
     }
@@ -50,6 +54,8 @@ pub struct App {
     /// Terminal width. Untimed tests get the words that fit on the screen.
     pub width: u16,
     pub session: Session,
+    /// Where the quote of a quote test comes from.
+    pub source: Option<&'static str>,
     pub screen: Screen,
     pub history: History,
     /// Best WPM for this label before the last finished test.
@@ -61,11 +67,13 @@ pub struct App {
 
 impl App {
     pub fn new(mode: Mode, options: Options, width: u16, history: History) -> Self {
+        let (session, source) = new_test(mode, options, width);
         Self {
             options,
             width,
             history,
-            ..Self::with_session(mode, new_session(mode, options, width))
+            source,
+            ..Self::with_session(mode, session)
         }
     }
 
@@ -75,6 +83,7 @@ impl App {
             options: Options::default(),
             width: 80,
             session,
+            source: None,
             screen: Screen::Typing,
             history: History::in_memory(),
             previous_best: None,
@@ -84,21 +93,29 @@ impl App {
     }
 
     fn restart(&mut self) {
-        self.session = new_session(self.mode, self.options, self.width);
+        self.new_test();
         self.screen = Screen::Typing;
+    }
+
+    fn new_test(&mut self) {
+        (self.session, self.source) = new_test(self.mode, self.options, self.width);
     }
 
     /// Before the test starts, give an untimed test the words for the new width.
     pub fn on_resize(&mut self, width: u16) {
         self.width = width;
         if self.mode == Mode::Untimed && !self.session.is_started() {
-            self.session = new_session(self.mode, self.options, width);
+            self.new_test();
         }
     }
 
     /// The mode and its options, for example "time 30 · punctuation".
+    /// Quotes have their own punctuation and numbers, so options do not apply.
     pub fn label(&self) -> String {
         let mut label = mode_label(self.mode);
+        if self.mode == Mode::Quote {
+            return label;
+        }
         if self.options.punctuation {
             label.push_str(" · punctuation");
         }
@@ -161,11 +178,11 @@ impl App {
                 // New words are needed, so these start a new test.
                 KeyCode::Char('p') => {
                     self.options.punctuation = !self.options.punctuation;
-                    self.session = new_session(self.mode, self.options, self.width);
+                    self.new_test();
                 }
                 KeyCode::Char('n') => {
                     self.options.numbers = !self.options.numbers;
-                    self.session = new_session(self.mode, self.options, self.width);
+                    self.new_test();
                 }
                 KeyCode::Esc => {
                     self.screen = if self.session.is_finished() {
@@ -183,6 +200,18 @@ impl App {
         let selected = MODES.iter().position(|&m| m == self.mode).unwrap_or(0);
         self.screen = Screen::Menu { selected };
     }
+}
+
+/// A new test, and the source of its quote in quote mode.
+fn new_test(mode: Mode, options: Options, width: u16) -> (Session, Option<&'static str>) {
+    if mode == Mode::Quote {
+        let quote = *words::quotes()
+            .choose(&mut rand::rng())
+            .expect("the quote list is not empty");
+        let words: Vec<&str> = quote.text.split_whitespace().collect();
+        return (Session::from_words(mode, &words), Some(quote.source));
+    }
+    (new_session(mode, options, width), None)
 }
 
 fn new_session(mode: Mode, options: Options, width: u16) -> Session {
@@ -326,6 +355,37 @@ mod tests {
         let started = a.session.words().len();
         a.on_resize(40);
         assert_eq!(a.session.words().len(), started);
+    }
+
+    #[test]
+    fn quote_mode_types_a_whole_quote() {
+        let mut a = App::new(Mode::Quote, Options::default(), 80, History::in_memory());
+        let source = a.source.expect("a quote has a source");
+        let text: String = a
+            .session
+            .words()
+            .iter()
+            .map(|w| w.iter().collect::<String>())
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(
+            words::quotes()
+                .iter()
+                .any(|q| q.text == text && q.source == source),
+            "{text}"
+        );
+        a.options.punctuation = true;
+        assert_eq!(a.label(), "quote");
+        let mut a = app(&["one", "two"]);
+        a.mode = Mode::Quote;
+        a.session = Session::from_words(Mode::Quote, &["one", "two"]);
+        type_text(&mut a, "one");
+        a.on_key(
+            press(KeyCode::Char(' '), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        type_text(&mut a, "two");
+        assert!(matches!(a.screen, Screen::Results(_)));
     }
 
     #[test]

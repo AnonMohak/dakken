@@ -22,12 +22,16 @@ use history::History;
 #[command(version, about)]
 struct Cli {
     /// Time mode: test length in seconds. With no mode, the test is untimed.
-    #[arg(short, long, value_name = "SECONDS", conflicts_with = "words")]
+    #[arg(short, long, value_name = "SECONDS", conflicts_with_all = ["words", "quote"])]
     time: Option<u64>,
 
     /// Words mode: number of words.
-    #[arg(short, long, value_name = "COUNT")]
+    #[arg(short, long, value_name = "COUNT", conflicts_with = "quote")]
     words: Option<usize>,
+
+    /// Quote mode: type one quote from a book, poem or speech.
+    #[arg(short, long)]
+    quote: bool,
 
     /// Add capitals and punctuation to the words.
     #[arg(short, long)]
@@ -57,6 +61,7 @@ fn main() -> io::Result<()> {
         return Ok(());
     }
     let mode = match (cli.time, cli.words) {
+        _ if cli.quote => Mode::Quote,
         (_, Some(n)) => Mode::Words(n.max(1)),
         (Some(t), None) => Mode::Time(Duration::from_secs(t.max(1))),
         (None, None) => Mode::Untimed,

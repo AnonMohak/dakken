@@ -4,6 +4,7 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 
 - Untimed mode (the default): type the words on the screen, with no time limit.
 - Time mode (15, 30, 60, 120 s) and words mode (10, 25, 50, 100 words).
+- Quote mode: one quote from a public-domain book, poem or speech.
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
   quotes and parentheses.
 - Numbers mode: random numbers in place of some words.
@@ -31,6 +32,7 @@ cargo install --path .
 typer            # untimed test: the words on the screen
 typer -t 60      # 60-second test
 typer -w 25      # 25-word test
+typer -q         # quote test
 typer -p         # untimed test with punctuation
 typer -p -n      # untimed test with punctuation and numbers
 typer --history  # print personal bests and the last 10 tests
@@ -91,3 +93,4 @@ The code has three parts:
 ## License
 
 MIT. The word list is a list of common English words made for this project.
+The quotes are from public-domain texts.

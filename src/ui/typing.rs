@@ -27,7 +27,9 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
                 let left = s.remaining(now).unwrap_or_default();
                 format!("{}", left.as_secs_f64().ceil() as u64)
             }
-            Mode::Untimed | Mode::Words(_) => format!("{}/{}", s.current(), s.words().len()),
+            Mode::Untimed | Mode::Quote | Mode::Words(_) => {
+                format!("{}/{}", s.current(), s.words().len())
+            }
         };
         Line::from(vec![
             Span::styled(counter, Style::new().fg(theme::MAIN)),

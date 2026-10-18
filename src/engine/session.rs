@@ -12,6 +12,8 @@ const WORDS_AHEAD: usize = 50;
 pub enum Mode {
     /// Type a fixed list of words with no time limit.
     Untimed,
+    /// Type one quote with no time limit.
+    Quote,
     Time(Duration),
     Words(usize),
 }
@@ -48,7 +50,7 @@ impl Session {
     pub fn new(mode: Mode, mut next_word: impl FnMut() -> String + 'static) -> Self {
         let count = match mode {
             Mode::Words(n) => n,
-            Mode::Untimed => 25,
+            Mode::Untimed | Mode::Quote => 25,
             Mode::Time(_) => WORDS_AHEAD * 2,
         };
         let words: Vec<String> = (0..count).map(|_| next_word()).collect();
@@ -111,7 +113,7 @@ impl Session {
     pub fn remaining(&self, now: Instant) -> Option<Duration> {
         match self.mode {
             Mode::Time(limit) => Some(limit.saturating_sub(self.elapsed(now))),
-            Mode::Untimed | Mode::Words(_) => None,
+            Mode::Untimed | Mode::Quote | Mode::Words(_) => None,
         }
     }
 

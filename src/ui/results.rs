@@ -51,7 +51,9 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
             value(format!("{:.0}s", r.duration.as_secs_f64())),
         ]),
         Line::from(label(&format!("{} · english", app.label()))),
-        Line::default(),
+        Line::from(label(
+            &app.source.map_or(String::new(), |s| format!("— {s}")),
+        )),
         best_line(app, r),
         Line::from(label("tab restart · esc menu · ctrl+c quit")),
     ];

@@ -1,6 +1,29 @@
 use rand::{Rng, RngExt, seq::IndexedRandom};
 
 const ENGLISH: &str = include_str!("../../assets/words/english.txt");
+const QUOTES: &str = include_str!("../../assets/quotes/english.txt");
+
+/// A quote to type, and where it comes from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Quote {
+    pub text: &'static str,
+    pub source: &'static str,
+}
+
+/// The built-in quotes, all from public-domain texts. One quote on each line:
+/// the text, a tab, then the source.
+pub fn quotes() -> Vec<Quote> {
+    QUOTES
+        .lines()
+        .filter_map(|line| {
+            let (text, source) = line.split_once('\t')?;
+            Some(Quote {
+                text: text.trim(),
+                source: source.trim(),
+            })
+        })
+        .collect()
+}
 
 /// The built-in English list: the 200 most common words.
 pub fn english() -> Vec<&'static str> {
@@ -124,6 +147,21 @@ mod tests {
             list.iter()
                 .all(|w| w.chars().all(|c| c.is_ascii_lowercase()))
         );
+    }
+
+    #[test]
+    fn quotes_are_plain_ascii_with_a_source() {
+        let quotes = quotes();
+        assert_eq!(quotes.len(), QUOTES.lines().count());
+        for q in quotes {
+            assert!(!q.source.is_empty(), "{}", q.text);
+            assert!(
+                q.text.chars().all(|c| c.is_ascii_graphic() || c == ' '),
+                "{}",
+                q.text
+            );
+            assert!(!q.text.contains("  "), "{}", q.text);
+        }
     }
 
     #[test]
