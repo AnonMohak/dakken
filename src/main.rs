@@ -98,9 +98,11 @@ fn run(mut app: App) -> io::Result<()> {
     let restore_terminal = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let _ = execute!(io::stdout(), SetCursorStyle::DefaultUserShape);
+        let _ = set_wezterm_active(false);
         restore_terminal(info);
     }));
-    execute!(io::stdout(), SetCursorStyle::SteadyBar)?;
+    execute!(io::stdout(), SetCursorStyle::SteadyBlock)?;
+    set_wezterm_active(true)?;
     let result = (|| -> io::Result<()> {
         while !app.quit {
             terminal.draw(|f| ui::draw(f, &app, Instant::now()))?;
@@ -117,8 +119,23 @@ fn run(mut app: App) -> io::Result<()> {
         Ok(())
     })();
     execute!(io::stdout(), SetCursorStyle::DefaultUserShape)?;
+    set_wezterm_active(false)?;
     ratatui::restore();
     result
+}
+
+/// Tell WezTerm that typer runs, with the `typer_active` user var. A
+/// `user-var-changed` handler in the WezTerm config can then make the font
+/// bigger. Other terminals do not get the escape code.
+fn set_wezterm_active(active: bool) -> io::Result<()> {
+    if std::env::var_os("TERM_PROGRAM").is_none_or(|v| v != "WezTerm") {
+        return Ok(());
+    }
+    // The value is base64: "MQ==" is "1" and "MA==" is "0".
+    let value = if active { "MQ==" } else { "MA==" };
+    let mut out = io::stdout();
+    write!(out, "]1337;SetUserVar=typer_active={value}")?;
+    out.flush()
 }
 
 /// Print every key event in raw mode. Ctrl+C quits.

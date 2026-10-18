@@ -54,6 +54,27 @@ The test starts when you type the first letter.
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
 | `Ctrl+C` | Quit |
 
+## Bigger font in WezTerm
+
+A terminal app cannot set the font size. In WezTerm, typer sets the user var
+`typer_active` to `1` at start and `0` at exit. Add this to `.wezterm.lua`,
+before `return config`, to get a font 2 points bigger while typer runs:
+
+```lua
+wezterm.on("user-var-changed", function(window, pane, name, value)
+  if name ~= "typer_active" then
+    return
+  end
+  local overrides = window:get_config_overrides() or {}
+  if value == "1" then
+    overrides.font_size = config.font_size + 2
+  else
+    overrides.font_size = nil
+  end
+  window:set_config_overrides(overrides)
+end)
+```
+
 ## Settings
 
 The menu saves the mode, punctuation, numbers and theme to `config.toml`, in
