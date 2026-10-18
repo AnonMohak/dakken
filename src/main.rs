@@ -59,6 +59,10 @@ struct Cli {
     #[arg(long)]
     history: bool,
 
+    /// Print averages for each mode and a graph of WPM by day, then quit.
+    #[arg(long)]
+    stats: bool,
+
     /// Print each key event, to check how the terminal sends keys.
     #[arg(long)]
     keys: bool,
@@ -72,6 +76,10 @@ fn main() -> io::Result<()> {
     let history = history::default_path().map_or_else(History::in_memory, History::load);
     if cli.history {
         print!("{}", history::report(&history));
+        return Ok(());
+    }
+    if cli.stats {
+        print!("{}", history::stats_report(&history));
         return Ok(());
     }
     // The saved settings, with the command-line flags on top.

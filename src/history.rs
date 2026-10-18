@@ -191,6 +191,81 @@ pub fn report(history: &History) -> String {
     out
 }
 
+/// Days the stats graph shows, the newest days with tests.
+const STATS_DAYS: usize = 30;
+/// Width of the longest bar in the stats graph.
+const BAR_WIDTH: usize = 40;
+
+/// The text for `dakken --stats`: averages for each label, then the average
+/// WPM of each day as a bar graph.
+pub fn stats_report(history: &History) -> String {
+    if history.records().is_empty() {
+        return "No tests yet.\n".to_string();
+    }
+    let mut out = String::from("averages\n");
+    out += &format!(
+        "  {:>5}  {:>7}  {:>7}  {:>8}  mode\n",
+        "tests", "avg wpm", "avg acc", "best wpm"
+    );
+    for (label, best) in history.bests() {
+        let records: Vec<&Record> = history
+            .records()
+            .iter()
+            .filter(|r| r.label == label)
+            .collect();
+        let n = records.len() as f64;
+        let wpm = records.iter().map(|r| r.wpm).sum::<f64>() / n;
+        let acc = records.iter().map(|r| r.accuracy).sum::<f64>() / n;
+        out += &format!(
+            "  {:>5}  {wpm:>7.0}  {acc:>6.0}%  {best:>8.0}  {label}\n",
+            records.len()
+        );
+    }
+
+    let days = daily_wpm(history);
+    let shown = &days[days.len().saturating_sub(STATS_DAYS)..];
+    let top = shown.iter().map(|(_, wpm)| *wpm).fold(0.0, f64::max);
+    out += "\naverage wpm each day (UTC)\n";
+    for (day, wpm) in shown {
+        out += &format!("  {day}  {} {wpm:.0}\n", bar(*wpm, top, BAR_WIDTH));
+    }
+    out
+}
+
+/// The average WPM of each day that has tests, oldest first.
+fn daily_wpm(history: &History) -> Vec<(String, f64)> {
+    let mut days: Vec<(String, f64, usize)> = Vec::new();
+    for r in history.records() {
+        let day = format_time(r.time)[..10].to_string();
+        match days.iter_mut().find(|(d, _, _)| *d == day) {
+            Some((_, sum, n)) => {
+                *sum += r.wpm;
+                *n += 1;
+            }
+            None => days.push((day, r.wpm, 1)),
+        }
+    }
+    days.sort_by(|a, b| a.0.cmp(&b.0));
+    days.into_iter()
+        .map(|(day, sum, n)| (day, sum / n as f64))
+        .collect()
+}
+
+/// A bar `width` cells long for `top`, with eighth-cell steps.
+fn bar(value: f64, top: f64, width: usize) -> String {
+    const PARTS: [char; 8] = [' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉'];
+    if top <= 0.0 {
+        return String::new();
+    }
+    let eighths = (value / top * (width * 8) as f64).round() as usize;
+    let mut s = "█".repeat(eighths / 8);
+    let part = eighths % 8;
+    if part > 0 {
+        s.push(PARTS[part]);
+    }
+    s
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,6 +314,41 @@ mod tests {
     fn time_is_formatted_as_utc() {
         assert_eq!(format_time(0), "1970-01-01 00:00");
         assert_eq!(format_time(1_709_164_800 + 3_723), "2024-02-29 01:02");
+    }
+
+    #[test]
+    fn bars_scale_to_the_top_value() {
+        assert_eq!(bar(10.0, 10.0, 4), "████");
+        assert_eq!(bar(5.0, 10.0, 4), "██");
+        assert_eq!(bar(1.0, 8.0, 1), "▏");
+        assert_eq!(bar(0.0, 0.0, 4), "");
+    }
+
+    #[test]
+    fn stats_average_each_label_and_day() {
+        let mut h = History::in_memory();
+        assert_eq!(stats_report(&h), "No tests yet.\n");
+        h.add(record("time 15", 40.0)).unwrap();
+        h.add(record("time 15", 60.0)).unwrap();
+        let mut next_day = record("words 10", 80.0);
+        next_day.time = 86_400;
+        h.add(next_day).unwrap();
+        assert_eq!(
+            daily_wpm(&h),
+            vec![
+                ("1970-01-01".to_string(), 50.0),
+                ("1970-01-02".to_string(), 80.0)
+            ]
+        );
+        let out = stats_report(&h);
+        assert!(
+            out.contains("      2       50     100%        60  time 15"),
+            "{out}"
+        );
+        assert!(
+            out.contains("1970-01-02  ████████████████████████████████████████ 80"),
+            "{out}"
+        );
     }
 
     #[test]

@@ -51,6 +51,7 @@ dakken -p         # untimed test with punctuation
 dakken -p -n      # untimed test with punctuation and numbers
 dakken --theme nord  # use a color theme
 dakken --history  # print personal bests and the last 10 tests
+dakken --stats    # print averages and a graph of WPM by day
 dakken --keys     # print raw key events (to check your terminal)
 ```
 
