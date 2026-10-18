@@ -6,6 +6,7 @@ mod keystats;
 mod layout;
 mod mistakes;
 mod ui;
+mod update;
 
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -95,6 +96,10 @@ struct Cli {
     #[arg(long)]
     heatmap: bool,
 
+    /// Ask GitHub if there is a newer release, then quit. Needs curl.
+    #[arg(long)]
+    check_update: bool,
+
     /// Print the full history as csv or json, then quit.
     #[arg(long, value_name = "FORMAT", value_parser = ["csv", "json"])]
     export: Option<String>,
@@ -108,6 +113,10 @@ fn main() -> io::Result<()> {
     let cli = Cli::parse();
     if cli.keys {
         return key_test();
+    }
+    if cli.check_update {
+        print!("{}", update::check());
+        return Ok(());
     }
     let history = history::default_path().map_or_else(History::in_memory, History::load);
     if cli.history {
