@@ -19,6 +19,7 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Colors from your terminal's palette, so the test follows your shell theme.
   Other themes: `serika-dark`, `nord` and `dracula`.
 - Settings are saved: the menu remembers the mode, options and theme.
+- Optional live WPM and accuracy during the test (off by default).
 - Results: WPM, raw WPM, accuracy, consistency, and character counts, with a
   graph of WPM and raw WPM over the test.
 - Personal bests and history for each mode and option set.
@@ -65,6 +66,7 @@ The test starts when you type the first letter.
 | `n` (in the menu) | Turn numbers on or off |
 | `l` (in the menu) | Go to the next word list |
 | `t` (in the menu) | Go to the next color theme |
+| `s` (in the menu) | Show or hide the live WPM and accuracy |
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
 | `Ctrl+C` | Quit |
 
@@ -101,6 +103,7 @@ theme = "terminal"   # terminal, serika-dark, nord or dracula
 punctuation = false
 numbers = false
 words = "english"    # english, english-1k, code or mistakes
+live = false         # live WPM and accuracy during the test
 ```
 
 ## History

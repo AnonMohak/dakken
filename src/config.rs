@@ -13,6 +13,8 @@ pub struct Config {
     pub mode: Mode,
     pub options: Options,
     pub theme: Theme,
+    /// Show the live WPM and accuracy during the test.
+    pub live: bool,
 }
 
 impl Default for Config {
@@ -21,6 +23,7 @@ impl Default for Config {
             mode: Mode::Untimed,
             options: Options::default(),
             theme: Theme::default(),
+            live: false,
         }
     }
 }
@@ -38,6 +41,7 @@ impl Config {
             match key.trim() {
                 "mode" => config.mode = parse_mode(value).unwrap_or(config.mode),
                 "theme" => config.theme = Theme::find(value).unwrap_or(config.theme),
+                "live" => config.live = value == "true",
                 "punctuation" => config.options.punctuation = value == "true",
                 "numbers" => config.options.numbers = value == "true",
                 "words" => {
@@ -56,12 +60,14 @@ impl Config {
              theme = \"{}\"\n\
              punctuation = {}\n\
              numbers = {}\n\
-             words = \"{}\"\n",
+             words = \"{}\"\n\
+             live = {}\n",
             mode_label(self.mode),
             self.theme.name,
             self.options.punctuation,
             self.options.numbers,
-            self.options.list.name()
+            self.options.list.name(),
+            self.live
         )
     }
 
@@ -97,6 +103,7 @@ mod tests {
                 list: WordList::Code,
             },
             theme: Theme::find("nord").unwrap(),
+            live: true,
         };
         assert_eq!(Config::parse(&config.to_text()), config);
     }

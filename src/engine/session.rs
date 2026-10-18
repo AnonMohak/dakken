@@ -242,6 +242,16 @@ impl Session {
         c
     }
 
+    /// WPM so far, for the live display.
+    pub fn live_wpm(&self, now: Instant) -> f64 {
+        stats::wpm(self.correct_chars(), self.elapsed(now))
+    }
+
+    /// Accuracy so far, for the live display.
+    pub fn live_accuracy(&self) -> f64 {
+        stats::accuracy(&self.presses)
+    }
+
     /// The words the test checked, with `true` for a correct word: the closed
     /// words, and the last word when typing it ended the test.
     pub fn checked_words(&self) -> Vec<(String, bool)> {

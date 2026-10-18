@@ -22,13 +22,19 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     let s = &app.session;
     let t = app.theme;
 
-    // Time mode needs the time left. It shows above the words.
+    // Above the words: the time left in time mode, and the live stats when
+    // they are on. Nothing before the test starts.
+    let mut status = Vec::new();
     if let (Mode::Time(_), true) = (s.mode(), s.is_started()) {
         let left = s.remaining(now).unwrap_or_default();
-        let timer = Line::styled(
-            format!("{}", left.as_secs_f64().ceil() as u64),
-            Style::new().fg(t.sub),
-        );
+        status.push(format!("{}", left.as_secs_f64().ceil() as u64));
+    }
+    if app.live && s.is_started() {
+        status.push(format!("{:.0} wpm", s.live_wpm(now)));
+        status.push(format!("{:.0}%", s.live_accuracy()));
+    }
+    if !status.is_empty() {
+        let timer = Line::styled(status.join("  "), Style::new().fg(t.sub));
         if area.y >= 2 {
             let timer_area = Rect {
                 y: area.y - 2,

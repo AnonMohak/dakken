@@ -163,6 +163,17 @@ mod tests {
     }
 
     #[test]
+    fn live_stats_show_only_when_on() {
+        let mut a = app(&["hello", "world"]);
+        a.session
+            .handle(crate::engine::Key::Char('h'), Instant::now());
+        assert!(!render(&a, 60, 20).contains("wpm"));
+        a.live = true;
+        let out = render(&a, 60, 20);
+        assert!(out.contains("wpm") && out.contains("100%"), "{out}");
+    }
+
+    #[test]
     fn small_terminal_shows_a_message() {
         let out = render(&app(&["hello"]), 20, 5);
         assert!(out.contains("too small"), "{out}");
@@ -193,7 +204,7 @@ mod tests {
     fn menu_lists_the_modes() {
         let mut a = app(&["hi"]);
         a.screen = Screen::Menu { selected: 0 };
-        let out = render(&a, 60, 24);
+        let out = render(&a, 60, 26);
         assert!(
             out.contains("time 15") && out.contains("words 100"),
             "{out}"
@@ -210,7 +221,7 @@ mod tests {
         a.screen = Screen::Menu { selected: 9 };
         let out = render(&a, 60, 12);
         assert!(
-            out.contains("> words 100") && out.contains("t theme"),
+            out.contains("> words 100") && out.contains("s live stats"),
             "{out}"
         );
     }
