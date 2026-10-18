@@ -2,6 +2,7 @@ mod app;
 mod config;
 mod engine;
 mod history;
+mod keystats;
 mod mistakes;
 mod ui;
 
@@ -21,6 +22,7 @@ use config::Config;
 use engine::words::{WORD_LISTS, WordList};
 use engine::{Mode, QuoteLength, STRICT_MODES, Strict};
 use history::History;
+use keystats::KeyStats;
 use mistakes::Mistakes;
 use ui::theme::Theme;
 
@@ -77,6 +79,10 @@ struct Cli {
     #[arg(long)]
     stats: bool,
 
+    /// Print a keyboard colored by errors, and the slowest keys, then quit.
+    #[arg(long)]
+    heatmap: bool,
+
     /// Print each key event, to check how the terminal sends keys.
     #[arg(long)]
     keys: bool,
@@ -94,6 +100,15 @@ fn main() -> io::Result<()> {
     }
     if cli.stats {
         print!("{}", history::stats_report(&history));
+        return Ok(());
+    }
+    let key_stats = keystats::default_path().map_or_else(KeyStats::in_memory, KeyStats::load);
+    if cli.heatmap {
+        use std::io::IsTerminal;
+        print!(
+            "{}",
+            keystats::heatmap(&key_stats, io::stdout().is_terminal())
+        );
         return Ok(());
     }
     // The saved settings, with the command-line flags on top.
@@ -165,6 +180,7 @@ fn main() -> io::Result<()> {
         width,
         history,
         mistakes,
+        key_stats,
         custom,
     ))
 }

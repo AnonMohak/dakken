@@ -66,6 +66,7 @@ dakken --theme nord  # use a color theme
 dakken --strict master  # the first wrong key fails the test
 dakken --history  # print personal bests and the last 10 tests
 dakken --stats    # print averages and a graph of WPM by day
+dakken --heatmap  # print a keyboard colored by errors, and the slowest keys
 dakken --keys     # print raw key events (to check your terminal)
 ```
 
@@ -131,6 +132,7 @@ Windows, and in `$XDG_DATA_HOME/dakken` or `~/.local/share/dakken` on other
 systems. A personal best counts only tests with the same mode and options,
 for example `time 30 · punctuation`. Delete the file to clear the history.
 
+`keys.tsv` keeps the presses, errors and time for each key, for `--heatmap`.
 `mistakes.txt`, in the same folder, keeps the last 100 words you typed wrong.
 If it is empty, the `mistakes` list uses the English words.
 

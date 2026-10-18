@@ -270,10 +270,12 @@ impl Session {
             return;
         }
         let start = *self.start.get_or_insert(now);
-        let correct = target.get(typed.len()) == Some(&c);
+        let expected = target.get(typed.len()).copied();
+        let correct = expected == Some(c);
         self.presses.push(Press {
             at: now - start,
             correct,
+            key: expected,
         });
         if !correct && self.strict == Strict::StopOnError {
             return;
@@ -299,10 +301,19 @@ impl Session {
             return;
         }
         let start = *self.start.get_or_insert(now);
-        let correct = self.typed[self.current] == self.words[self.current];
+        let (target, typed) = (&self.words[self.current], &self.typed[self.current]);
+        let correct = typed == target;
+        // A space before the end of the word is a miss of the next letter.
+        // After a full-length wrong word, the space key itself was right.
+        let key = match target.get(typed.len()) {
+            Some(&next) => Some(next),
+            None if correct => Some(' '),
+            None => None,
+        };
         self.presses.push(Press {
             at: now - start,
             correct,
+            key,
         });
         match self.strict {
             // A space before the word is complete is a wrong key too.
@@ -422,6 +433,11 @@ impl Session {
             }
         }
         c
+    }
+
+    /// Each key press that adds text, in order.
+    pub fn presses(&self) -> &[Press] {
+        &self.presses
     }
 
     /// WPM so far, for the live display.
@@ -725,6 +741,17 @@ mod tests {
         assert_eq!(r.accuracy, 100.0);
         assert_eq!(r.chars.correct, "anythinggoeshere".len());
         assert_eq!(r.chars.incorrect + r.chars.missed + r.chars.extra, 0);
+    }
+
+    #[test]
+    fn presses_record_the_expected_key() {
+        let mut d = Driver::words(&["ab", "cd"]);
+        d.text("ax bc");
+        let keys: Vec<Option<char>> = d.s.presses().iter().map(|p| p.key).collect();
+        assert_eq!(keys, [Some('a'), Some('b'), None, Some('c'), Some('d')]);
+        let mut d = Driver::words(&["ab", "cd"]);
+        d.text("a ");
+        assert_eq!(d.s.presses()[1].key, Some('b'), "space instead of b");
     }
 
     #[test]

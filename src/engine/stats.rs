@@ -6,6 +6,9 @@ pub struct Press {
     /// Time since the test started.
     pub at: Duration,
     pub correct: bool,
+    /// The key the test asked for. `None` for a key that is not checked,
+    /// such as an extra letter.
+    pub key: Option<char>,
 }
 
 /// Final character counts, the same groups monkeytype shows.
@@ -122,6 +125,7 @@ mod tests {
         Press {
             at: Duration::from_millis(ms),
             correct,
+            key: None,
         }
     }
 

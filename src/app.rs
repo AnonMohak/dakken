@@ -14,6 +14,7 @@ use rand::seq::IndexedRandom;
 
 use crate::config::Config;
 use crate::history::{History, Record};
+use crate::keystats::KeyStats;
 use crate::mistakes::{self, Mistakes};
 use crate::ui::{self, theme::Theme};
 
@@ -122,6 +123,7 @@ pub struct App {
     pub screen: Screen,
     pub history: History,
     pub mistakes: Mistakes,
+    pub key_stats: KeyStats,
     /// Best WPM for this label before the last finished test.
     pub previous_best: Option<f64>,
     /// The last finished test could not be added to the history file.
@@ -136,6 +138,7 @@ impl App {
         width: u16,
         history: History,
         mistakes: Mistakes,
+        key_stats: KeyStats,
         custom: Option<CustomText>,
     ) -> Self {
         let mode = match custom {
@@ -152,6 +155,7 @@ impl App {
             width,
             history,
             mistakes,
+            key_stats,
             custom,
             // `new_test` below makes the real test.
             ..Self::with_session(mode, Session::from_words(mode, &["dakken"]))
@@ -176,6 +180,7 @@ impl App {
             screen: Screen::Typing,
             history: History::in_memory(),
             mistakes: Mistakes::in_memory(),
+            key_stats: KeyStats::in_memory(),
             previous_best: None,
             save_failed: false,
             quit: false,
@@ -287,8 +292,10 @@ impl App {
             let label = self.label();
             self.previous_best = self.history.best(&label);
             // A failed test is not a real result, so it is not saved.
-            self.save_failed =
-                !self.session.is_failed() && self.history.add(Record::new(label, &result)).is_err();
+            if !self.session.is_failed() {
+                self.save_failed = self.history.add(Record::new(label, &result)).is_err();
+                self.save_failed |= self.key_stats.add_test(self.session.presses()).is_err();
+            }
             self.save_failed |= self.update_mistakes().is_err();
             self.screen = Screen::Results(result);
         }
@@ -553,6 +560,7 @@ mod tests {
             40,
             History::in_memory(),
             Mistakes::in_memory(),
+            KeyStats::in_memory(),
             None,
         );
         let narrow = a.session.words().len();
@@ -576,6 +584,7 @@ mod tests {
             80,
             History::in_memory(),
             Mistakes::in_memory(),
+            KeyStats::in_memory(),
             None,
         );
         let source = a.source.expect("a quote has a source");
@@ -728,6 +737,7 @@ mod tests {
             80,
             History::in_memory(),
             Mistakes::in_memory(),
+            KeyStats::in_memory(),
             Some(custom),
         );
         assert_eq!(a.mode, Mode::Custom);
@@ -775,6 +785,7 @@ mod tests {
                 80,
                 History::in_memory(),
                 Mistakes::in_memory(),
+                KeyStats::in_memory(),
                 None,
             );
             for _ in 0..20 {
@@ -783,6 +794,14 @@ mod tests {
             }
             assert_eq!(a.label(), format!("quote {}", length.name()));
         }
+    }
+
+    #[test]
+    fn finished_tests_add_key_stats() {
+        let mut a = app(&["hi"]);
+        type_text(&mut a, "hx");
+        assert_eq!(a.key_stats.get('h').presses, 1);
+        assert_eq!(a.key_stats.get('i').errors, 1);
     }
 
     #[test]
