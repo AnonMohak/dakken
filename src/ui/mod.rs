@@ -39,7 +39,8 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     }
 
     match &app.screen {
-        Screen::Typing => typing::draw(frame, app, now),
+        Screen::Typing => typing::draw(frame, app, &app.session, now, false),
+        Screen::Replay(replay) => typing::draw(frame, app, &replay.session, now, true),
         Screen::Results(result) => results::draw(frame, app, result),
         Screen::Menu { selected } => menu::draw(frame, app, *selected),
     }

@@ -79,6 +79,7 @@ The test starts when you type the first letter.
 |---|---|
 | `Tab` or `Esc` | Open or close the menu (`↑`/`↓` or `j`/`k`, then `Enter`) |
 | `Enter` (on the results) | Start a new test |
+| `r` (on the results) | Replay the test at the speed you typed it |
 | `Enter` (in zen mode) | End the test |
 | `p` (in the menu) | Turn punctuation on or off |
 | `n` (in the menu) | Turn numbers on or off |

@@ -130,6 +130,8 @@ pub struct Session {
     strict: Strict,
     /// A wrong key in master mode ended the test.
     failed: bool,
+    /// Every key after the start, with its time since the start, for replay.
+    log: Vec<(Duration, Key)>,
 }
 
 impl Session {
@@ -164,7 +166,25 @@ impl Session {
             source: None,
             strict: Strict::Off,
             failed: false,
+            log: Vec::new(),
         }
+    }
+
+    /// Every key after the start, with its time since the start.
+    pub fn log(&self) -> &[(Duration, Key)] {
+        &self.log
+    }
+
+    /// A new session with the same words and rules, to replay the log in.
+    pub fn replay(&self) -> Session {
+        let mut s = if self.mode == Mode::Zen {
+            Self::zen()
+        } else {
+            let words: Vec<String> = self.words.iter().map(|w| w.iter().collect()).collect();
+            Self::from_words(self.mode, &words)
+        };
+        s.strict = self.strict;
+        s
     }
 
     /// A zen test: one empty word. Each typed letter is added to the target
@@ -256,6 +276,9 @@ impl Session {
             Key::Space => self.type_space(now),
             Key::Backspace => self.backspace(false),
             Key::DeleteWord => self.backspace(true),
+        }
+        if let Some(start) = self.start {
+            self.log.push((now - start, key));
         }
     }
 
@@ -803,6 +826,29 @@ mod tests {
         assert_eq!(word, "cd");
         assert!((wpm - 72.0).abs() < 0.01, "{wpm}");
         assert!((r.fastest_burst.unwrap() - 180.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn replaying_the_log_gives_the_same_test() {
+        let mut d = Driver::words(&["hello", "world"]);
+        d.key(Key::Backspace);
+        d.text("helo");
+        d.key(Key::Backspace);
+        d.text("lo wrld");
+        d.text("x");
+        let mut r = d.s.replay();
+        let start = Instant::now();
+        for &(at, key) in d.s.log() {
+            r.handle(key, start + at);
+        }
+        assert!(r.is_finished());
+        assert_eq!(r.typed(), d.s.typed());
+        assert_eq!(r.result(), d.s.result());
+        assert_eq!(
+            d.s.log().len(),
+            13,
+            "the backspace before the start is not logged"
+        );
     }
 
     #[test]

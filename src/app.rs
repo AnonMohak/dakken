@@ -100,6 +100,15 @@ pub enum Screen {
     Typing,
     Results(TestResult),
     Menu { selected: usize },
+    Replay(Box<Replay>),
+}
+
+/// The last test played again at the speed it was typed.
+pub struct Replay {
+    pub session: Session,
+    start: Instant,
+    /// Index of the next key in the log.
+    next: usize,
 }
 
 pub struct App {
@@ -310,6 +319,21 @@ impl App {
 
     /// Show the results screen if the test ended. Call this on each frame.
     pub fn tick(&mut self, now: Instant) {
+        if let Screen::Replay(replay) = &mut self.screen {
+            let log = self.session.log();
+            let since = now.saturating_duration_since(replay.start);
+            while let Some(&(at, key)) = log.get(replay.next).filter(|(at, _)| *at <= since) {
+                replay.session.handle(key, replay.start + at);
+                replay.next += 1;
+            }
+            replay.session.tick(now);
+            // Stay one second on the end, then go back to the results.
+            let end = log.last().map_or(Duration::ZERO, |(at, _)| *at);
+            if replay.next == log.len() && since >= end + Duration::from_secs(1) {
+                self.screen = Screen::Results(self.session.result());
+            }
+            return;
+        }
         self.session.tick(now);
         if matches!(self.screen, Screen::Typing) && self.session.is_finished() {
             let result = self.session.result();
@@ -348,8 +372,16 @@ impl App {
                     }
                 }
             },
+            Screen::Replay(_) => self.screen = Screen::Results(self.session.result()),
             Screen::Results(_) => match key.code {
                 KeyCode::Enter => self.restart(),
+                KeyCode::Char('r') if !self.session.log().is_empty() => {
+                    self.screen = Screen::Replay(Box::new(Replay {
+                        session: self.session.replay(),
+                        start: now,
+                        next: 0,
+                    }));
+                }
                 KeyCode::Tab | KeyCode::Esc => self.open_menu(),
                 _ => {}
             },
@@ -845,6 +877,27 @@ mod tests {
             a.session.words().iter().all(|w| w.contains(&'q')),
             "every word has a q"
         );
+    }
+
+    #[test]
+    fn r_replays_the_test_and_returns_to_the_results() {
+        let mut a = app(&["hi"]);
+        let start = Instant::now();
+        a.on_key(press(KeyCode::Char('h'), KeyModifiers::NONE), start);
+        let later = start + Duration::from_millis(500);
+        a.on_key(press(KeyCode::Char('i'), KeyModifiers::NONE), later);
+        a.on_key(press(KeyCode::Char('r'), KeyModifiers::NONE), later);
+        let Screen::Replay(replay) = &a.screen else {
+            panic!("r starts the replay");
+        };
+        assert!(!replay.session.is_started());
+        a.tick(later + Duration::from_millis(100));
+        let Screen::Replay(replay) = &a.screen else {
+            panic!("the replay runs");
+        };
+        assert_eq!(replay.session.typed()[0], ['h']);
+        a.tick(later + Duration::from_secs(2));
+        assert!(matches!(a.screen, Screen::Results(_)), "the replay ended");
     }
 
     #[test]

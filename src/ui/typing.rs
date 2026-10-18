@@ -11,15 +11,15 @@ use ratatui::{
 
 use super::{column, theme::Theme};
 use crate::app::App;
-use crate::engine::Mode;
+use crate::engine::{Mode, Session};
 
 /// Number of word lines on screen, like monkeytype.
 pub const VISIBLE_LINES: usize = 3;
 
-pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
+/// Draw the test `s`: the current test, or a replay of it.
+pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: bool) {
     // Only the words, in the middle of the screen.
     let area = column(frame.area(), VISIBLE_LINES as u16);
-    let s = &app.session;
     let t = app.theme;
 
     // Above the words: the time left in time mode, and the live stats when
@@ -57,7 +57,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     let current_line = lines.iter().position(|l| l.contains(&current)).unwrap_or(0);
     let first = current_line.saturating_sub(1);
     // The pace caret runs at the personal best for this mode and options.
-    let pace = (app.pace && s.mode() != Mode::Zen)
+    let pace = (app.pace && !replay && s.mode() != Mode::Zen)
         .then(|| app.history.best(&app.label()))
         .flatten()
         .and_then(|wpm| s.pace_position(wpm, now));
@@ -90,7 +90,9 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
 
     let screen = frame.area();
     // Zen starts with an empty screen, so it also says how to end.
-    let hint_text = if s.mode() == Mode::Zen {
+    let hint_text = if replay {
+        "• replay · any key to stop"
+    } else if s.mode() == Mode::Zen {
         "• tab for menu · enter to finish"
     } else {
         "• tab for menu"
