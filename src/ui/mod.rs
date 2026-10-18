@@ -204,7 +204,7 @@ mod tests {
     fn menu_lists_the_modes() {
         let mut a = app(&["hi"]);
         a.screen = Screen::Menu { selected: 0 };
-        let out = render(&a, 60, 26);
+        let out = render(&a, 60, 20);
         assert!(
             out.contains("time 15") && out.contains("words 100"),
             "{out}"
@@ -217,11 +217,13 @@ mod tests {
             out.contains("theme terminal") && out.contains("words english"),
             "{out}"
         );
-        // A short terminal still shows the selected mode and the hints.
+        assert!(out.contains("c  pace caret off"), "{out}");
+        // The smallest terminal still shows the selected mode, every setting
+        // and the hint.
         a.screen = Screen::Menu { selected: 9 };
-        let out = render(&a, 60, 12);
+        let out = render(&a, 30, 10);
         assert!(
-            out.contains("> words 100") && out.contains("s live stats"),
+            out.contains("> words 100") && out.contains("pace caret") && out.contains("tab back"),
             "{out}"
         );
     }

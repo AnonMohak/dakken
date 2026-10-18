@@ -247,6 +247,26 @@ impl Session {
         stats::wpm(self.correct_chars(), self.elapsed(now))
     }
 
+    /// Where a typist at `wpm` would be now, as (word, letter). A position on
+    /// the space after a word moves to the start of the next word. `None`
+    /// before the start, after the end, or past the last word.
+    pub fn pace_position(&self, wpm: f64, now: Instant) -> Option<(usize, usize)> {
+        if !self.is_started() || self.is_finished() {
+            return None;
+        }
+        let mut chars = (wpm * 5.0 / 60.0 * self.elapsed(now).as_secs_f64()) as usize;
+        for (i, word) in self.words.iter().enumerate() {
+            if chars < word.len() {
+                return Some((i, chars));
+            }
+            chars -= (word.len() + 1).min(chars);
+            if chars == 0 {
+                return (i + 1 < self.words.len()).then_some((i + 1, 0));
+            }
+        }
+        None
+    }
+
     /// Accuracy so far, for the live display.
     pub fn live_accuracy(&self) -> f64 {
         stats::accuracy(&self.presses)
@@ -439,6 +459,21 @@ mod tests {
         d.text("x");
         assert_eq!(d.s.checked_words().len(), 3);
         assert_eq!(d.s.checked_words()[2], ("ok".into(), false));
+    }
+
+    #[test]
+    fn pace_position_moves_at_the_given_speed() {
+        let start = Instant::now();
+        let mut s = Session::from_words(Mode::Words(2), &["abcd", "efgh"]);
+        assert_eq!(s.pace_position(60.0, start), None);
+        s.handle(Key::Char('a'), start);
+        // 60 WPM is 5 letters each second.
+        let at = |ms| start + Duration::from_millis(ms);
+        assert_eq!(s.pace_position(60.0, at(0)), Some((0, 0)));
+        assert_eq!(s.pace_position(60.0, at(600)), Some((0, 3)));
+        assert_eq!(s.pace_position(60.0, at(800)), Some((1, 0)));
+        assert_eq!(s.pace_position(60.0, at(1400)), Some((1, 2)));
+        assert_eq!(s.pace_position(60.0, at(5000)), None);
     }
 
     #[test]

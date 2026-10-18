@@ -20,6 +20,8 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
   Other themes: `serika-dark`, `nord` and `dracula`.
 - Settings are saved: the menu remembers the mode, options and theme.
 - Optional live WPM and accuracy during the test (off by default).
+- Optional pace caret: a gray letter that moves at your personal-best speed
+  for the same mode and options, so you can race it (off by default).
 - Results: WPM, raw WPM, accuracy, consistency, and character counts, with a
   graph of WPM and raw WPM over the test.
 - Personal bests and history for each mode and option set.
@@ -67,6 +69,7 @@ The test starts when you type the first letter.
 | `l` (in the menu) | Go to the next word list |
 | `t` (in the menu) | Go to the next color theme |
 | `s` (in the menu) | Show or hide the live WPM and accuracy |
+| `c` (in the menu) | Show or hide the pace caret |
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
 | `Ctrl+C` | Quit |
 
@@ -104,6 +107,7 @@ punctuation = false
 numbers = false
 words = "english"    # english, english-1k, code or mistakes
 live = false         # live WPM and accuracy during the test
+pace = false         # pace caret at your personal-best speed
 ```
 
 ## History

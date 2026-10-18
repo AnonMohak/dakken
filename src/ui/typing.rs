@@ -56,6 +56,12 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     let current = s.current().min(s.words().len() - 1);
     let current_line = lines.iter().position(|l| l.contains(&current)).unwrap_or(0);
     let first = current_line.saturating_sub(1);
+    // The pace caret runs at the personal best for this mode and options.
+    let pace = app
+        .pace
+        .then(|| app.history.best(&app.label()))
+        .flatten()
+        .and_then(|wpm| s.pace_position(wpm, now));
 
     for (offset, range) in lines.iter().skip(first).take(VISIBLE_LINES).enumerate() {
         let y = area.y + offset as u16;
@@ -70,7 +76,9 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
                 let caret_x = (x + s.typed()[i].len()).min(width.saturating_sub(1));
                 frame.set_cursor_position(Position::new(area.x + caret_x as u16, y));
             }
-            word_spans(t, &s.words()[i], &s.typed()[i], i < s.current(), &mut spans);
+            let pace_letter = pace.filter(|&(w, _)| w == i).map(|(_, l)| l);
+            let word = (&s.words()[i][..], &s.typed()[i][..]);
+            word_spans(t, word, i < s.current(), pace_letter, &mut spans);
             x += widths[i];
         }
         let line_area = Rect {
@@ -95,11 +103,12 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
 }
 
 /// Colors each letter of one word: wrong, extra and missed letters are red.
+/// The `pace` letter gets a gray background.
 fn word_spans(
     theme: Theme,
-    target: &[char],
-    typed: &[char],
+    (target, typed): (&[char], &[char]),
     done: bool,
+    pace: Option<usize>,
     out: &mut Vec<Span<'static>>,
 ) {
     for j in 0..target.len().max(typed.len()) {
@@ -112,7 +121,13 @@ fn word_spans(
             (Some(&t), None) => (t, theme.sub),
             (None, None) => unreachable!(),
         };
-        out.push(Span::styled(ch.to_string(), Style::new().fg(color)));
+        let style = Style::new().fg(color);
+        let style = if pace == Some(j) {
+            style.bg(theme.sub)
+        } else {
+            style
+        };
+        out.push(Span::styled(ch.to_string(), style));
     }
 }
 

@@ -70,6 +70,8 @@ pub struct App {
     pub theme: Theme,
     /// Show the live WPM and accuracy during the test.
     pub live: bool,
+    /// Show a pace caret at the personal-best speed.
+    pub pace: bool,
     /// The menu saves the settings here. `None` does not save them.
     pub config_path: Option<PathBuf>,
     /// Terminal width. Untimed tests get the words that fit on the screen.
@@ -100,6 +102,7 @@ impl App {
             options: config.options,
             theme: config.theme,
             live: config.live,
+            pace: config.pace,
             config_path,
             width,
             history,
@@ -115,6 +118,7 @@ impl App {
             options: Options::default(),
             theme: Theme::default(),
             live: false,
+            pace: false,
             config_path: None,
             width: 80,
             session,
@@ -164,6 +168,7 @@ impl App {
                 options: self.options,
                 theme: self.theme,
                 live: self.live,
+                pace: self.pace,
             };
             let _ = config.save(path);
         }
@@ -271,6 +276,10 @@ impl App {
                 }
                 KeyCode::Char('s') => {
                     self.live = !self.live;
+                    self.save_config();
+                }
+                KeyCode::Char('c') => {
+                    self.pace = !self.pace;
                     self.save_config();
                 }
                 KeyCode::Tab | KeyCode::Esc => {

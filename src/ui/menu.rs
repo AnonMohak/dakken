@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
-    style::{Modifier, Style},
-    text::Line,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
     widgets::Paragraph,
 };
 
@@ -9,15 +9,12 @@ use super::column;
 use crate::app::{App, MODES, mode_label};
 use crate::ui::theme::Theme;
 
-/// Rows that are not mode names: title, gaps, settings and hints.
-const OTHER_ROWS: u16 = 13;
+/// Rows that are not mode names: gaps, settings and the hint.
+const OTHER_ROWS: u16 = 9;
 
 pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
     let t = app.theme;
-    let mut lines = vec![
-        Line::styled("mode", Style::new().fg(t.sub)),
-        Line::default(),
-    ];
+    let mut lines = Vec::new();
     // In a short terminal, show only the modes around the selected one.
     let rows = (frame.area().height.saturating_sub(OTHER_ROWS) as usize).clamp(1, MODES.len());
     let first = selected.saturating_sub(rows / 2).min(MODES.len() - rows);
@@ -33,35 +30,31 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
         lines.push(line);
     }
     lines.push(Line::default());
-    lines.push(toggle(t, "punctuation", app.options.punctuation));
-    lines.push(toggle(t, "numbers", app.options.numbers));
-    lines.push(Line::styled(
-        format!("words {}", app.options.list.name()),
-        Style::new().fg(t.text),
-    ));
-    lines.push(Line::styled(
-        format!("theme {}", t.name),
-        Style::new().fg(t.text),
-    ));
-    lines.push(toggle(t, "live stats", app.live));
+    // Each setting shows the key that changes it.
+    let on_off = |on: bool| if on { ("on", t.main) } else { ("off", t.text) };
+    let (state, color) = on_off(app.options.punctuation);
+    lines.push(setting(t, 'p', "punctuation", state, color));
+    let (state, color) = on_off(app.options.numbers);
+    lines.push(setting(t, 'n', "numbers", state, color));
+    lines.push(setting(t, 'l', "words", app.options.list.name(), t.text));
+    lines.push(setting(t, 't', "theme", t.name, t.text));
+    let (state, color) = on_off(app.live);
+    lines.push(setting(t, 's', "live stats", state, color));
+    let (state, color) = on_off(app.pace);
+    lines.push(setting(t, 'c', "pace caret", state, color));
     lines.push(Line::default());
     lines.push(Line::styled(
-        "↑↓ select · enter start · tab back",
-        Style::new().fg(t.sub),
-    ));
-    lines.push(Line::styled(
-        "t theme · s live stats",
-        Style::new().fg(t.sub),
-    ));
-    lines.push(Line::styled(
-        "p punctuation · n numbers · l words",
+        "enter start · tab back",
         Style::new().fg(t.sub),
     ));
     let area = column(frame.area(), lines.len() as u16);
     frame.render_widget(Paragraph::new(lines).centered(), area);
 }
 
-fn toggle(t: Theme, name: &str, on: bool) -> Line<'static> {
-    let (state, color) = if on { ("on", t.main) } else { ("off", t.text) };
-    Line::styled(format!("{name} {state}"), Style::new().fg(color))
+/// One setting line, for example "p  punctuation off" with the key in gray.
+fn setting(t: Theme, key: char, name: &str, value: &str, color: Color) -> Line<'static> {
+    Line::from(vec![
+        Span::styled(format!("{key}  "), Style::new().fg(t.sub)),
+        Span::styled(format!("{name} {value}"), Style::new().fg(color)),
+    ])
 }
