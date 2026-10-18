@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use crate::app::{Options, mode_label, parse_mode};
 use crate::engine::{Mode, Strict, words::WordList};
 use crate::ui::theme::Theme;
+use ratatui::style::Color;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Config {
@@ -18,7 +19,12 @@ pub struct Config {
     /// Show a pace caret at the personal-best speed.
     pub pace: bool,
     pub strict: Strict,
+    /// The theme from the `color_*` keys, if the file has any.
+    pub custom_theme: Option<Theme>,
 }
+
+/// The `color_*` keys, without the `color_` start.
+const COLOR_KEYS: [&str; 6] = ["bg", "main", "sub", "text", "error", "error_extra"];
 
 impl Default for Config {
     fn default() -> Self {
@@ -29,23 +35,48 @@ impl Default for Config {
             live: false,
             pace: false,
             strict: Strict::Off,
+            custom_theme: None,
         }
     }
+}
+
+/// The key and value of a `key = value` line. A value in quotes can hold a
+/// `#`; elsewhere `#` starts a comment.
+fn parse_line(line: &str) -> Option<(&str, &str)> {
+    let line = line.trim();
+    if line.starts_with('#') {
+        return None;
+    }
+    let (key, rest) = line.split_once('=')?;
+    let rest = rest.trim_start();
+    let value = match rest.strip_prefix('"') {
+        Some(quoted) => quoted.split('"').next()?,
+        None => rest.split(['#', ' ', '\t']).next()?,
+    };
+    Some((key.trim(), value))
 }
 
 impl Config {
     /// Read the settings. Unknown keys and bad values keep their defaults.
     pub fn parse(text: &str) -> Self {
         let mut config = Self::default();
-        for line in text.lines() {
-            let line = line.split('#').next().unwrap_or_default();
-            let Some((key, value)) = line.split_once('=') else {
+        let mut theme_name = "";
+        let mut colors: Vec<(&str, Option<Color>)> = Vec::new();
+        for (key, value) in text.lines().filter_map(parse_line) {
+            if let Some(color_key) = key.strip_prefix("color_") {
+                let name = COLOR_KEYS.iter().find(|&&k| k == color_key);
+                let color = match value {
+                    "none" => Some(None),
+                    _ => value.parse::<Color>().ok().map(Some),
+                };
+                if let (Some(name), Some(color)) = (name, color) {
+                    colors.push((name, color));
+                }
                 continue;
-            };
-            let value = value.trim().trim_matches('"');
-            match key.trim() {
+            }
+            match key {
                 "mode" => config.mode = parse_mode(value).unwrap_or(config.mode),
-                "theme" => config.theme = Theme::find(value).unwrap_or(config.theme),
+                "theme" => theme_name = value,
                 "live" => config.live = value == "true",
                 "pace" => config.pace = value == "true",
                 "strict" => config.strict = Strict::parse(value).unwrap_or(config.strict),
@@ -57,6 +88,13 @@ impl Config {
                 _ => {}
             }
         }
+        if !colors.is_empty() {
+            config.custom_theme = Some(Theme::custom(&colors));
+        }
+        config.theme = match (theme_name, config.custom_theme) {
+            ("custom", Some(custom)) => custom,
+            (name, _) => Theme::find(name).unwrap_or_default(),
+        };
         config
     }
 
@@ -79,7 +117,28 @@ impl Config {
             self.live,
             self.pace,
             self.strict.name()
-        )
+        ) + &self.custom_colors_text()
+    }
+
+    /// The `color_*` lines of the custom theme, so a save keeps them.
+    fn custom_colors_text(self) -> String {
+        let Some(t) = self.custom_theme else {
+            return String::new();
+        };
+        let bg = t.bg.map_or("none".to_string(), |c| c.to_string());
+        let values = [
+            bg,
+            t.main.to_string(),
+            t.sub.to_string(),
+            t.text.to_string(),
+            t.error.to_string(),
+            t.error_extra.to_string(),
+        ];
+        COLOR_KEYS
+            .iter()
+            .zip(values)
+            .map(|(key, value)| format!("color_{key} = \"{value}\"\n"))
+            .collect()
     }
 
     /// A missing or unreadable file gives the default settings.
@@ -117,8 +176,29 @@ mod tests {
             live: true,
             pace: true,
             strict: Strict::Master,
+            custom_theme: None,
         };
         assert_eq!(Config::parse(&config.to_text()), config);
+    }
+
+    #[test]
+    fn color_keys_make_a_custom_theme() {
+        let text = "theme = \"custom\"\n\
+                    color_main = \"#ff79c6\"  # pink\n\
+                    color_sub = darkgray\n\
+                    color_bg = \"none\"\n\
+                    color_nope = \"red\"\n\
+                    color_text = \"not a color\"\n";
+        let config = Config::parse(text);
+        let custom = config.custom_theme.expect("color keys give a custom theme");
+        assert_eq!(config.theme, custom);
+        assert_eq!(custom.main, Color::Rgb(0xff, 0x79, 0xc6));
+        assert_eq!(custom.sub, Color::DarkGray);
+        assert_eq!(custom.text, Theme::default().text, "a bad color is skipped");
+        // Saving keeps the colors.
+        assert_eq!(Config::parse(&config.to_text()), config);
+        // Without color keys, "custom" is not a theme.
+        assert_eq!(Config::parse("theme = custom").theme, Theme::default());
     }
 
     #[test]

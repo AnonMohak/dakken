@@ -23,7 +23,7 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Mistakes do not stop you: the test ends when the last word has all its
   letters, also if some are wrong. Accuracy shows the errors.
 - Colors from your terminal's palette, so the test follows your shell theme.
-  Other themes: `serika-dark`, `nord` and `dracula`.
+  Other themes: `serika-dark`, `nord`, `dracula`, and your own `custom` theme.
 - Settings are saved: the menu remembers the mode, options and theme.
 - Optional live WPM and accuracy during the test (off by default).
 - Strict modes, like monkeytype: `stop-on-error` (only the correct key moves
@@ -128,6 +128,23 @@ words = "english"    # english, english-1k, code, spanish, german, mistakes or w
 live = false         # live WPM and accuracy during the test
 pace = false         # pace caret at your personal-best speed
 strict = "off"       # off, stop-on-error, no-backspace or master
+```
+
+### Custom theme
+
+Set any of these keys in `config.toml` to make a `custom` theme. A color is
+a hex value such as `"#ff79c6"` or a terminal color name such as `"cyan"`,
+`"darkgray"` or `"lightred"`. A key that is not set keeps the color of the
+`terminal` theme. `color_bg = "none"` keeps the terminal background.
+
+```toml
+theme = "custom"
+color_bg = "none"
+color_main = "#ff79c6"
+color_sub = "darkgray"
+color_text = "reset"
+color_error = "lightred"
+color_error_extra = "red"
 ```
 
 ## History

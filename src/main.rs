@@ -68,7 +68,8 @@ struct Cli {
     #[arg(long, value_name = "NAME")]
     strict: Option<String>,
 
-    /// Color theme: terminal (default), serika-dark, nord or dracula.
+    /// Color theme: terminal (default), serika-dark, nord, dracula, or custom
+    /// (from the color_* keys in config.toml).
     #[arg(long, value_name = "NAME")]
     theme: Option<String>,
 
@@ -171,8 +172,13 @@ fn main() -> io::Result<()> {
         config.strict = strict;
     }
     if let Some(name) = &cli.theme {
-        let Some(theme) = Theme::find(name) else {
-            let names = ui::theme::names().join(", ");
+        let custom = config.custom_theme.filter(|_| name == "custom");
+        let Some(theme) = Theme::find(name).or(custom) else {
+            let mut names = ui::theme::names();
+            if config.custom_theme.is_some() {
+                names.push("custom");
+            }
+            let names = names.join(", ");
             eprintln!("error: unknown theme \"{name}\". Themes: {names}");
             std::process::exit(2);
         };

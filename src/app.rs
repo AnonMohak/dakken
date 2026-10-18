@@ -115,6 +115,8 @@ pub struct App {
     pub mode: Mode,
     pub options: Options,
     pub theme: Theme,
+    /// The theme from the `color_*` keys in the config, if any.
+    pub custom_theme: Option<Theme>,
     /// Show the live WPM and accuracy during the test.
     pub live: bool,
     /// Show a pace caret at the personal-best speed.
@@ -157,6 +159,7 @@ impl App {
         let mut app = Self {
             options: config.options,
             theme: config.theme,
+            custom_theme: config.custom_theme,
             live: config.live,
             pace: config.pace,
             strict: config.strict,
@@ -178,6 +181,7 @@ impl App {
             mode,
             options: Options::default(),
             theme: Theme::default(),
+            custom_theme: None,
             live: false,
             pace: false,
             strict: Strict::Off,
@@ -267,6 +271,7 @@ impl App {
                 mode,
                 options: self.options,
                 theme: self.theme,
+                custom_theme: self.custom_theme,
                 live: self.live,
                 pace: self.pace,
                 strict: self.strict,
@@ -416,7 +421,7 @@ impl App {
                     self.new_test();
                 }
                 KeyCode::Char('t') => {
-                    self.theme = self.theme.next();
+                    self.theme = self.theme.next(self.custom_theme);
                     self.save_config();
                 }
                 KeyCode::Char('s') => {
@@ -695,7 +700,7 @@ mod tests {
         a.on_key(press(KeyCode::Down, KeyModifiers::NONE), Instant::now());
         a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
         let saved = Config::load(&path);
-        assert_eq!(saved.theme, Theme::default().next());
+        assert_eq!(saved.theme, Theme::default().next(None));
         assert!(saved.options.punctuation);
         assert_eq!(saved.mode, MODES[1]);
         std::fs::remove_dir_all(&dir).unwrap();

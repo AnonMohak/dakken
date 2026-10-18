@@ -71,10 +71,33 @@ impl Theme {
         THEMES.iter().copied().find(|t| t.name == name)
     }
 
-    /// The theme after this one in `THEMES`, for the menu.
-    pub fn next(self) -> Self {
-        let i = THEMES.iter().position(|t| *t == self).unwrap_or(0);
-        THEMES[(i + 1) % THEMES.len()]
+    /// The theme after this one in `THEMES`, and then `custom` if there is
+    /// one, for the menu.
+    pub fn next(self, custom: Option<Theme>) -> Self {
+        let all: Vec<Theme> = THEMES.iter().copied().chain(custom).collect();
+        let i = all.iter().position(|t| t.name == self.name).unwrap_or(0);
+        all[(i + 1) % all.len()]
+    }
+
+    /// The `custom` theme: the terminal theme with the given colors on top.
+    /// The keys are bg, main, sub, text, error and error_extra.
+    pub fn custom(colors: &[(&str, Option<Color>)]) -> Self {
+        let mut t = Self {
+            name: "custom",
+            ..Self::default()
+        };
+        for &(key, color) in colors {
+            match (key, color) {
+                ("bg", c) => t.bg = c,
+                ("main", Some(c)) => t.main = c,
+                ("sub", Some(c)) => t.sub = c,
+                ("text", Some(c)) => t.text = c,
+                ("error", Some(c)) => t.error = c,
+                ("error_extra", Some(c)) => t.error_extra = c,
+                _ => {}
+            }
+        }
+        t
     }
 }
 
@@ -96,9 +119,12 @@ mod tests {
     fn next_cycles_through_all_themes() {
         let mut t = Theme::default();
         for expected in THEMES.iter().skip(1).chain(&THEMES[..1]) {
-            t = t.next();
+            t = t.next(None);
             assert_eq!(t, *expected);
         }
+        let custom = Theme::custom(&[("main", Some(Color::Magenta))]);
+        assert_eq!(THEMES[3].next(Some(custom)), custom);
+        assert_eq!(custom.next(Some(custom)), THEMES[0]);
         assert_eq!(Theme::find("nord").map(|t| t.name), Some("nord"));
         assert_eq!(Theme::find("nope"), None);
     }
