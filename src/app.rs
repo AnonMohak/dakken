@@ -12,7 +12,7 @@ use crate::engine::{
 };
 use rand::seq::IndexedRandom;
 
-use crate::config::Config;
+use crate::config::{Caret, Config};
 use crate::history::{History, Record};
 use crate::keystats::KeyStats;
 use crate::mistakes::{self, Mistakes};
@@ -122,6 +122,7 @@ pub struct App {
     /// Show a pace caret at the personal-best speed.
     pub pace: bool,
     pub strict: Strict,
+    pub caret: Caret,
     /// The menu saves the settings here. `None` does not save them.
     pub config_path: Option<PathBuf>,
     /// Terminal width. Untimed tests get the words that fit on the screen.
@@ -163,6 +164,7 @@ impl App {
             live: config.live,
             pace: config.pace,
             strict: config.strict,
+            caret: config.caret,
             config_path,
             width,
             history,
@@ -185,6 +187,7 @@ impl App {
             live: false,
             pace: false,
             strict: Strict::Off,
+            caret: Caret::Block,
             config_path: None,
             width: 80,
             session,
@@ -275,6 +278,7 @@ impl App {
                 live: self.live,
                 pace: self.pace,
                 strict: self.strict,
+                caret: self.caret,
             };
             let _ = config.save(path);
         }

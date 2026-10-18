@@ -19,8 +19,34 @@ pub struct Config {
     /// Show a pace caret at the personal-best speed.
     pub pace: bool,
     pub strict: Strict,
+    pub caret: Caret,
     /// The theme from the `color_*` keys, if the file has any.
     pub custom_theme: Option<Theme>,
+}
+
+/// The shape of the text cursor.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Caret {
+    #[default]
+    Block,
+    Bar,
+    Underline,
+}
+
+impl Caret {
+    pub const ALL: [Caret; 3] = [Caret::Block, Caret::Bar, Caret::Underline];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Block => "block",
+            Self::Bar => "bar",
+            Self::Underline => "underline",
+        }
+    }
+
+    pub fn parse(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|c| c.name() == name)
+    }
 }
 
 /// The `color_*` keys, without the `color_` start.
@@ -35,6 +61,7 @@ impl Default for Config {
             live: false,
             pace: false,
             strict: Strict::Off,
+            caret: Caret::Block,
             custom_theme: None,
         }
     }
@@ -80,6 +107,7 @@ impl Config {
                 "live" => config.live = value == "true",
                 "pace" => config.pace = value == "true",
                 "strict" => config.strict = Strict::parse(value).unwrap_or(config.strict),
+                "caret" => config.caret = Caret::parse(value).unwrap_or(config.caret),
                 "punctuation" => config.options.punctuation = value == "true",
                 "numbers" => config.options.numbers = value == "true",
                 "words" => {
@@ -108,7 +136,8 @@ impl Config {
              words = \"{}\"\n\
              live = {}\n\
              pace = {}\n\
-             strict = \"{}\"\n",
+             strict = \"{}\"\n\
+             caret = \"{}\"\n",
             mode_label(self.mode),
             self.theme.name,
             self.options.punctuation,
@@ -116,7 +145,8 @@ impl Config {
             self.options.list.name(),
             self.live,
             self.pace,
-            self.strict.name()
+            self.strict.name(),
+            self.caret.name()
         ) + &self.custom_colors_text()
     }
 
@@ -176,6 +206,7 @@ mod tests {
             live: true,
             pace: true,
             strict: Strict::Master,
+            caret: Caret::Underline,
             custom_theme: None,
         };
         assert_eq!(Config::parse(&config.to_text()), config);

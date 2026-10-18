@@ -18,7 +18,7 @@ use ratatui::crossterm::{
 };
 
 use app::{App, CustomText};
-use config::Config;
+use config::{Caret, Config};
 use engine::words::{WORD_LISTS, WordList};
 use engine::{Mode, QuoteLength, STRICT_MODES, Strict};
 use history::History;
@@ -63,6 +63,10 @@ struct Cli {
     /// mistakes or weak-keys.
     #[arg(short = 'l', long, value_name = "NAME")]
     words_list: Option<String>,
+
+    /// Caret shape: block (default), bar or underline.
+    #[arg(long, value_name = "SHAPE", value_parser = ["block", "bar", "underline"])]
+    caret: Option<String>,
 
     /// Strict mode: off (default), stop-on-error, no-backspace or master.
     #[arg(long, value_name = "NAME")]
@@ -160,6 +164,9 @@ fn main() -> io::Result<()> {
         };
         config.options.list = list;
     }
+    if let Some(caret) = cli.caret.as_deref().and_then(Caret::parse) {
+        config.caret = caret;
+    }
     if let Some(name) = &cli.strict {
         let Some(strict) = Strict::parse(name) else {
             let names: Vec<&str> = STRICT_MODES.iter().map(|s| s.name()).collect();
@@ -216,7 +223,12 @@ fn run(mut app: App) -> io::Result<()> {
         let _ = set_wezterm_active(false);
         restore_terminal(info);
     }));
-    execute!(io::stdout(), SetCursorStyle::SteadyBlock)?;
+    let caret = match app.caret {
+        Caret::Block => SetCursorStyle::SteadyBlock,
+        Caret::Bar => SetCursorStyle::SteadyBar,
+        Caret::Underline => SetCursorStyle::SteadyUnderScore,
+    };
+    execute!(io::stdout(), caret)?;
     set_wezterm_active(true)?;
     let result = (|| -> io::Result<()> {
         while !app.quit {

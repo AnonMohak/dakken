@@ -67,6 +67,7 @@ dakken -p         # untimed test with punctuation
 dakken -p -n      # untimed test with punctuation and numbers
 dakken --theme nord  # use a color theme
 dakken --strict master  # the first wrong key fails the test
+dakken --caret bar  # a thin bar caret (or block, underline)
 dakken --history  # print personal bests and the last 10 tests
 dakken --stats    # print averages and a graph of WPM by day
 dakken --heatmap  # print a keyboard colored by errors, and the slowest keys
@@ -128,6 +129,7 @@ words = "english"    # english, english-1k, code, spanish, german, mistakes or w
 live = false         # live WPM and accuracy during the test
 pace = false         # pace caret at your personal-best speed
 strict = "off"       # off, stop-on-error, no-backspace or master
+caret = "block"      # block, bar or underline
 ```
 
 ### Custom theme
