@@ -11,6 +11,7 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
   backspace into a previous word only if it has an error.
 - Colors from your terminal's palette, so the test follows your shell theme.
 - Results: WPM, raw WPM, accuracy, consistency, and character counts.
+- Personal bests and history for each mode and option set.
 - One `.exe` with no runtime. Made and tested on Windows 11 with WezTerm.
 
 ## Install
@@ -31,6 +32,7 @@ typer -t 60      # 60-second test
 typer -w 25      # 25-word test
 typer -p         # untimed test with punctuation
 typer -p -n      # untimed test with punctuation and numbers
+typer --history  # print personal bests and the last 10 tests
 typer --keys     # print raw key events (to check your terminal)
 ```
 
@@ -44,6 +46,13 @@ The test starts when you type the first letter.
 | `n` (in the menu) | Turn numbers on or off |
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
 | `Ctrl+C` | Quit |
+
+## History
+
+Each finished test adds one line to `history.tsv`: in `%APPDATA%\typer` on
+Windows, and in `$XDG_DATA_HOME/typer` or `~/.local/share/typer` on other
+systems. A personal best counts only tests with the same mode and options,
+for example `time 30 · punctuation`. Delete the file to clear the history.
 
 ## How the stats work
 

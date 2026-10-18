@@ -45,9 +45,30 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
         ]),
         Line::from(label(&format!("{} · english", app.label()))),
         Line::default(),
-        Line::default(),
+        best_line(app, r),
         Line::from(label("tab restart · esc menu · ctrl+c quit")),
     ];
     let area = column(frame.area(), lines.len() as u16);
     frame.render_widget(Paragraph::new(lines).centered(), area);
+}
+
+/// "new personal best", or the best WPM before this test.
+fn best_line(app: &App, r: &TestResult) -> Line<'static> {
+    let mut spans = match app.previous_best {
+        Some(best) if r.wpm <= best => vec![Span::styled(
+            format!("best {best:.0} wpm"),
+            Style::new().fg(theme::SUB),
+        )],
+        _ => vec![Span::styled(
+            "new personal best",
+            Style::new().fg(theme::MAIN).add_modifier(Modifier::BOLD),
+        )],
+    };
+    if app.save_failed {
+        spans.push(Span::styled(
+            " · history not saved",
+            Style::new().fg(theme::ERROR),
+        ));
+    }
+    Line::from(spans)
 }

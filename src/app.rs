@@ -7,6 +7,7 @@ use crate::engine::{
     stats::TestResult,
     words::{self, WordGen},
 };
+use crate::history::{History, Record};
 use crate::ui;
 
 /// The modes the menu offers, in menu order.
@@ -50,14 +51,20 @@ pub struct App {
     pub width: u16,
     pub session: Session,
     pub screen: Screen,
+    pub history: History,
+    /// Best WPM for this label before the last finished test.
+    pub previous_best: Option<f64>,
+    /// The last finished test could not be added to the history file.
+    pub save_failed: bool,
     pub quit: bool,
 }
 
 impl App {
-    pub fn new(mode: Mode, options: Options, width: u16) -> Self {
+    pub fn new(mode: Mode, options: Options, width: u16, history: History) -> Self {
         Self {
             options,
             width,
+            history,
             ..Self::with_session(mode, new_session(mode, options, width))
         }
     }
@@ -69,6 +76,9 @@ impl App {
             width: 80,
             session,
             screen: Screen::Typing,
+            history: History::in_memory(),
+            previous_best: None,
+            save_failed: false,
             quit: false,
         }
     }
@@ -102,7 +112,11 @@ impl App {
     pub fn tick(&mut self, now: Instant) {
         self.session.tick(now);
         if matches!(self.screen, Screen::Typing) && self.session.is_finished() {
-            self.screen = Screen::Results(self.session.result());
+            let result = self.session.result();
+            let label = self.label();
+            self.previous_best = self.history.best(&label);
+            self.save_failed = self.history.add(Record::new(label, &result)).is_err();
+            self.screen = Screen::Results(result);
         }
     }
 
@@ -244,6 +258,19 @@ mod tests {
     }
 
     #[test]
+    fn finished_tests_go_into_the_history() {
+        let mut a = app(&["hi"]);
+        type_text(&mut a, "hi");
+        assert_eq!(a.previous_best, None);
+        a.session = Session::from_words(a.mode, &["hi"]);
+        a.screen = Screen::Typing;
+        type_text(&mut a, "hi");
+        assert_eq!(a.history.records().len(), 2);
+        assert!(a.previous_best.is_some());
+        assert!(!a.save_failed);
+    }
+
+    #[test]
     fn menu_selects_a_new_mode() {
         let mut a = app(&["hi"]);
         a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
@@ -291,7 +318,7 @@ mod tests {
 
     #[test]
     fn untimed_test_fits_on_the_screen_and_follows_resize() {
-        let mut a = App::new(Mode::Untimed, Options::default(), 40);
+        let mut a = App::new(Mode::Untimed, Options::default(), 40, History::in_memory());
         let narrow = a.session.words().len();
         a.on_resize(120);
         assert!(a.session.words().len() > narrow);

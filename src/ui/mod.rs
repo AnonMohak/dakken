@@ -149,7 +149,14 @@ mod tests {
             .handle(crate::engine::Key::Char('i'), Instant::now());
         a.tick(Instant::now());
         let out = render(&a, 60, 20);
-        for label in ["wpm", "acc", "raw", "consistency", "characters"] {
+        for label in [
+            "wpm",
+            "acc",
+            "raw",
+            "consistency",
+            "characters",
+            "personal best",
+        ] {
             assert!(out.contains(label), "missing {label}:\n{out}");
         }
     }

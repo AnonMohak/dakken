@@ -1,5 +1,6 @@
 mod app;
 mod engine;
+mod history;
 mod ui;
 
 use std::io::{self, Write};
@@ -14,6 +15,7 @@ use ratatui::crossterm::{
 
 use app::{App, Options};
 use engine::Mode;
+use history::History;
 
 /// A monkeytype-style typing test for the terminal.
 #[derive(Parser)]
@@ -35,6 +37,10 @@ struct Cli {
     #[arg(short, long)]
     numbers: bool,
 
+    /// Print personal bests and the last tests, then quit.
+    #[arg(long)]
+    history: bool,
+
     /// Print each key event, to check how the terminal sends keys.
     #[arg(long)]
     keys: bool,
@@ -44,6 +50,11 @@ fn main() -> io::Result<()> {
     let cli = Cli::parse();
     if cli.keys {
         return key_test();
+    }
+    let history = history::default_path().map_or_else(History::in_memory, History::load);
+    if cli.history {
+        print!("{}", history::report(&history));
+        return Ok(());
     }
     let mode = match (cli.time, cli.words) {
         (_, Some(n)) => Mode::Words(n.max(1)),
@@ -55,7 +66,7 @@ fn main() -> io::Result<()> {
         punctuation: cli.punctuation,
         numbers: cli.numbers,
     };
-    run(App::new(mode, options, width))
+    run(App::new(mode, options, width, history))
 }
 
 fn run(mut app: App) -> io::Result<()> {
