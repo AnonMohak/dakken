@@ -26,6 +26,9 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
   Other themes: `serika-dark`, `nord`, `dracula`, and your own `custom` theme.
 - Settings are saved: the menu remembers the mode, options and theme.
 - Optional live WPM and accuracy during the test (off by default).
+- Practise Dvorak or Colemak on a QWERTY keyboard: each key gives the
+  character at the same place on that layout. Your system layout must be
+  US QWERTY for this.
 - Strict modes, like monkeytype: `stop-on-error` (only the correct key moves
   the caret), `no-backspace`, and `master` (the first wrong key fails the
   test; a failed test is not saved).
@@ -68,6 +71,7 @@ dakken -p -n      # untimed test with punctuation and numbers
 dakken --theme nord  # use a color theme
 dakken --strict master  # the first wrong key fails the test
 dakken --caret bar  # a thin bar caret (or block, underline)
+dakken --layout dvorak  # practise Dvorak (or colemak) on a QWERTY keyboard
 dakken --history  # print personal bests and the last 10 tests
 dakken --stats    # print averages and a graph of WPM by day
 dakken --heatmap  # print a keyboard colored by errors, and the slowest keys
@@ -130,6 +134,7 @@ live = false         # live WPM and accuracy during the test
 pace = false         # pace caret at your personal-best speed
 strict = "off"       # off, stop-on-error, no-backspace or master
 caret = "block"      # block, bar or underline
+layout = "qwerty"    # qwerty, dvorak or colemak
 ```
 
 ### Custom theme

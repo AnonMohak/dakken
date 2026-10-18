@@ -15,6 +15,7 @@ use rand::seq::IndexedRandom;
 use crate::config::{Caret, Config};
 use crate::history::{History, Record};
 use crate::keystats::KeyStats;
+use crate::layout::Layout;
 use crate::mistakes::{self, Mistakes};
 use crate::ui::{self, theme::Theme};
 
@@ -123,6 +124,7 @@ pub struct App {
     pub pace: bool,
     pub strict: Strict,
     pub caret: Caret,
+    pub layout: Layout,
     /// The menu saves the settings here. `None` does not save them.
     pub config_path: Option<PathBuf>,
     /// Terminal width. Untimed tests get the words that fit on the screen.
@@ -165,6 +167,7 @@ impl App {
             pace: config.pace,
             strict: config.strict,
             caret: config.caret,
+            layout: config.layout,
             config_path,
             width,
             history,
@@ -188,6 +191,7 @@ impl App {
             pace: false,
             strict: Strict::Off,
             caret: Caret::Block,
+            layout: Layout::Qwerty,
             config_path: None,
             width: 80,
             session,
@@ -279,6 +283,7 @@ impl App {
                 pace: self.pace,
                 strict: self.strict,
                 caret: self.caret,
+                layout: self.layout,
             };
             let _ = config.save(path);
         }
@@ -295,35 +300,29 @@ impl App {
     /// The mode and its options, for example "time 30 · punctuation".
     /// Quotes have their own punctuation and numbers, so options do not apply.
     pub fn label(&self) -> String {
-        let mut label = mode_label(self.mode);
+        let mut parts = vec![mode_label(self.mode)];
         if let (Mode::Custom, Some(custom)) = (self.mode, &self.custom) {
-            label.push_str(" · ");
-            label.push_str(&custom.name);
+            parts.push(custom.name.clone());
         }
         // These modes have their own text, so word options do not apply.
-        if matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen) {
-            if self.strict != Strict::Off {
-                label.push_str(" · ");
-                label.push_str(self.strict.name());
-            }
-            return label;
+        let own_text = matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen);
+        if !own_text && self.options.punctuation {
+            parts.push("punctuation".to_string());
         }
-        if self.options.punctuation {
-            label.push_str(" · punctuation");
-        }
-        if self.options.numbers {
-            label.push_str(" · numbers");
+        if !own_text && self.options.numbers {
+            parts.push("numbers".to_string());
         }
         if self.strict != Strict::Off {
-            label.push_str(" · ");
-            label.push_str(self.strict.name());
+            parts.push(self.strict.name().to_string());
         }
-        // English is the default, so old history labels stay the same.
-        if self.options.list != WordList::English {
-            label.push_str(" · ");
-            label.push_str(self.options.list.name());
+        // The defaults add nothing, so old history labels stay the same.
+        if !own_text && self.options.list != WordList::English {
+            parts.push(self.options.list.name().to_string());
         }
-        label
+        if self.layout != Layout::Qwerty {
+            parts.push(self.layout.name().to_string());
+        }
+        parts.join(" · ")
     }
 
     /// Show the results screen if the test ended. Call this on each frame.
@@ -375,7 +374,7 @@ impl App {
                     self.tick(now);
                 }
                 _ => {
-                    if let Some(k) = engine_key(key) {
+                    if let Some(k) = engine_key(key, self.layout) {
                         self.session.handle(k, now);
                         self.tick(now);
                     }
@@ -492,7 +491,7 @@ fn new_session(mode: Mode, options: Options, width: u16, practice: Option<Vec<St
     Session::new(mode, move || words.next_word())
 }
 
-fn engine_key(key: KeyEvent) -> Option<Key> {
+fn engine_key(key: KeyEvent, layout: Layout) -> Option<Key> {
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     let alt = key.modifiers.contains(KeyModifiers::ALT);
     match key.code {
@@ -501,7 +500,7 @@ fn engine_key(key: KeyEvent) -> Option<Key> {
         KeyCode::Char('w') if ctrl && !alt => Some(Key::DeleteWord),
         KeyCode::Char(' ') => Some(Key::Space),
         // AltGr arrives as Ctrl+Alt, so allow that for letters on some layouts.
-        KeyCode::Char(c) if ctrl == alt => Some(Key::Char(c)),
+        KeyCode::Char(c) if ctrl == alt => Some(Key::Char(layout.map(c))),
         _ => None,
     }
 }
@@ -907,6 +906,18 @@ mod tests {
         assert_eq!(replay.session.typed()[0], ['h']);
         a.tick(later + Duration::from_secs(2));
         assert!(matches!(a.screen, Screen::Results(_)), "the replay ended");
+    }
+
+    #[test]
+    fn layout_changes_the_typed_letters() {
+        let mut a = app(&["aoeu"]);
+        a.layout = Layout::Dvorak;
+        type_text(&mut a, "asdf");
+        assert!(
+            matches!(a.screen, Screen::Results(_)),
+            "asdf on dvorak is aoeu"
+        );
+        assert!(a.label().ends_with(" · dvorak"), "{}", a.label());
     }
 
     #[test]

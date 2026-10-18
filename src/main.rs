@@ -3,6 +3,7 @@ mod config;
 mod engine;
 mod history;
 mod keystats;
+mod layout;
 mod mistakes;
 mod ui;
 
@@ -67,6 +68,11 @@ struct Cli {
     /// Caret shape: block (default), bar or underline.
     #[arg(long, value_name = "SHAPE", value_parser = ["block", "bar", "underline"])]
     caret: Option<String>,
+
+    /// Keyboard layout to practise on a QWERTY keyboard: qwerty (default),
+    /// dvorak or colemak.
+    #[arg(long, value_name = "NAME", value_parser = ["qwerty", "dvorak", "colemak"])]
+    layout: Option<String>,
 
     /// Strict mode: off (default), stop-on-error, no-backspace or master.
     #[arg(long, value_name = "NAME")]
@@ -166,6 +172,9 @@ fn main() -> io::Result<()> {
     }
     if let Some(caret) = cli.caret.as_deref().and_then(Caret::parse) {
         config.caret = caret;
+    }
+    if let Some(layout) = cli.layout.as_deref().and_then(layout::Layout::parse) {
+        config.layout = layout;
     }
     if let Some(name) = &cli.strict {
         let Some(strict) = Strict::parse(name) else {

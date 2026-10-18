@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::app::{Options, mode_label, parse_mode};
 use crate::engine::{Mode, Strict, words::WordList};
+use crate::layout::Layout;
 use crate::ui::theme::Theme;
 use ratatui::style::Color;
 
@@ -20,6 +21,7 @@ pub struct Config {
     pub pace: bool,
     pub strict: Strict,
     pub caret: Caret,
+    pub layout: Layout,
     /// The theme from the `color_*` keys, if the file has any.
     pub custom_theme: Option<Theme>,
 }
@@ -62,6 +64,7 @@ impl Default for Config {
             pace: false,
             strict: Strict::Off,
             caret: Caret::Block,
+            layout: Layout::Qwerty,
             custom_theme: None,
         }
     }
@@ -108,6 +111,7 @@ impl Config {
                 "pace" => config.pace = value == "true",
                 "strict" => config.strict = Strict::parse(value).unwrap_or(config.strict),
                 "caret" => config.caret = Caret::parse(value).unwrap_or(config.caret),
+                "layout" => config.layout = Layout::parse(value).unwrap_or(config.layout),
                 "punctuation" => config.options.punctuation = value == "true",
                 "numbers" => config.options.numbers = value == "true",
                 "words" => {
@@ -137,7 +141,8 @@ impl Config {
              live = {}\n\
              pace = {}\n\
              strict = \"{}\"\n\
-             caret = \"{}\"\n",
+             caret = \"{}\"\n\
+             layout = \"{}\"\n",
             mode_label(self.mode),
             self.theme.name,
             self.options.punctuation,
@@ -146,7 +151,8 @@ impl Config {
             self.live,
             self.pace,
             self.strict.name(),
-            self.caret.name()
+            self.caret.name(),
+            self.layout.name()
         ) + &self.custom_colors_text()
     }
 
@@ -207,6 +213,7 @@ mod tests {
             pace: true,
             strict: Strict::Master,
             caret: Caret::Underline,
+            layout: Layout::Colemak,
             custom_theme: None,
         };
         assert_eq!(Config::parse(&config.to_text()), config);
