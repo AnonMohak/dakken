@@ -834,6 +834,7 @@ mod tests {
                 at: Duration::from_millis(i * 100),
                 correct: i % 2 == 0,
                 key: Some('q'),
+                word: 0,
             })
             .collect();
         a.key_stats.add_test(&presses).unwrap();

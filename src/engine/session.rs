@@ -276,6 +276,7 @@ impl Session {
             at: now - start,
             correct,
             key: expected,
+            word: self.current,
         });
         if !correct && self.strict == Strict::StopOnError {
             return;
@@ -314,6 +315,7 @@ impl Session {
             at: now - start,
             correct,
             key,
+            word: self.current,
         });
         match self.strict {
             // A space before the word is complete is a wrong key too.
@@ -491,11 +493,43 @@ impl Session {
             .collect()
     }
 
+    /// The WPM of each correct word: its letters, and the space after it,
+    /// over the time from the end of the word before to the end of this one.
+    fn word_speeds(&self) -> Vec<(String, f64)> {
+        let mut speeds = Vec::new();
+        let mut word_start = Duration::ZERO;
+        for (i, (word, correct)) in self.checked_words().into_iter().enumerate() {
+            let Some(end) = self
+                .presses
+                .iter()
+                .filter(|p| p.word == i)
+                .map(|p| p.at)
+                .max()
+            else {
+                continue;
+            };
+            let secs = end.saturating_sub(word_start).as_secs_f64();
+            word_start = end;
+            // Too short a time gives a WPM that means nothing.
+            if !correct || secs < 0.05 {
+                continue;
+            }
+            let chars = word.chars().count() + usize::from(i < self.current);
+            speeds.push((word, chars as f64 / 5.0 / (secs / 60.0)));
+        }
+        speeds
+    }
+
     /// The final numbers. Call after the test is finished.
     pub fn result(&self) -> TestResult {
         let duration = self.elapsed(self.end.unwrap_or_else(Instant::now));
         let raw_per_second = stats::raw_per_second(&self.presses, duration);
+        let speeds = self.word_speeds();
+        let slowest_word = speeds.iter().min_by(|a, b| a.1.total_cmp(&b.1)).cloned();
+        let fastest_burst = speeds.iter().map(|s| s.1).reduce(f64::max);
         TestResult {
+            slowest_word,
+            fastest_burst,
             wpm: stats::wpm(self.correct_chars(), duration),
             raw_wpm: stats::wpm(self.presses.len(), duration),
             accuracy: stats::accuracy(&self.presses),
@@ -752,6 +786,23 @@ mod tests {
         let mut d = Driver::words(&["ab", "cd"]);
         d.text("a ");
         assert_eq!(d.s.presses()[1].key, Some('b'), "space instead of b");
+    }
+
+    #[test]
+    fn word_speeds_find_the_slowest_word_and_the_fastest_burst() {
+        // Each key is 100 ms after the last.
+        let mut d = Driver::words(&["ab", "cd", "ef"]);
+        d.text("ab ");
+        d.key(Key::Char('x'));
+        d.key(Key::Backspace);
+        d.text("cd ef");
+        let r = d.s.result();
+        // "ab ": the first key starts the clock, so 3 chars in 0.2 s.
+        // "cd ": 3 chars in 0.5 s (x and backspace were slow).
+        let (word, wpm) = r.slowest_word.unwrap();
+        assert_eq!(word, "cd");
+        assert!((wpm - 72.0).abs() < 0.01, "{wpm}");
+        assert!((r.fastest_burst.unwrap() - 180.0).abs() < 0.01);
     }
 
     #[test]

@@ -51,6 +51,7 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
             label("time "),
             value(format!("{:.0}s", r.duration.as_secs_f64())),
         ]),
+        speed_line(r, t),
         Line::from(label(&results_label(app))),
         Line::from(label(
             &app.source.map_or(String::new(), |s| format!("— {s}")),
@@ -178,4 +179,15 @@ fn results_label(app: &App) -> String {
         _ if app.options.list == WordList::English => format!("{} · english", app.label()),
         _ => app.label(),
     }
+}
+
+/// The slowest word and the fastest burst, or nothing if no word counts.
+fn speed_line(r: &TestResult, t: Theme) -> Line<'static> {
+    let (Some((word, slow)), Some(fast)) = (&r.slowest_word, r.fastest_burst) else {
+        return Line::default();
+    };
+    Line::styled(
+        format!("slowest word \"{word}\" {slow:.0} wpm · fastest burst {fast:.0} wpm"),
+        Style::new().fg(t.sub),
+    )
 }

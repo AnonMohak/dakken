@@ -238,6 +238,7 @@ mod tests {
             at: Duration::from_millis(ms),
             correct,
             key: Some(key),
+            word: 0,
         }
     }
 

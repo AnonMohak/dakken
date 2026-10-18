@@ -9,6 +9,8 @@ pub struct Press {
     /// The key the test asked for. `None` for a key that is not checked,
     /// such as an extra letter.
     pub key: Option<char>,
+    /// Index of the word the press is in.
+    pub word: usize,
 }
 
 /// Final character counts, the same groups monkeytype shows.
@@ -34,6 +36,10 @@ pub struct TestResult {
     pub raw_per_second: Vec<f64>,
     /// WPM from the start to the end of each second, from correct presses.
     pub wpm_over_time: Vec<f64>,
+    /// The correct word with the lowest WPM, and that WPM.
+    pub slowest_word: Option<(String, f64)>,
+    /// The highest WPM of one correct word.
+    pub fastest_burst: Option<f64>,
 }
 
 /// Words per minute, with one word = 5 characters.
@@ -126,6 +132,7 @@ mod tests {
             at: Duration::from_millis(ms),
             correct,
             key: None,
+            word: 0,
         }
     }
 

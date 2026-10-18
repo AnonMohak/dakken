@@ -32,7 +32,8 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Optional pace caret: a gray letter that moves at your personal-best speed
   for the same mode and options, so you can race it (off by default).
 - Results: WPM, raw WPM, accuracy, consistency, and character counts, with a
-  graph of WPM and raw WPM over the test.
+  graph of WPM and raw WPM over the test, your slowest word and your fastest
+  burst (the fastest single word).
 - Personal bests and history for each mode and option set.
 - One `.exe` with no runtime. Made and tested on Windows 11 with WezTerm.
 
