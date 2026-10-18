@@ -2,11 +2,13 @@
 
 A typing-speed test for the terminal, in the style of [monkeytype](https://monkeytype.com).
 
+- Untimed mode (the default): type the words on the screen, with no time limit.
 - Time mode (15, 30, 60, 120 s) and words mode (10, 25, 50, 100 words).
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
   quotes and parentheses.
-- Monkeytype colors and rules: wrong letters in red, extra letters in dark red,
+- Monkeytype rules: wrong letters in red, extra letters in dark red,
   backspace into a previous word only if it has an error.
+- Colors from your terminal's palette, so the test follows your shell theme.
 - Results: WPM, raw WPM, accuracy, consistency, and character counts.
 - One `.exe` with no runtime. Made and tested on Windows 11 with WezTerm.
 
@@ -23,10 +25,10 @@ cargo install --path .
 ## Use
 
 ```sh
-typer            # 30-second test
+typer            # untimed test: the words on the screen
 typer -t 60      # 60-second test
 typer -w 25      # 25-word test
-typer -p         # 30-second test with punctuation
+typer -p         # untimed test with punctuation
 typer --keys     # print raw key events (to check your terminal)
 ```
 

@@ -7,9 +7,11 @@ use crate::engine::{
     stats::TestResult,
     words::{self, WordGen},
 };
+use crate::ui;
 
 /// The modes the menu offers, in menu order.
-pub const MODES: [Mode; 8] = [
+pub const MODES: [Mode; 9] = [
+    Mode::Untimed,
     Mode::Time(Duration::from_secs(15)),
     Mode::Time(Duration::from_secs(30)),
     Mode::Time(Duration::from_secs(60)),
@@ -22,6 +24,7 @@ pub const MODES: [Mode; 8] = [
 
 pub fn mode_label(mode: Mode) -> String {
     match mode {
+        Mode::Untimed => "untimed".to_string(),
         Mode::Time(d) => format!("time {}", d.as_secs()),
         Mode::Words(n) => format!("words {n}"),
     }
@@ -36,16 +39,19 @@ pub enum Screen {
 pub struct App {
     pub mode: Mode,
     pub punctuation: bool,
+    /// Terminal width. Untimed tests get the words that fit on the screen.
+    pub width: u16,
     pub session: Session,
     pub screen: Screen,
     pub quit: bool,
 }
 
 impl App {
-    pub fn new(mode: Mode, punctuation: bool) -> Self {
+    pub fn new(mode: Mode, punctuation: bool, width: u16) -> Self {
         Self {
             punctuation,
-            ..Self::with_session(mode, new_session(mode, punctuation))
+            width,
+            ..Self::with_session(mode, new_session(mode, punctuation, width))
         }
     }
 
@@ -53,6 +59,7 @@ impl App {
         Self {
             mode,
             punctuation: false,
+            width: 80,
             session,
             screen: Screen::Typing,
             quit: false,
@@ -60,8 +67,16 @@ impl App {
     }
 
     fn restart(&mut self) {
-        self.session = new_session(self.mode, self.punctuation);
+        self.session = new_session(self.mode, self.punctuation, self.width);
         self.screen = Screen::Typing;
+    }
+
+    /// Before the test starts, give an untimed test the words for the new width.
+    pub fn on_resize(&mut self, width: u16) {
+        self.width = width;
+        if self.mode == Mode::Untimed && !self.session.is_started() {
+            self.session = new_session(self.mode, self.punctuation, width);
+        }
     }
 
     /// The mode and its options, for example "time 30 · punctuation".
@@ -122,7 +137,7 @@ impl App {
                 KeyCode::Char('p') => {
                     // New words are needed, so start a new test.
                     self.punctuation = !self.punctuation;
-                    self.session = new_session(self.mode, self.punctuation);
+                    self.session = new_session(self.mode, self.punctuation, self.width);
                 }
                 KeyCode::Esc => {
                     self.screen = if self.session.is_finished() {
@@ -142,8 +157,11 @@ impl App {
     }
 }
 
-fn new_session(mode: Mode, punctuation: bool) -> Session {
+fn new_session(mode: Mode, punctuation: bool, width: u16) -> Session {
     let mut words = WordGen::new(words::english(), rand::rng()).with_punctuation(punctuation);
+    if mode == Mode::Untimed {
+        return Session::from_words(mode, &ui::screen_words(width, || words.next_word()));
+    }
     Session::new(mode, move || words.next_word())
 }
 
@@ -241,6 +259,18 @@ mod tests {
             Instant::now(),
         );
         assert!(!a.punctuation);
+    }
+
+    #[test]
+    fn untimed_test_fits_on_the_screen_and_follows_resize() {
+        let mut a = App::new(Mode::Untimed, false, 40);
+        let narrow = a.session.words().len();
+        a.on_resize(120);
+        assert!(a.session.words().len() > narrow);
+        type_text(&mut a, "x");
+        let started = a.session.words().len();
+        a.on_resize(40);
+        assert_eq!(a.session.words().len(), started);
     }
 
     #[test]

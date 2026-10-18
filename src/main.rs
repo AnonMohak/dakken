@@ -19,7 +19,7 @@ use engine::Mode;
 #[derive(Parser)]
 #[command(version, about)]
 struct Cli {
-    /// Time mode: test length in seconds (default: 30).
+    /// Time mode: test length in seconds. With no mode, the test is untimed.
     #[arg(short, long, value_name = "SECONDS", conflicts_with = "words")]
     time: Option<u64>,
 
@@ -43,9 +43,11 @@ fn main() -> io::Result<()> {
     }
     let mode = match (cli.time, cli.words) {
         (_, Some(n)) => Mode::Words(n.max(1)),
-        (t, None) => Mode::Time(Duration::from_secs(t.unwrap_or(30).max(1))),
+        (Some(t), None) => Mode::Time(Duration::from_secs(t.max(1))),
+        (None, None) => Mode::Untimed,
     };
-    run(App::new(mode, cli.punctuation))
+    let (width, _) = terminal::size()?;
+    run(App::new(mode, cli.punctuation, width))
 }
 
 fn run(mut app: App) -> io::Result<()> {
@@ -61,10 +63,12 @@ fn run(mut app: App) -> io::Result<()> {
         while !app.quit {
             terminal.draw(|f| ui::draw(f, &app, Instant::now()))?;
             // About 60 frames per second keeps the timer smooth.
-            if event::poll(Duration::from_millis(16))?
-                && let Event::Key(key) = event::read()?
-            {
-                app.on_key(key, Instant::now());
+            if event::poll(Duration::from_millis(16))? {
+                match event::read()? {
+                    Event::Key(key) => app.on_key(key, Instant::now()),
+                    Event::Resize(width, _) => app.on_resize(width),
+                    _ => {}
+                }
             }
             app.tick(Instant::now());
         }

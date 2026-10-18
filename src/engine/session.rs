@@ -10,6 +10,8 @@ const WORDS_AHEAD: usize = 50;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
+    /// Type a fixed list of words with no time limit.
+    Untimed,
     Time(Duration),
     Words(usize),
 }
@@ -42,9 +44,11 @@ pub struct Session {
 
 impl Session {
     /// A test with random words. Time mode adds new words as you type.
+    /// An untimed test gets the same word count as the default words mode.
     pub fn new(mode: Mode, mut next_word: impl FnMut() -> String + 'static) -> Self {
         let count = match mode {
             Mode::Words(n) => n,
+            Mode::Untimed => 25,
             Mode::Time(_) => WORDS_AHEAD * 2,
         };
         let words: Vec<String> = (0..count).map(|_| next_word()).collect();
@@ -103,11 +107,11 @@ impl Session {
         }
     }
 
-    /// Time left in time mode. `None` in words mode.
+    /// Time left in time mode. `None` in the other modes.
     pub fn remaining(&self, now: Instant) -> Option<Duration> {
         match self.mode {
             Mode::Time(limit) => Some(limit.saturating_sub(self.elapsed(now))),
-            Mode::Words(_) => None,
+            Mode::Untimed | Mode::Words(_) => None,
         }
     }
 

@@ -14,7 +14,7 @@ use crate::app::App;
 use crate::engine::Mode;
 
 /// Number of word lines on screen, like monkeytype.
-const VISIBLE_LINES: usize = 3;
+pub const VISIBLE_LINES: usize = 3;
 
 pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     // Rows: status, gap, 3 word lines, 2 gap, hints.
@@ -27,7 +27,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
                 let left = s.remaining(now).unwrap_or_default();
                 format!("{}", left.as_secs_f64().ceil() as u64)
             }
-            Mode::Words(n) => format!("{}/{n}", s.current()),
+            Mode::Untimed | Mode::Words(_) => format!("{}/{}", s.current(), s.words().len()),
         };
         Line::from(vec![
             Span::styled(counter, Style::new().fg(theme::MAIN)),

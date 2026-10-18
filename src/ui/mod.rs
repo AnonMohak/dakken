@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Alignment, Rect},
     style::Style,
     text::Line,
-    widgets::{Block, Paragraph},
+    widgets::Paragraph,
 };
 
 use crate::app::{App, Screen};
@@ -22,7 +22,6 @@ const MIN_HEIGHT: u16 = 10;
 
 pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     let area = frame.area();
-    frame.render_widget(Block::new().style(Style::new().bg(theme::BG)), area);
 
     if area.width < MIN_WIDTH || area.height < MIN_HEIGHT {
         let msg = Paragraph::new(vec![
@@ -56,7 +55,26 @@ fn center(area: Rect, width: u16, height: u16) -> Rect {
 
 /// The text column: up to `MAX_WIDTH` wide, with a gap on both sides.
 fn column(area: Rect, height: u16) -> Rect {
-    center(area, (area.width - 4).min(MAX_WIDTH), height)
+    center(area, text_width(area.width), height)
+}
+
+fn text_width(terminal_width: u16) -> u16 {
+    terminal_width.saturating_sub(4).min(MAX_WIDTH)
+}
+
+/// Words that fill the word lines of a terminal `terminal_width` wide.
+pub fn screen_words(terminal_width: u16, mut next_word: impl FnMut() -> String) -> Vec<String> {
+    let width = text_width(terminal_width.max(MIN_WIDTH)) as usize;
+    let mut words = vec![next_word()];
+    loop {
+        let word = next_word();
+        let mut widths: Vec<usize> = words.iter().map(|w| w.chars().count()).collect();
+        widths.push(word.chars().count());
+        if typing::wrap(&widths, width).len() > typing::VISIBLE_LINES {
+            return words;
+        }
+        words.push(word);
+    }
 }
 
 #[cfg(test)]
@@ -106,6 +124,14 @@ mod tests {
         for (w, h) in [(30, 10), (31, 10), (40, 12), (120, 40), (1, 1), (0, 0)] {
             render(&a, w, h);
         }
+    }
+
+    #[test]
+    fn screen_words_fill_the_visible_lines() {
+        // Text width 76 holds 15 four-letter words on each line.
+        assert_eq!(screen_words(80, || "abcd".to_string()).len(), 45);
+        // The minimum width (30) gives width 26: 5 words on each line.
+        assert_eq!(screen_words(0, || "abcd".to_string()).len(), 15);
     }
 
     #[test]
