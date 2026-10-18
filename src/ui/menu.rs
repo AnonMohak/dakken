@@ -41,7 +41,7 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
     ));
     lines.push(Line::default());
     lines.push(Line::styled(
-        "↑↓ select · enter start · esc back",
+        "↑↓ select · enter start · tab back",
         Style::new().fg(t.sub),
     ));
     lines.push(Line::styled(

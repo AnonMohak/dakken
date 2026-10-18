@@ -48,7 +48,7 @@ impl Config {
 
     pub fn to_text(self) -> String {
         format!(
-            "# typer settings. The menu saves this file.\n\
+            "# dakken settings. The menu saves this file.\n\
              mode = \"{}\"\n\
              theme = \"{}\"\n\
              punctuation = {}\n\

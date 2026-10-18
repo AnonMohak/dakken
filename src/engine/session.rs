@@ -242,11 +242,6 @@ impl Session {
         c
     }
 
-    /// WPM so far, for the live display.
-    pub fn live_wpm(&self, now: Instant) -> f64 {
-        stats::wpm(self.correct_chars(), self.elapsed(now))
-    }
-
     /// The final numbers. Call after the test is finished.
     pub fn result(&self) -> TestResult {
         let duration = self.elapsed(self.end.unwrap_or_else(Instant::now));

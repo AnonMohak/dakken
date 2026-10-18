@@ -1,4 +1,4 @@
-# typer
+# dakken
 
 A typing-speed test for the terminal, in the style of [monkeytype](https://monkeytype.com).
 
@@ -25,31 +25,31 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 You need [Rust](https://rustup.rs). On Windows: `winget install Rustlang.Rustup`.
 
 ```sh
-git clone https://github.com/AnonMohak/cli-typing.git
-cd cli-typing
+git clone https://github.com/AnonMohak/dakken.git
+cd dakken
 cargo install --path .
 ```
 
 ## Use
 
 ```sh
-typer            # untimed test: the words on the screen
-typer -t 60      # 60-second test
-typer -w 25      # 25-word test
-typer -q         # quote test
-typer -p         # untimed test with punctuation
-typer -p -n      # untimed test with punctuation and numbers
-typer --theme nord  # use a color theme
-typer --history  # print personal bests and the last 10 tests
-typer --keys     # print raw key events (to check your terminal)
+dakken            # untimed test: the words on the screen
+dakken -t 60      # 60-second test
+dakken -w 25      # 25-word test
+dakken -q         # quote test
+dakken -p         # untimed test with punctuation
+dakken -p -n      # untimed test with punctuation and numbers
+dakken --theme nord  # use a color theme
+dakken --history  # print personal bests and the last 10 tests
+dakken --keys     # print raw key events (to check your terminal)
 ```
 
 The test starts when you type the first letter.
 
 | Key | Action |
 |---|---|
-| `Tab` | Restart the test |
-| `Esc` | Open the mode menu (`↑`/`↓` or `j`/`k`, then `Enter`) |
+| `Tab` or `Esc` | Open or close the menu (`↑`/`↓` or `j`/`k`, then `Enter`) |
+| `Enter` (on the results) | Start a new test |
 | `p` (in the menu) | Turn punctuation on or off |
 | `n` (in the menu) | Turn numbers on or off |
 | `t` (in the menu) | Go to the next color theme |
@@ -58,13 +58,13 @@ The test starts when you type the first letter.
 
 ## Bigger font in WezTerm
 
-A terminal app cannot set the font size. In WezTerm, typer sets the user var
-`typer_active` to `1` at start and `0` at exit. Add this to `.wezterm.lua`,
-before `return config`, to get a font 2 points bigger while typer runs:
+A terminal app cannot set the font size. In WezTerm, dakken sets the user var
+`dakken_active` to `1` at start and `0` at exit. Add this to `.wezterm.lua`,
+before `return config`, to get a font 2 points bigger while dakken runs:
 
 ```lua
 wezterm.on("user-var-changed", function(window, pane, name, value)
-  if name ~= "typer_active" then
+  if name ~= "dakken_active" then
     return
   end
   local overrides = window:get_config_overrides() or {}
@@ -92,8 +92,8 @@ numbers = false
 
 ## History
 
-Each finished test adds one line to `history.tsv`: in `%APPDATA%\typer` on
-Windows, and in `$XDG_DATA_HOME/typer` or `~/.local/share/typer` on other
+Each finished test adds one line to `history.tsv`: in `%APPDATA%\dakken` on
+Windows, and in `$XDG_DATA_HOME/dakken` or `~/.local/share/dakken` on other
 systems. A personal best counts only tests with the same mode and options,
 for example `time 30 · punctuation`. Delete the file to clear the history.
 

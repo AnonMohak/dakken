@@ -182,8 +182,7 @@ impl App {
         }
         match self.screen {
             Screen::Typing => match key.code {
-                KeyCode::Tab => self.restart(),
-                KeyCode::Esc => self.open_menu(),
+                KeyCode::Tab | KeyCode::Esc => self.open_menu(),
                 _ => {
                     if let Some(k) = engine_key(key) {
                         self.session.handle(k, now);
@@ -192,8 +191,8 @@ impl App {
                 }
             },
             Screen::Results(_) => match key.code {
-                KeyCode::Tab | KeyCode::Enter => self.restart(),
-                KeyCode::Esc => self.open_menu(),
+                KeyCode::Enter => self.restart(),
+                KeyCode::Tab | KeyCode::Esc => self.open_menu(),
                 _ => {}
             },
             Screen::Menu { selected } => match key.code {
@@ -225,7 +224,7 @@ impl App {
                     self.theme = self.theme.next();
                     self.save_config();
                 }
-                KeyCode::Esc => {
+                KeyCode::Tab | KeyCode::Esc => {
                     self.screen = if self.session.is_finished() {
                         Screen::Results(self.session.result())
                     } else {
@@ -445,7 +444,7 @@ mod tests {
 
     #[test]
     fn menu_changes_are_saved_to_the_config() {
-        let dir = std::env::temp_dir().join(format!("typer-config-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("dakken-config-{}", std::process::id()));
         let path = dir.join("config.toml");
         let mut a = app(&["hi"]);
         a.config_path = Some(path.clone());
@@ -465,6 +464,15 @@ mod tests {
         assert!(saved.options.punctuation);
         assert_eq!(saved.mode, MODES[1]);
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn tab_opens_and_closes_the_menu() {
+        let mut a = app(&["hi"]);
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Menu { .. }));
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Typing));
     }
 
     #[test]

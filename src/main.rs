@@ -124,7 +124,7 @@ fn run(mut app: App) -> io::Result<()> {
     result
 }
 
-/// Tell WezTerm that typer runs, with the `typer_active` user var. A
+/// Tell WezTerm that dakken runs, with the `dakken_active` user var. A
 /// `user-var-changed` handler in the WezTerm config can then make the font
 /// bigger. Other terminals do not get the escape code.
 fn set_wezterm_active(active: bool) -> io::Result<()> {
@@ -134,7 +134,7 @@ fn set_wezterm_active(active: bool) -> io::Result<()> {
     // The value is base64: "MQ==" is "1" and "MA==" is "0".
     let value = if active { "MQ==" } else { "MA==" };
     let mut out = io::stdout();
-    write!(out, "]1337;SetUserVar=typer_active={value}")?;
+    write!(out, "\x1b]1337;SetUserVar=dakken_active={value}\x07")?;
     out.flush()
 }
 

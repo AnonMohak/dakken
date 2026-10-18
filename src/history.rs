@@ -130,8 +130,8 @@ impl History {
     }
 }
 
-/// `%APPDATA%\typer` on Windows, else `$XDG_DATA_HOME/typer` or
-/// `~/.local/share/typer`.
+/// `%APPDATA%\dakken` on Windows, else `$XDG_DATA_HOME/dakken` or
+/// `~/.local/share/dakken`.
 pub fn data_dir() -> Option<PathBuf> {
     let var = |name| std::env::var_os(name).filter(|v| !v.is_empty());
     let base = if cfg!(windows) {
@@ -141,7 +141,7 @@ pub fn data_dir() -> Option<PathBuf> {
     } else {
         PathBuf::from(var("HOME")?).join(".local").join("share")
     };
-    Some(base.join("typer"))
+    Some(base.join("dakken"))
 }
 
 pub fn default_path() -> Option<PathBuf> {
@@ -169,7 +169,7 @@ pub fn format_time(unix: u64) -> String {
     )
 }
 
-/// The text for `typer --history`: personal bests, then the last 10 tests.
+/// The text for `dakken --history`: personal bests, then the last 10 tests.
 pub fn report(history: &History) -> String {
     if history.records().is_empty() {
         return "No tests yet.\n".to_string();
@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn records_are_saved_and_loaded() {
-        let dir = std::env::temp_dir().join(format!("typer-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("dakken-test-{}", std::process::id()));
         let path = dir.join("history.tsv");
         let _ = fs::remove_dir_all(&dir);
         let mut h = History::load(path.clone());

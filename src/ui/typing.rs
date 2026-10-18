@@ -4,7 +4,7 @@ use std::time::Instant;
 use ratatui::{
     Frame,
     layout::{Position, Rect},
-    style::Style,
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::Paragraph,
 };
@@ -17,32 +17,27 @@ use crate::engine::Mode;
 pub const VISIBLE_LINES: usize = 3;
 
 pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
-    // Rows: status, gap, 3 word lines, 2 gap, hints.
-    let area = column(frame.area(), 8);
+    // Only the words, in the middle of the screen.
+    let area = column(frame.area(), VISIBLE_LINES as u16);
     let s = &app.session;
     let t = app.theme;
 
-    let status = if s.is_started() {
-        let counter = match s.mode() {
-            Mode::Time(_) => {
-                let left = s.remaining(now).unwrap_or_default();
-                format!("{}", left.as_secs_f64().ceil() as u64)
-            }
-            Mode::Untimed | Mode::Quote | Mode::Words(_) => {
-                format!("{}/{}", s.current(), s.words().len())
-            }
-        };
-        Line::from(vec![
-            Span::styled(counter, Style::new().fg(t.main)),
-            Span::styled(
-                format!("  {:.0} wpm", s.live_wpm(now)),
-                Style::new().fg(t.sub),
-            ),
-        ])
-    } else {
-        Line::styled(app.label(), Style::new().fg(t.sub))
-    };
-    frame.render_widget(Paragraph::new(status), row(area, 0));
+    // Time mode needs the time left. It shows above the words.
+    if let (Mode::Time(_), true) = (s.mode(), s.is_started()) {
+        let left = s.remaining(now).unwrap_or_default();
+        let timer = Line::styled(
+            format!("{}", left.as_secs_f64().ceil() as u64),
+            Style::new().fg(t.sub),
+        );
+        if area.y >= 2 {
+            let timer_area = Rect {
+                y: area.y - 2,
+                height: 1,
+                ..area
+            };
+            frame.render_widget(Paragraph::new(timer), timer_area);
+        }
+    }
 
     let width = area.width as usize;
     let widths: Vec<usize> = s
@@ -57,7 +52,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     let first = current_line.saturating_sub(1);
 
     for (offset, range) in lines.iter().skip(first).take(VISIBLE_LINES).enumerate() {
-        let y = area.y + 2 + offset as u16;
+        let y = area.y + offset as u16;
         let mut spans = Vec::new();
         let mut x = 0;
         for i in range.clone() {
@@ -80,19 +75,17 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
         frame.render_widget(Paragraph::new(Line::from(spans)), line_area);
     }
 
-    let hints = Line::styled(
-        "tab restart · esc menu · ctrl+c quit",
-        Style::new().fg(t.sub),
+    let screen = frame.area();
+    let hint = Line::styled(
+        "• tab for menu",
+        Style::new().fg(t.sub).add_modifier(Modifier::ITALIC),
     );
-    frame.render_widget(Paragraph::new(hints).centered(), row(area, 7));
-}
-
-fn row(area: Rect, n: u16) -> Rect {
-    Rect {
-        y: area.y + n,
+    let hint_area = Rect {
+        y: screen.bottom().saturating_sub(2),
         height: 1,
-        ..area
-    }
+        ..screen
+    };
+    frame.render_widget(Paragraph::new(hint).centered(), hint_area);
 }
 
 /// Colors each letter of one word: wrong, extra and missed letters are red.

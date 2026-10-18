@@ -110,7 +110,9 @@ mod tests {
     fn typing_screen_shows_the_words() {
         let out = render(&app(&["hello", "world"]), 60, 20);
         assert!(out.contains("hello world"), "{out}");
-        assert!(out.contains("words 2"), "{out}");
+        assert!(out.contains("• tab for menu"), "{out}");
+        // Nothing else: no mode name, counter or other hints.
+        assert!(!out.contains("words 2") && !out.contains("ctrl+c"), "{out}");
     }
 
     #[test]

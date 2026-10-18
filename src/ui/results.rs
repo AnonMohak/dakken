@@ -55,7 +55,7 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
             &app.source.map_or(String::new(), |s| format!("— {s}")),
         )),
         best_line(app, r),
-        Line::from(label("tab restart · esc menu · ctrl+c quit")),
+        Line::from(label("enter restart · tab menu · ctrl+c quit")),
     ];
     let text_height = lines.len() as u16;
     let free = frame.area().height.saturating_sub(text_height + 2);
