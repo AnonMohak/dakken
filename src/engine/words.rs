@@ -3,6 +3,8 @@ use rand::{Rng, RngExt};
 const ENGLISH: &str = include_str!("../../assets/words/english.txt");
 const ENGLISH_1K: &str = include_str!("../../assets/words/english_1k.txt");
 const CODE: &str = include_str!("../../assets/words/code.txt");
+const SPANISH: &str = include_str!("../../assets/words/spanish.txt");
+const GERMAN: &str = include_str!("../../assets/words/german.txt");
 const QUOTES: &str = include_str!("../../assets/quotes/english.txt");
 
 /// A quote to type, and where it comes from.
@@ -37,16 +39,22 @@ pub enum WordList {
     English1k,
     /// Keywords, operators and short pieces of code.
     Code,
+    /// 250 common Spanish words.
+    Spanish,
+    /// 250 common German words. Nouns start with a capital letter.
+    German,
     /// Words typed wrong in past tests. The app gives these words; `words`
     /// gives English for when there are no mistakes yet.
     Mistakes,
 }
 
 /// The lists in menu order.
-pub const WORD_LISTS: [WordList; 4] = [
+pub const WORD_LISTS: [WordList; 6] = [
     WordList::English,
     WordList::English1k,
     WordList::Code,
+    WordList::Spanish,
+    WordList::German,
     WordList::Mistakes,
 ];
 
@@ -56,6 +64,8 @@ impl WordList {
             Self::English => "english",
             Self::English1k => "english-1k",
             Self::Code => "code",
+            Self::Spanish => "spanish",
+            Self::German => "german",
             Self::Mistakes => "mistakes",
         }
     }
@@ -76,6 +86,8 @@ impl WordList {
             Self::English | Self::Mistakes => ENGLISH,
             Self::English1k => ENGLISH_1K,
             Self::Code => CODE,
+            Self::Spanish => SPANISH,
+            Self::German => GERMAN,
         };
         text.lines()
             .map(str::trim)
@@ -238,6 +250,20 @@ mod tests {
         sorted.dedup();
         assert_eq!(sorted.len(), list.len());
         assert!(list.iter().all(|w| w.chars().all(|c| c.is_ascii_graphic())));
+    }
+
+    #[test]
+    fn language_lists_have_250_unique_words() {
+        for list in [WordList::Spanish, WordList::German] {
+            let words = list.words();
+            let mut sorted = words.clone();
+            sorted.sort();
+            sorted.dedup();
+            assert_eq!((words.len(), sorted.len()), (250, 250), "{list:?}");
+            assert!(words.iter().all(|w| w.chars().all(char::is_alphabetic)));
+        }
+        assert!(WordList::Spanish.words().contains(&"también"));
+        assert!(WordList::German.words().contains(&"Straße"));
     }
 
     #[test]

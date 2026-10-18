@@ -5,6 +5,8 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
+use crate::engine::words::WordList;
+
 /// The most words the list keeps. Older words are dropped first.
 pub const MAX_WORDS: usize = 100;
 
@@ -72,16 +74,20 @@ pub fn default_path() -> Option<PathBuf> {
     Some(crate::history::data_dir()?.join("mistakes.txt"))
 }
 
-/// The word to practise for a target word: punctuation and capitals from
-/// punctuation mode are taken off. Numbers are not practised. Code words
-/// (`keep_symbols`) stay as they are.
-pub fn practice_word(target: &str, keep_symbols: bool) -> Option<String> {
-    if keep_symbols {
+/// The word to practise for a target word from `list` (`None` for a test
+/// with its own text): punctuation and capitals from punctuation mode are
+/// taken off. Numbers are not practised. Code words stay as they are, and
+/// German words keep their capitals.
+pub fn practice_word(target: &str, list: Option<WordList>) -> Option<String> {
+    if list == Some(WordList::Code) {
         return Some(target.to_string());
     }
-    let word = target
-        .trim_matches(|c: char| !c.is_alphanumeric())
-        .to_lowercase();
+    let word = target.trim_matches(|c: char| !c.is_alphanumeric());
+    let word = if list == Some(WordList::German) {
+        word.to_string()
+    } else {
+        word.to_lowercase()
+    };
     let practise = !word.is_empty() && !word.chars().any(|c| c.is_ascii_digit());
     practise.then_some(word)
 }
@@ -125,10 +131,18 @@ mod tests {
 
     #[test]
     fn practice_words_drop_punctuation_and_numbers() {
-        assert_eq!(practice_word("\"Hello,\"", false), Some("hello".into()));
-        assert_eq!(practice_word("(world)", false), Some("world".into()));
-        assert_eq!(practice_word("world's", false), Some("world's".into()));
-        assert_eq!(practice_word("1234", false), None);
-        assert_eq!(practice_word("foo()", true), Some("foo()".into()));
+        let english = Some(WordList::English);
+        assert_eq!(practice_word("\"Hello,\"", english), Some("hello".into()));
+        assert_eq!(practice_word("(world)", None), Some("world".into()));
+        assert_eq!(practice_word("world's", english), Some("world's".into()));
+        assert_eq!(practice_word("1234", english), None);
+        assert_eq!(
+            practice_word("foo()", Some(WordList::Code)),
+            Some("foo()".into())
+        );
+        assert_eq!(
+            practice_word("Haus.", Some(WordList::German)),
+            Some("Haus".into())
+        );
     }
 }

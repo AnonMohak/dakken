@@ -57,7 +57,7 @@ struct Cli {
     #[arg(short, long)]
     numbers: bool,
 
-    /// Word list: english (default), english-1k, code or mistakes.
+    /// Word list: english (default), english-1k, code, spanish, german or mistakes.
     #[arg(short = 'l', long, value_name = "NAME")]
     words_list: Option<String>,
 

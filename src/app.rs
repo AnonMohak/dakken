@@ -200,12 +200,13 @@ impl App {
     /// Remember the words typed wrong. In the mistakes list, words typed
     /// right are removed.
     fn update_mistakes(&mut self) -> std::io::Result<()> {
-        let quote = matches!(self.mode, Mode::Quote(_));
-        let keep_symbols = !quote && self.options.list == WordList::Code;
-        let practising = !quote && self.options.list == WordList::Mistakes;
+        // Quote, custom and zen tests have their own text, not a word list.
+        let own_text = matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen);
+        let list = (!own_text).then_some(self.options.list);
+        let practising = list == Some(WordList::Mistakes);
         let (mut wrong, mut fixed) = (Vec::new(), Vec::new());
         for (word, correct) in self.session.checked_words() {
-            match (mistakes::practice_word(&word, keep_symbols), correct) {
+            match (mistakes::practice_word(&word, list), correct) {
                 (Some(w), false) => wrong.push(w),
                 (Some(w), true) if practising => fixed.push(w),
                 _ => {}
