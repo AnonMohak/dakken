@@ -1,6 +1,8 @@
 use rand::{Rng, RngExt, seq::IndexedRandom};
 
 const ENGLISH: &str = include_str!("../../assets/words/english.txt");
+const ENGLISH_1K: &str = include_str!("../../assets/words/english_1k.txt");
+const CODE: &str = include_str!("../../assets/words/code.txt");
 const QUOTES: &str = include_str!("../../assets/quotes/english.txt");
 
 /// A quote to type, and where it comes from.
@@ -25,13 +27,52 @@ pub fn quotes() -> Vec<Quote> {
         .collect()
 }
 
-/// The built-in English list: the 200 most common words.
-pub fn english() -> Vec<&'static str> {
-    ENGLISH
-        .lines()
-        .map(str::trim)
-        .filter(|w| !w.is_empty())
-        .collect()
+/// The built-in word lists.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum WordList {
+    /// The 200 most common English words.
+    #[default]
+    English,
+    /// 1000 common English words.
+    English1k,
+    /// Keywords, operators and short pieces of code.
+    Code,
+}
+
+/// The lists in menu order.
+pub const WORD_LISTS: [WordList; 3] = [WordList::English, WordList::English1k, WordList::Code];
+
+impl WordList {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::English => "english",
+            Self::English1k => "english-1k",
+            Self::Code => "code",
+        }
+    }
+
+    pub fn parse(name: &str) -> Option<Self> {
+        WORD_LISTS.into_iter().find(|l| l.name() == name)
+    }
+
+    /// The list after this one in `WORD_LISTS`, for the menu.
+    pub fn next(self) -> Self {
+        let i = WORD_LISTS.iter().position(|&l| l == self).unwrap_or(0);
+        WORD_LISTS[(i + 1) % WORD_LISTS.len()]
+    }
+
+    /// One word on each line of the list file.
+    pub fn words(self) -> Vec<&'static str> {
+        let text = match self {
+            Self::English => ENGLISH,
+            Self::English1k => ENGLISH_1K,
+            Self::Code => CODE,
+        };
+        text.lines()
+            .map(str::trim)
+            .filter(|w| !w.is_empty())
+            .collect()
+    }
 }
 
 /// Picks random words from a list and never gives the same word two times in a row.
@@ -137,7 +178,7 @@ mod tests {
 
     #[test]
     fn english_list_has_200_unique_words() {
-        let list = english();
+        let list = WordList::English.words();
         assert_eq!(list.len(), 200);
         let mut sorted = list.clone();
         sorted.sort();
@@ -165,6 +206,39 @@ mod tests {
     }
 
     #[test]
+    fn english_1k_has_1000_unique_words_with_the_200_first() {
+        let list = WordList::English1k.words();
+        assert_eq!(list.len(), 1000);
+        let mut sorted = list.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(sorted.len(), 1000);
+        assert!(
+            list.iter()
+                .all(|w| w.chars().all(|c| c.is_ascii_lowercase()))
+        );
+        assert_eq!(list[..200], WordList::English.words()[..]);
+    }
+
+    #[test]
+    fn code_words_are_unique_and_have_no_spaces() {
+        let list = WordList::Code.words();
+        let mut sorted = list.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(sorted.len(), list.len());
+        assert!(list.iter().all(|w| w.chars().all(|c| c.is_ascii_graphic())));
+    }
+
+    #[test]
+    fn word_list_names_parse_back() {
+        for list in WORD_LISTS {
+            assert_eq!(WordList::parse(list.name()), Some(list));
+        }
+        assert_eq!(WordList::Code.next(), WordList::English);
+    }
+
+    #[test]
     fn never_repeats_a_word_in_a_row() {
         let mut generator = WordGen::new(vec!["a", "b"], StdRng::seed_from_u64(1));
         let mut prev = generator.next_word();
@@ -176,14 +250,14 @@ mod tests {
     }
 
     fn punctuated(count: usize) -> Vec<String> {
-        let mut generator =
-            WordGen::new(english(), StdRng::seed_from_u64(7)).with_punctuation(true);
+        let mut generator = WordGen::new(WordList::English.words(), StdRng::seed_from_u64(7))
+            .with_punctuation(true);
         (0..count).map(|_| generator.next_word()).collect()
     }
 
     #[test]
     fn punctuation_off_gives_plain_words() {
-        let mut generator = WordGen::new(english(), StdRng::seed_from_u64(7));
+        let mut generator = WordGen::new(WordList::English.words(), StdRng::seed_from_u64(7));
         for _ in 0..200 {
             let word = generator.next_word();
             assert!(word.chars().all(|c| c.is_ascii_lowercase()), "{word}");
@@ -192,7 +266,7 @@ mod tests {
 
     #[test]
     fn punctuation_keeps_list_words_inside_the_marks() {
-        let list = english();
+        let list = WordList::English.words();
         for word in punctuated(500) {
             let core = word
                 .trim_matches(|c: char| !c.is_ascii_alphabetic())
@@ -216,7 +290,8 @@ mod tests {
 
     #[test]
     fn numbers_replace_about_one_word_in_ten() {
-        let mut generator = WordGen::new(english(), StdRng::seed_from_u64(7)).with_numbers(true);
+        let mut generator =
+            WordGen::new(WordList::English.words(), StdRng::seed_from_u64(7)).with_numbers(true);
         let words: Vec<String> = (0..1000).map(|_| generator.next_word()).collect();
         let numbers: Vec<&String> = words
             .iter()

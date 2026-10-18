@@ -6,7 +6,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crate::engine::{
     Key, Mode, Session,
     stats::TestResult,
-    words::{self, WordGen},
+    words::{self, WordGen, WordList},
 };
 use rand::seq::IndexedRandom;
 
@@ -54,6 +54,7 @@ pub fn parse_mode(label: &str) -> Option<Mode> {
 pub struct Options {
     pub punctuation: bool,
     pub numbers: bool,
+    pub list: WordList,
 }
 
 pub enum Screen {
@@ -156,6 +157,11 @@ impl App {
         if self.options.numbers {
             label.push_str(" · numbers");
         }
+        // English is the default, so old history labels stay the same.
+        if self.options.list != WordList::English {
+            label.push_str(" · ");
+            label.push_str(self.options.list.name());
+        }
         label
     }
 
@@ -220,6 +226,11 @@ impl App {
                     self.save_config();
                     self.new_test();
                 }
+                KeyCode::Char('l') => {
+                    self.options.list = self.options.list.next();
+                    self.save_config();
+                    self.new_test();
+                }
                 KeyCode::Char('t') => {
                     self.theme = self.theme.next();
                     self.save_config();
@@ -255,7 +266,7 @@ fn new_test(mode: Mode, options: Options, width: u16) -> (Session, Option<&'stat
 }
 
 fn new_session(mode: Mode, options: Options, width: u16) -> Session {
-    let mut words = WordGen::new(words::english(), rand::rng())
+    let mut words = WordGen::new(options.list.words(), rand::rng())
         .with_punctuation(options.punctuation)
         .with_numbers(options.numbers);
     if mode == Mode::Untimed {
@@ -473,6 +484,23 @@ mod tests {
         assert!(matches!(a.screen, Screen::Menu { .. }));
         a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
         assert!(matches!(a.screen, Screen::Typing));
+    }
+
+    #[test]
+    fn l_in_menu_changes_the_word_list() {
+        let mut a = app(&["hi"]);
+        a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
+        a.on_key(
+            press(KeyCode::Char('l'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert_eq!(a.options.list, WordList::English1k);
+        assert!(a.label().ends_with(" · english-1k"), "{}", a.label());
+        let list = WordList::English1k.words();
+        assert!(a.session.words().iter().all(|w| {
+            let w: String = w.iter().collect();
+            list.contains(&w.as_str())
+        }));
     }
 
     #[test]

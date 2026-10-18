@@ -8,6 +8,8 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
   quotes and parentheses.
 - Numbers mode: random numbers in place of some words.
+- Word lists: `english` (200 common words), `english-1k` (1000 words) and
+  `code` (keywords, operators and short pieces of code).
 - Monkeytype rules: wrong and missed letters in red, extra letters in dark red,
   backspace into a previous word only if it has an error.
 - Mistakes do not stop you: the test ends when the last word has all its
@@ -42,6 +44,7 @@ dakken            # untimed test: the words on the screen
 dakken -t 60      # 60-second test
 dakken -w 25      # 25-word test
 dakken -q         # quote test
+dakken -l code    # untimed test with the code word list
 dakken -p         # untimed test with punctuation
 dakken -p -n      # untimed test with punctuation and numbers
 dakken --theme nord  # use a color theme
@@ -57,6 +60,7 @@ The test starts when you type the first letter.
 | `Enter` (on the results) | Start a new test |
 | `p` (in the menu) | Turn punctuation on or off |
 | `n` (in the menu) | Turn numbers on or off |
+| `l` (in the menu) | Go to the next word list |
 | `t` (in the menu) | Go to the next color theme |
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
 | `Ctrl+C` | Quit |
@@ -84,7 +88,7 @@ end)
 
 ## Settings
 
-The menu saves the mode, punctuation, numbers and theme to `config.toml`, in
+The menu saves the mode, punctuation, numbers, word list and theme to `config.toml`, in
 the same folder as the history. The next start uses them. Command-line flags
 change them for one run only, until you change a setting in the menu.
 
@@ -93,6 +97,7 @@ mode = "time 30"     # untimed, quote, time N or words N
 theme = "terminal"   # terminal, serika-dark, nord or dracula
 punctuation = false
 numbers = false
+words = "english"    # english, english-1k or code
 ```
 
 ## History

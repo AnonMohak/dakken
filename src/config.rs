@@ -5,7 +5,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::app::{Options, mode_label, parse_mode};
-use crate::engine::Mode;
+use crate::engine::{Mode, words::WordList};
 use crate::ui::theme::Theme;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,6 +40,9 @@ impl Config {
                 "theme" => config.theme = Theme::find(value).unwrap_or(config.theme),
                 "punctuation" => config.options.punctuation = value == "true",
                 "numbers" => config.options.numbers = value == "true",
+                "words" => {
+                    config.options.list = WordList::parse(value).unwrap_or(config.options.list)
+                }
                 _ => {}
             }
         }
@@ -52,11 +55,13 @@ impl Config {
              mode = \"{}\"\n\
              theme = \"{}\"\n\
              punctuation = {}\n\
-             numbers = {}\n",
+             numbers = {}\n\
+             words = \"{}\"\n",
             mode_label(self.mode),
             self.theme.name,
             self.options.punctuation,
-            self.options.numbers
+            self.options.numbers,
+            self.options.list.name()
         )
     }
 
@@ -89,6 +94,7 @@ mod tests {
             options: Options {
                 punctuation: true,
                 numbers: false,
+                list: WordList::Code,
             },
             theme: Theme::find("nord").unwrap(),
         };

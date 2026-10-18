@@ -17,6 +17,7 @@ use ratatui::crossterm::{
 use app::App;
 use config::Config;
 use engine::Mode;
+use engine::words::{WORD_LISTS, WordList};
 use history::History;
 use ui::theme::Theme;
 
@@ -43,6 +44,10 @@ struct Cli {
     /// Put random numbers in place of some words.
     #[arg(short, long)]
     numbers: bool,
+
+    /// Word list: english (default), english-1k or code.
+    #[arg(short = 'l', long, value_name = "NAME")]
+    words_list: Option<String>,
 
     /// Color theme: terminal (default), serika-dark, nord or dracula.
     #[arg(long, value_name = "NAME")]
@@ -80,6 +85,17 @@ fn main() -> io::Result<()> {
     }
     config.options.punctuation |= cli.punctuation;
     config.options.numbers |= cli.numbers;
+    if let Some(name) = &cli.words_list {
+        let Some(list) = WordList::parse(name) else {
+            let names: Vec<&str> = WORD_LISTS.iter().map(|l| l.name()).collect();
+            eprintln!(
+                "error: unknown word list \"{name}\". Lists: {}",
+                names.join(", ")
+            );
+            std::process::exit(2);
+        };
+        config.options.list = list;
+    }
     if let Some(name) = &cli.theme {
         let Some(theme) = Theme::find(name) else {
             let names = ui::theme::names().join(", ");

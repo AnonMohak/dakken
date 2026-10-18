@@ -193,7 +193,7 @@ mod tests {
     fn menu_lists_the_modes() {
         let mut a = app(&["hi"]);
         a.screen = Screen::Menu { selected: 0 };
-        let out = render(&a, 60, 20);
+        let out = render(&a, 60, 24);
         assert!(
             out.contains("time 15") && out.contains("words 100"),
             "{out}"
@@ -202,7 +202,10 @@ mod tests {
             out.contains("punctuation off") && out.contains("numbers off"),
             "{out}"
         );
-        assert!(out.contains("theme terminal"), "{out}");
+        assert!(
+            out.contains("theme terminal") && out.contains("words english"),
+            "{out}"
+        );
         // A short terminal still shows the selected mode and the hints.
         a.screen = Screen::Menu { selected: 9 };
         let out = render(&a, 60, 12);

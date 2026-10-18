@@ -10,7 +10,7 @@ use crate::app::{App, MODES, mode_label};
 use crate::ui::theme::Theme;
 
 /// Rows that are not mode names: title, gaps, settings and hints.
-const OTHER_ROWS: u16 = 10;
+const OTHER_ROWS: u16 = 11;
 
 pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
     let t = app.theme;
@@ -36,6 +36,10 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
     lines.push(toggle(t, "punctuation", app.options.punctuation));
     lines.push(toggle(t, "numbers", app.options.numbers));
     lines.push(Line::styled(
+        format!("words {}", app.options.list.name()),
+        Style::new().fg(t.text),
+    ));
+    lines.push(Line::styled(
         format!("theme {}", t.name),
         Style::new().fg(t.text),
     ));
@@ -45,7 +49,7 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
         Style::new().fg(t.sub),
     ));
     lines.push(Line::styled(
-        "p punctuation · n numbers · t theme",
+        "p punctuation · n numbers · l words · t theme",
         Style::new().fg(t.sub),
     ));
     let area = column(frame.area(), lines.len() as u16);

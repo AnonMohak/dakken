@@ -15,6 +15,7 @@ const GRAPH_HEIGHT: u16 = 12;
 const MIN_GRAPH_HEIGHT: u16 = 6;
 use crate::app::App;
 use crate::engine::stats::TestResult;
+use crate::engine::{Mode, words::WordList};
 
 pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
     let t = app.theme;
@@ -50,7 +51,7 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
             label("time "),
             value(format!("{:.0}s", r.duration.as_secs_f64())),
         ]),
-        Line::from(label(&format!("{} · english", app.label()))),
+        Line::from(label(&results_label(app))),
         Line::from(label(
             &app.source.map_or(String::new(), |s| format!("— {s}")),
         )),
@@ -162,4 +163,13 @@ fn best_line(app: &App, r: &TestResult) -> Line<'static> {
         ));
     }
     Line::from(spans)
+}
+
+/// The mode and options, with the word list. Quotes have no word list.
+fn results_label(app: &App) -> String {
+    match app.mode {
+        Mode::Quote => app.label(),
+        _ if app.options.list == WordList::English => format!("{} · english", app.label()),
+        _ => app.label(),
+    }
 }
