@@ -92,7 +92,8 @@ struct Cli {
     #[arg(long)]
     stats: bool,
 
-    /// Print a keyboard colored by errors, and the slowest keys, then quit.
+    /// Print a keyboard colored by errors, the slowest keys, and a calendar
+    /// of your speed by day, then quit.
     #[arg(long)]
     heatmap: bool,
 
@@ -141,9 +142,11 @@ fn main() -> io::Result<()> {
     let key_stats = keystats::default_path().map_or_else(KeyStats::in_memory, KeyStats::load);
     if cli.heatmap {
         use std::io::IsTerminal;
+        let color = io::stdout().is_terminal();
+        print!("{}", keystats::heatmap(&key_stats, color));
         print!(
-            "{}",
-            keystats::heatmap(&key_stats, io::stdout().is_terminal())
+            "\n{}",
+            history::day_heatmap(&history, history::today(), color)
         );
         return Ok(());
     }

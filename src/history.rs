@@ -251,6 +251,80 @@ fn json_string(s: &str) -> String {
     out
 }
 
+/// Weeks the day heatmap shows, up to this week.
+const HEATMAP_WEEKS: i64 = 26;
+/// Shades from slow to fast: a faster day is darker.
+const SHADES: [char; 4] = ['░', '▒', '▓', '█'];
+/// Green background colors (ANSI 256) from light to dark, for the shades.
+const SHADE_COLORS: [u8; 4] = [157, 114, 34, 22];
+
+/// Today as days since 1970-01-01 UTC.
+pub fn today() -> i64 {
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    (secs / 86_400) as i64
+}
+
+/// A calendar of the last weeks up to `today` (days since 1970-01-01 UTC),
+/// one row for each weekday. Each day with tests is shaded by its average
+/// WPM, darker for faster. A day with no tests is empty.
+pub fn day_heatmap(history: &History, today: i64, color: bool) -> String {
+    let mut sums: std::collections::HashMap<i64, (f64, usize)> = Default::default();
+    for r in history.records() {
+        let day = (r.time / 86_400) as i64;
+        let e = sums.entry(day).or_default();
+        e.0 += r.wpm;
+        e.1 += 1;
+    }
+    // 1970-01-01 was a Thursday; 0 is Monday.
+    let weekday = |day: i64| (day + 3).rem_euclid(7);
+    let first = today - weekday(today) - (HEATMAP_WEEKS - 1) * 7;
+    let avg = |day: i64| sums.get(&day).map(|(sum, n)| sum / *n as f64);
+    let shown: Vec<f64> = (first..=today).filter_map(avg).collect();
+    let mut out = String::from("speed by day (UTC), last 26 weeks\n\n");
+    if shown.is_empty() {
+        out += "No tests in these weeks.\n";
+        return out;
+    }
+    let low = shown.iter().copied().fold(f64::INFINITY, f64::min);
+    let high = shown.iter().copied().fold(0.0, f64::max);
+    let level = |wpm: f64| {
+        if high <= low {
+            return SHADES.len() - 1;
+        }
+        (((wpm - low) / (high - low)) * SHADES.len() as f64).min(SHADES.len() as f64 - 1.0) as usize
+    };
+    for (row, name) in ["Mon", "", "Wed", "", "Fri", "", "Sun"].iter().enumerate() {
+        out += &format!("  {name:<4}");
+        for week in 0..HEATMAP_WEEKS {
+            let day = first + week * 7 + row as i64;
+            let cell = match (day <= today).then(|| avg(day)).flatten() {
+                None => "  ".to_string(),
+                Some(wpm) => {
+                    let l = level(wpm);
+                    let shade = SHADES[l].to_string().repeat(2);
+                    if color {
+                        format!(
+                            "\x1b[38;5;{0}m\x1b[48;5;{0}m{shade}\x1b[0m",
+                            SHADE_COLORS[l]
+                        )
+                    } else {
+                        shade
+                    }
+                }
+            };
+            out += &cell;
+        }
+        out += "\n";
+    }
+    out += &format!(
+        "\n  slower {} faster   ({low:.0} to {high:.0} wpm; empty: no tests)\n",
+        SHADES.iter().collect::<String>()
+    );
+    out
+}
+
 /// Days the stats graph shows, the newest days with tests.
 const STATS_DAYS: usize = 30;
 /// Width of the longest bar in the stats graph.
@@ -374,6 +448,33 @@ mod tests {
     fn time_is_formatted_as_utc() {
         assert_eq!(format_time(0), "1970-01-01 00:00");
         assert_eq!(format_time(1_709_164_800 + 3_723), "2024-02-29 01:02");
+    }
+
+    #[test]
+    fn day_heatmap_shades_faster_days_darker() {
+        let mut h = History::in_memory();
+        // Day 20000 (2024-10-04) is a Friday.
+        let today = 20_000;
+        assert!(day_heatmap(&h, today, false).contains("No tests"));
+        for (day, wpm) in [(20_000, 80.0), (19_999, 40.0), (19_998, 60.0)] {
+            let mut r = record("time 30", wpm);
+            r.time = day * 86_400 + 3600;
+            h.add(r).unwrap();
+        }
+        let out = day_heatmap(&h, today, false);
+        let row = |name: &str| {
+            out.lines()
+                .find(|l| l.starts_with(&format!("  {name}")))
+                .unwrap()
+                .to_string()
+        };
+        // The last column is this week: Wed 60 wpm, Thu 40, Fri 80.
+        assert!(row("Wed").ends_with("▓▓"), "{out}");
+        assert!(row("Fri").ends_with("██"), "{out}");
+        let thu = out.lines().nth(5).unwrap();
+        assert!(thu.ends_with("░░"), "{out}");
+        assert!(row("Mon").trim() == "Mon", "no tests on Monday:\n{out}");
+        assert!(out.contains("40 to 80 wpm"), "{out}");
     }
 
     #[test]
