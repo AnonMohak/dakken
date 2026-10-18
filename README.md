@@ -221,7 +221,11 @@ The code has three parts:
 - `src/app.rs`: screens and key handling.
 - `src/ui/`: drawing with [ratatui](https://ratatui.rs).
 
+## Word lists and quotes
+
+The word lists (English, code, Spanish and German) were written for this
+project. The quotes are from public-domain books, poems and speeches.
+
 ## License
 
-MIT. The word list is a list of common English words made for this project.
-The quotes are from public-domain texts.
+MIT. See [LICENSE](LICENSE).
