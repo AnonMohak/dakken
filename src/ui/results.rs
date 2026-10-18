@@ -1,11 +1,18 @@
 use ratatui::{
     Frame,
+    layout::Rect,
     style::{Modifier, Style},
+    symbols::Marker,
     text::{Line, Span},
-    widgets::Paragraph,
+    widgets::{Axis, Chart, Dataset, GraphType, Paragraph},
 };
 
 use super::{column, theme};
+
+/// Most rows for the graph and its legend.
+const GRAPH_HEIGHT: u16 = 12;
+/// Fewer free rows than this hide the graph.
+const MIN_GRAPH_HEIGHT: u16 = 6;
 use crate::app::App;
 use crate::engine::stats::TestResult;
 
@@ -48,8 +55,92 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
         best_line(app, r),
         Line::from(label("tab restart · esc menu · ctrl+c quit")),
     ];
-    let area = column(frame.area(), lines.len() as u16);
-    frame.render_widget(Paragraph::new(lines).centered(), area);
+    let text_height = lines.len() as u16;
+    let free = frame.area().height.saturating_sub(text_height + 2);
+    let graph_height = if r.wpm_over_time.len() >= 2 && free >= MIN_GRAPH_HEIGHT {
+        free.min(GRAPH_HEIGHT)
+    } else {
+        0
+    };
+    let gap = u16::from(graph_height > 0);
+    let area = column(frame.area(), graph_height + gap + text_height);
+    if graph_height > 0 {
+        let graph_area = Rect {
+            height: graph_height,
+            ..area
+        };
+        draw_graph(frame, graph_area, r);
+    }
+    let text_area = Rect {
+        y: area.y + graph_height + gap,
+        height: text_height,
+        ..area
+    };
+    frame.render_widget(Paragraph::new(lines).centered(), text_area);
+}
+
+/// WPM and raw WPM for each second, with a one-row legend above the chart.
+fn draw_graph(frame: &mut Frame, area: Rect, r: &TestResult) {
+    let points = |values: &[f64]| -> Vec<(f64, f64)> {
+        values
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| ((i + 1) as f64, v))
+            .collect()
+    };
+    let wpm = points(&r.wpm_over_time);
+    let raw = points(&r.raw_per_second);
+    let seconds = r.wpm_over_time.len() as f64;
+    let top = r
+        .raw_per_second
+        .iter()
+        .chain(&r.wpm_over_time)
+        .copied()
+        .fold(0.0, f64::max);
+    // Round the top of the y axis up to a multiple of 20.
+    let top = ((top / 20.0).ceil() * 20.0).max(20.0);
+
+    let legend = Line::from(vec![
+        Span::styled("── wpm", Style::new().fg(theme::MAIN)),
+        Span::styled("   ── raw", Style::new().fg(theme::SUB)),
+    ]);
+    frame.render_widget(
+        Paragraph::new(legend).centered(),
+        Rect { height: 1, ..area },
+    );
+
+    let line = |name: &'static str, data, color| {
+        Dataset::default()
+            .name(name)
+            .marker(Marker::Braille)
+            .graph_type(GraphType::Line)
+            .style(Style::new().fg(color))
+            .data(data)
+    };
+    let axis_style = Style::new().fg(theme::SUB);
+    let chart = Chart::new(vec![
+        line("raw", &raw, theme::SUB),
+        line("wpm", &wpm, theme::MAIN),
+    ])
+    .legend_position(None)
+    .x_axis(
+        Axis::default()
+            .bounds([1.0, seconds])
+            .labels(["1".to_string(), format!("{seconds:.0}s")])
+            .style(axis_style),
+    )
+    .y_axis(
+        Axis::default()
+            .bounds([0.0, top])
+            .labels(["0".to_string(), format!("{top:.0}")])
+            .style(axis_style),
+    );
+    let chart_area = Rect {
+        y: area.y + 1,
+        height: area.height - 1,
+        ..area
+    };
+    frame.render_widget(chart, chart_area);
 }
 
 /// "new personal best", or the best WPM before this test.

@@ -29,6 +29,8 @@ pub struct TestResult {
     pub duration: Duration,
     /// Raw WPM for each second of the test.
     pub raw_per_second: Vec<f64>,
+    /// WPM from the start to the end of each second, from correct presses.
+    pub wpm_over_time: Vec<f64>,
 }
 
 /// Words per minute, with one word = 5 characters.
@@ -69,6 +71,23 @@ pub fn raw_per_second(presses: &[Press], duration: Duration) -> Vec<f64> {
         .map(|(i, &n)| {
             let len = if i == full { rest } else { 1.0 };
             n as f64 / len * 60.0 / 5.0
+        })
+        .collect()
+}
+
+/// WPM from the start of the test to the end of each 1-second bucket, from
+/// correct presses. It has the same buckets as `raw_per_second`.
+pub fn wpm_over_time(presses: &[Press], duration: Duration) -> Vec<f64> {
+    let total = duration.as_secs_f64();
+    let buckets = raw_per_second(presses, duration).len();
+    (0..buckets)
+        .map(|i| {
+            let end = ((i + 1) as f64).min(total);
+            let correct = presses
+                .iter()
+                .filter(|p| p.correct && p.at.as_secs_f64() < end)
+                .count();
+            wpm(correct, Duration::from_secs_f64(end))
         })
         .collect()
 }
@@ -144,6 +163,19 @@ mod tests {
         assert_eq!(
             raw_per_second(&p, Duration::from_secs(2)),
             vec![60.0, 120.0]
+        );
+    }
+
+    #[test]
+    fn wpm_over_time_counts_correct_presses_from_the_start() {
+        // Second 0: 5 correct. Second 1: 5 correct and 5 wrong.
+        let mut p: Vec<Press> = (0..5).map(|i| press(i * 100, true)).collect();
+        p.extend((0..10).map(|i| press(1000 + i * 50, i % 2 == 0)));
+        assert_eq!(wpm_over_time(&p, Duration::from_secs(2)), vec![60.0, 60.0]);
+        // The last part-second ends at the end of the test.
+        assert_eq!(
+            wpm_over_time(&p[..5], Duration::from_millis(1500)),
+            vec![60.0, 40.0]
         );
     }
 

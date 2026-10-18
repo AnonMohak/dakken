@@ -10,7 +10,8 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Monkeytype rules: wrong letters in red, extra letters in dark red,
   backspace into a previous word only if it has an error.
 - Colors from your terminal's palette, so the test follows your shell theme.
-- Results: WPM, raw WPM, accuracy, consistency, and character counts.
+- Results: WPM, raw WPM, accuracy, consistency, and character counts, with a
+  graph of WPM and raw WPM over the test.
 - Personal bests and history for each mode and option set.
 - One `.exe` with no runtime. Made and tested on Windows 11 with WezTerm.
 

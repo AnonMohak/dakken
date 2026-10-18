@@ -135,6 +135,28 @@ mod tests {
     }
 
     #[test]
+    fn results_show_a_graph_when_there_is_room() {
+        let mut a = app(&["hello", "world"]);
+        let start = Instant::now();
+        for (i, c) in "hello world".chars().enumerate() {
+            let key = if c == ' ' {
+                crate::engine::Key::Space
+            } else {
+                crate::engine::Key::Char(c)
+            };
+            a.session.handle(
+                key,
+                start + std::time::Duration::from_millis(300 * i as u64),
+            );
+        }
+        a.tick(start + std::time::Duration::from_secs(4));
+        assert!(render(&a, 80, 30).contains("── raw"));
+        // A short terminal keeps the stats and drops the graph.
+        let out = render(&a, 80, 12);
+        assert!(!out.contains("── raw") && out.contains("wpm"), "{out}");
+    }
+
+    #[test]
     fn small_terminal_shows_a_message() {
         let out = render(&app(&["hello"]), 20, 5);
         assert!(out.contains("too small"), "{out}");

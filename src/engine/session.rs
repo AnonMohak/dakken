@@ -250,6 +250,7 @@ impl Session {
             raw_wpm: stats::wpm(self.presses.len(), duration),
             accuracy: stats::accuracy(&self.presses),
             consistency: stats::consistency(&raw_per_second),
+            wpm_over_time: stats::wpm_over_time(&self.presses, duration),
             chars: self.char_counts(),
             duration,
             raw_per_second,
