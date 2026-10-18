@@ -12,6 +12,7 @@ use rand::seq::IndexedRandom;
 
 use crate::config::Config;
 use crate::history::{History, Record};
+use crate::mistakes::{self, Mistakes};
 use crate::ui::{self, theme::Theme};
 
 /// The modes the menu offers, in menu order.
@@ -76,6 +77,7 @@ pub struct App {
     pub source: Option<&'static str>,
     pub screen: Screen,
     pub history: History,
+    pub mistakes: Mistakes,
     /// Best WPM for this label before the last finished test.
     pub previous_best: Option<f64>,
     /// The last finished test could not be added to the history file.
@@ -84,14 +86,21 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(config: Config, config_path: Option<PathBuf>, width: u16, history: History) -> Self {
-        let (session, source) = new_test(config.mode, config.options, width);
+    pub fn new(
+        config: Config,
+        config_path: Option<PathBuf>,
+        width: u16,
+        history: History,
+        mistakes: Mistakes,
+    ) -> Self {
+        let (session, source) = new_test(config.mode, config.options, width, mistakes.words());
         Self {
             options: config.options,
             theme: config.theme,
             config_path,
             width,
             history,
+            mistakes,
             source,
             ..Self::with_session(config.mode, session)
         }
@@ -108,6 +117,7 @@ impl App {
             source: None,
             screen: Screen::Typing,
             history: History::in_memory(),
+            mistakes: Mistakes::in_memory(),
             previous_best: None,
             save_failed: false,
             quit: false,
@@ -120,7 +130,25 @@ impl App {
     }
 
     fn new_test(&mut self) {
-        (self.session, self.source) = new_test(self.mode, self.options, self.width);
+        (self.session, self.source) =
+            new_test(self.mode, self.options, self.width, self.mistakes.words());
+    }
+
+    /// Remember the words typed wrong. In the mistakes list, words typed
+    /// right are removed.
+    fn update_mistakes(&mut self) -> std::io::Result<()> {
+        let quote = self.mode == Mode::Quote;
+        let keep_symbols = !quote && self.options.list == WordList::Code;
+        let practising = !quote && self.options.list == WordList::Mistakes;
+        let (mut wrong, mut fixed) = (Vec::new(), Vec::new());
+        for (word, correct) in self.session.checked_words() {
+            match (mistakes::practice_word(&word, keep_symbols), correct) {
+                (Some(w), false) => wrong.push(w),
+                (Some(w), true) if practising => fixed.push(w),
+                _ => {}
+            }
+        }
+        self.mistakes.update(&wrong, &fixed)
     }
 
     /// Save the mode, options and theme. Settings are not important enough to
@@ -173,6 +201,7 @@ impl App {
             let label = self.label();
             self.previous_best = self.history.best(&label);
             self.save_failed = self.history.add(Record::new(label, &result)).is_err();
+            self.save_failed |= self.update_mistakes().is_err();
             self.screen = Screen::Results(result);
         }
     }
@@ -254,7 +283,12 @@ impl App {
 }
 
 /// A new test, and the source of its quote in quote mode.
-fn new_test(mode: Mode, options: Options, width: u16) -> (Session, Option<&'static str>) {
+fn new_test(
+    mode: Mode,
+    options: Options,
+    width: u16,
+    mistakes: &[String],
+) -> (Session, Option<&'static str>) {
     if mode == Mode::Quote {
         let quote = *words::quotes()
             .choose(&mut rand::rng())
@@ -262,11 +296,16 @@ fn new_test(mode: Mode, options: Options, width: u16) -> (Session, Option<&'stat
         let words: Vec<&str> = quote.text.split_whitespace().collect();
         return (Session::from_words(mode, &words), Some(quote.source));
     }
-    (new_session(mode, options, width), None)
+    (new_session(mode, options, width, mistakes), None)
 }
 
-fn new_session(mode: Mode, options: Options, width: u16) -> Session {
-    let mut words = WordGen::new(options.list.words(), rand::rng())
+fn new_session(mode: Mode, options: Options, width: u16, mistakes: &[String]) -> Session {
+    let list: Vec<String> = if options.list == WordList::Mistakes && !mistakes.is_empty() {
+        mistakes.to_vec()
+    } else {
+        options.list.words().into_iter().map(String::from).collect()
+    };
+    let mut words = WordGen::new(list, rand::rng())
         .with_punctuation(options.punctuation)
         .with_numbers(options.numbers);
     if mode == Mode::Untimed {
@@ -399,7 +438,13 @@ mod tests {
     #[test]
     fn untimed_test_fits_on_the_screen_and_follows_resize() {
         let config = Config::default();
-        let mut a = App::new(config, None, 40, History::in_memory());
+        let mut a = App::new(
+            config,
+            None,
+            40,
+            History::in_memory(),
+            Mistakes::in_memory(),
+        );
         let narrow = a.session.words().len();
         a.on_resize(120);
         assert!(a.session.words().len() > narrow);
@@ -415,7 +460,13 @@ mod tests {
             mode: Mode::Quote,
             ..Config::default()
         };
-        let mut a = App::new(config, None, 80, History::in_memory());
+        let mut a = App::new(
+            config,
+            None,
+            80,
+            History::in_memory(),
+            Mistakes::in_memory(),
+        );
         let source = a.source.expect("a quote has a source");
         let text: String = a
             .session
@@ -501,6 +552,27 @@ mod tests {
             let w: String = w.iter().collect();
             list.contains(&w.as_str())
         }));
+    }
+
+    #[test]
+    fn wrong_words_are_practised_until_typed_right() {
+        let mut a = app(&["hello", "world"]);
+        type_text(&mut a, "hellp");
+        a.on_key(
+            press(KeyCode::Char(' '), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        type_text(&mut a, "world");
+        assert_eq!(a.mistakes.words(), ["hello"]);
+
+        // The mistakes list gives the saved words, and a right word leaves it.
+        a.options.list = WordList::Mistakes;
+        a.restart();
+        let word: String = a.session.words()[0].iter().collect();
+        assert_eq!(word, "hello");
+        a.session = Session::from_words(a.mode, &["hello"]);
+        type_text(&mut a, "hello");
+        assert!(a.mistakes.words().is_empty());
     }
 
     #[test]

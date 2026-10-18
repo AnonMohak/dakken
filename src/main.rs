@@ -2,6 +2,7 @@ mod app;
 mod config;
 mod engine;
 mod history;
+mod mistakes;
 mod ui;
 
 use std::io::{self, Write};
@@ -19,6 +20,7 @@ use config::Config;
 use engine::Mode;
 use engine::words::{WORD_LISTS, WordList};
 use history::History;
+use mistakes::Mistakes;
 use ui::theme::Theme;
 
 /// A monkeytype-style typing test for the terminal.
@@ -45,7 +47,7 @@ struct Cli {
     #[arg(short, long)]
     numbers: bool,
 
-    /// Word list: english (default), english-1k or code.
+    /// Word list: english (default), english-1k, code or mistakes.
     #[arg(short = 'l', long, value_name = "NAME")]
     words_list: Option<String>,
 
@@ -105,7 +107,8 @@ fn main() -> io::Result<()> {
         config.theme = theme;
     }
     let (width, _) = terminal::size()?;
-    run(App::new(config, config_path, width, history))
+    let mistakes = mistakes::default_path().map_or_else(Mistakes::in_memory, Mistakes::load);
+    run(App::new(config, config_path, width, history, mistakes))
 }
 
 fn run(mut app: App) -> io::Result<()> {

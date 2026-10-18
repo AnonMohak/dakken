@@ -8,8 +8,10 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
   quotes and parentheses.
 - Numbers mode: random numbers in place of some words.
-- Word lists: `english` (200 common words), `english-1k` (1000 words) and
-  `code` (keywords, operators and short pieces of code).
+- Word lists: `english` (200 common words), `english-1k` (1000 words),
+  `code` (keywords, operators and short pieces of code) and `mistakes`.
+- Practise your mistakes: the `mistakes` list uses the words you typed wrong
+  in past tests. A word leaves the list when you type it right there.
 - Monkeytype rules: wrong and missed letters in red, extra letters in dark red,
   backspace into a previous word only if it has an error.
 - Mistakes do not stop you: the test ends when the last word has all its
@@ -97,7 +99,7 @@ mode = "time 30"     # untimed, quote, time N or words N
 theme = "terminal"   # terminal, serika-dark, nord or dracula
 punctuation = false
 numbers = false
-words = "english"    # english, english-1k or code
+words = "english"    # english, english-1k, code or mistakes
 ```
 
 ## History
@@ -106,6 +108,9 @@ Each finished test adds one line to `history.tsv`: in `%APPDATA%\dakken` on
 Windows, and in `$XDG_DATA_HOME/dakken` or `~/.local/share/dakken` on other
 systems. A personal best counts only tests with the same mode and options,
 for example `time 30 · punctuation`. Delete the file to clear the history.
+
+`mistakes.txt`, in the same folder, keeps the last 100 words you typed wrong.
+If it is empty, the `mistakes` list uses the English words.
 
 ## How the stats work
 

@@ -1,4 +1,4 @@
-use rand::{Rng, RngExt, seq::IndexedRandom};
+use rand::{Rng, RngExt};
 
 const ENGLISH: &str = include_str!("../../assets/words/english.txt");
 const ENGLISH_1K: &str = include_str!("../../assets/words/english_1k.txt");
@@ -37,10 +37,18 @@ pub enum WordList {
     English1k,
     /// Keywords, operators and short pieces of code.
     Code,
+    /// Words typed wrong in past tests. The app gives these words; `words`
+    /// gives English for when there are no mistakes yet.
+    Mistakes,
 }
 
 /// The lists in menu order.
-pub const WORD_LISTS: [WordList; 3] = [WordList::English, WordList::English1k, WordList::Code];
+pub const WORD_LISTS: [WordList; 4] = [
+    WordList::English,
+    WordList::English1k,
+    WordList::Code,
+    WordList::Mistakes,
+];
 
 impl WordList {
     pub fn name(self) -> &'static str {
@@ -48,6 +56,7 @@ impl WordList {
             Self::English => "english",
             Self::English1k => "english-1k",
             Self::Code => "code",
+            Self::Mistakes => "mistakes",
         }
     }
 
@@ -64,7 +73,7 @@ impl WordList {
     /// One word on each line of the list file.
     pub fn words(self) -> Vec<&'static str> {
         let text = match self {
-            Self::English => ENGLISH,
+            Self::English | Self::Mistakes => ENGLISH,
             Self::English1k => ENGLISH_1K,
             Self::Code => CODE,
         };
@@ -77,9 +86,9 @@ impl WordList {
 
 /// Picks random words from a list and never gives the same word two times in a row.
 pub struct WordGen<R> {
-    list: Vec<&'static str>,
+    list: Vec<String>,
     rng: R,
-    last: Option<&'static str>,
+    last: Option<usize>,
     punctuation: bool,
     numbers: bool,
     /// The next word starts a sentence and gets a capital letter.
@@ -87,7 +96,8 @@ pub struct WordGen<R> {
 }
 
 impl<R: Rng> WordGen<R> {
-    pub fn new(list: Vec<&'static str>, rng: R) -> Self {
+    pub fn new<S: Into<String>>(list: impl IntoIterator<Item = S>, rng: R) -> Self {
+        let list: Vec<String> = list.into_iter().map(Into::into).collect();
         assert!(!list.is_empty(), "word list is empty");
         Self {
             list,
@@ -152,12 +162,12 @@ impl<R: Rng> WordGen<R> {
         self.rng.random_range(low..10u32.pow(len)).to_string()
     }
 
-    fn pick(&mut self) -> &'static str {
+    fn pick(&mut self) -> &str {
         loop {
-            let word = *self.list.choose(&mut self.rng).expect("list is not empty");
-            if self.list.len() == 1 || Some(word) != self.last {
-                self.last = Some(word);
-                return word;
+            let i = self.rng.random_range(0..self.list.len());
+            if self.list.len() == 1 || Some(i) != self.last {
+                self.last = Some(i);
+                return &self.list[i];
             }
         }
     }
@@ -235,7 +245,7 @@ mod tests {
         for list in WORD_LISTS {
             assert_eq!(WordList::parse(list.name()), Some(list));
         }
-        assert_eq!(WordList::Code.next(), WordList::English);
+        assert_eq!(WordList::Mistakes.next(), WordList::English);
     }
 
     #[test]

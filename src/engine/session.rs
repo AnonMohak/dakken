@@ -242,6 +242,27 @@ impl Session {
         c
     }
 
+    /// The words the test checked, with `true` for a correct word: the closed
+    /// words, and the last word when typing it ended the test.
+    pub fn checked_words(&self) -> Vec<(String, bool)> {
+        let mut end = self.current;
+        if self.is_finished()
+            && self.source.is_none()
+            && end < self.words.len()
+            && !self.typed[end].is_empty()
+        {
+            end += 1;
+        }
+        (0..end)
+            .map(|i| {
+                (
+                    self.words[i].iter().collect(),
+                    self.typed[i] == self.words[i],
+                )
+            })
+            .collect()
+    }
+
     /// The final numbers. Call after the test is finished.
     pub fn result(&self) -> TestResult {
         let duration = self.elapsed(self.end.unwrap_or_else(Instant::now));
@@ -395,6 +416,19 @@ mod tests {
         d.text(" ");
         assert!(d.s.is_finished());
         assert_eq!(d.s.result().chars.missed, 1);
+    }
+
+    #[test]
+    fn checked_words_include_the_last_word_that_ended_the_test() {
+        let mut d = Driver::words(&["hi", "yo", "ok"]);
+        d.text("hx yo o");
+        assert_eq!(
+            d.s.checked_words(),
+            vec![("hi".into(), false), ("yo".into(), true)]
+        );
+        d.text("x");
+        assert_eq!(d.s.checked_words().len(), 3);
+        assert_eq!(d.s.checked_words()[2], ("ok".into(), false));
     }
 
     #[test]
