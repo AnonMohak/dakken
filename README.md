@@ -11,6 +11,8 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Monkeytype rules: wrong letters in red, extra letters in dark red,
   backspace into a previous word only if it has an error.
 - Colors from your terminal's palette, so the test follows your shell theme.
+  Other themes: `serika-dark`, `nord` and `dracula`.
+- Settings are saved: the menu remembers the mode, options and theme.
 - Results: WPM, raw WPM, accuracy, consistency, and character counts, with a
   graph of WPM and raw WPM over the test.
 - Personal bests and history for each mode and option set.
@@ -35,6 +37,7 @@ typer -w 25      # 25-word test
 typer -q         # quote test
 typer -p         # untimed test with punctuation
 typer -p -n      # untimed test with punctuation and numbers
+typer --theme nord  # use a color theme
 typer --history  # print personal bests and the last 10 tests
 typer --keys     # print raw key events (to check your terminal)
 ```
@@ -47,8 +50,22 @@ The test starts when you type the first letter.
 | `Esc` | Open the mode menu (`↑`/`↓` or `j`/`k`, then `Enter`) |
 | `p` (in the menu) | Turn punctuation on or off |
 | `n` (in the menu) | Turn numbers on or off |
+| `t` (in the menu) | Go to the next color theme |
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
 | `Ctrl+C` | Quit |
+
+## Settings
+
+The menu saves the mode, punctuation, numbers and theme to `config.toml`, in
+the same folder as the history. The next start uses them. Command-line flags
+change them for one run only, until you change a setting in the menu.
+
+```toml
+mode = "time 30"     # untimed, quote, time N or words N
+theme = "terminal"   # terminal, serika-dark, nord or dracula
+punctuation = false
+numbers = false
+```
 
 ## History
 

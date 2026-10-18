@@ -7,7 +7,7 @@ use ratatui::{
     widgets::{Axis, Chart, Dataset, GraphType, Paragraph},
 };
 
-use super::{column, theme};
+use super::{column, theme::Theme};
 
 /// Most rows for the graph and its legend.
 const GRAPH_HEIGHT: u16 = 12;
@@ -17,10 +17,10 @@ use crate::app::App;
 use crate::engine::stats::TestResult;
 
 pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
-    let label = |s: &str| Span::styled(s.to_string(), Style::new().fg(theme::SUB));
-    let big =
-        |s: String| Span::styled(s, Style::new().fg(theme::MAIN).add_modifier(Modifier::BOLD));
-    let value = |s: String| Span::styled(s, Style::new().fg(theme::MAIN));
+    let t = app.theme;
+    let label = |s: &str| Span::styled(s.to_string(), Style::new().fg(t.sub));
+    let big = |s: String| Span::styled(s, Style::new().fg(t.main).add_modifier(Modifier::BOLD));
+    let value = |s: String| Span::styled(s, Style::new().fg(t.main));
     let gap = || Span::raw("     ");
     let c = r.chars;
 
@@ -71,7 +71,7 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
             height: graph_height,
             ..area
         };
-        draw_graph(frame, graph_area, r);
+        draw_graph(frame, graph_area, r, t);
     }
     let text_area = Rect {
         y: area.y + graph_height + gap,
@@ -82,7 +82,7 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
 }
 
 /// WPM and raw WPM for each second, with a one-row legend above the chart.
-fn draw_graph(frame: &mut Frame, area: Rect, r: &TestResult) {
+fn draw_graph(frame: &mut Frame, area: Rect, r: &TestResult, t: Theme) {
     let points = |values: &[f64]| -> Vec<(f64, f64)> {
         values
             .iter()
@@ -103,8 +103,8 @@ fn draw_graph(frame: &mut Frame, area: Rect, r: &TestResult) {
     let top = ((top / 20.0).ceil() * 20.0).max(20.0);
 
     let legend = Line::from(vec![
-        Span::styled("── wpm", Style::new().fg(theme::MAIN)),
-        Span::styled("   ── raw", Style::new().fg(theme::SUB)),
+        Span::styled("── wpm", Style::new().fg(t.main)),
+        Span::styled("   ── raw", Style::new().fg(t.sub)),
     ]);
     frame.render_widget(
         Paragraph::new(legend).centered(),
@@ -119,24 +119,21 @@ fn draw_graph(frame: &mut Frame, area: Rect, r: &TestResult) {
             .style(Style::new().fg(color))
             .data(data)
     };
-    let axis_style = Style::new().fg(theme::SUB);
-    let chart = Chart::new(vec![
-        line("raw", &raw, theme::SUB),
-        line("wpm", &wpm, theme::MAIN),
-    ])
-    .legend_position(None)
-    .x_axis(
-        Axis::default()
-            .bounds([1.0, seconds])
-            .labels(["1".to_string(), format!("{seconds:.0}s")])
-            .style(axis_style),
-    )
-    .y_axis(
-        Axis::default()
-            .bounds([0.0, top])
-            .labels(["0".to_string(), format!("{top:.0}")])
-            .style(axis_style),
-    );
+    let axis_style = Style::new().fg(t.sub);
+    let chart = Chart::new(vec![line("raw", &raw, t.sub), line("wpm", &wpm, t.main)])
+        .legend_position(None)
+        .x_axis(
+            Axis::default()
+                .bounds([1.0, seconds])
+                .labels(["1".to_string(), format!("{seconds:.0}s")])
+                .style(axis_style),
+        )
+        .y_axis(
+            Axis::default()
+                .bounds([0.0, top])
+                .labels(["0".to_string(), format!("{top:.0}")])
+                .style(axis_style),
+        );
     let chart_area = Rect {
         y: area.y + 1,
         height: area.height - 1,
@@ -147,20 +144,21 @@ fn draw_graph(frame: &mut Frame, area: Rect, r: &TestResult) {
 
 /// "new personal best", or the best WPM before this test.
 fn best_line(app: &App, r: &TestResult) -> Line<'static> {
+    let t = app.theme;
     let mut spans = match app.previous_best {
         Some(best) if r.wpm <= best => vec![Span::styled(
             format!("best {best:.0} wpm"),
-            Style::new().fg(theme::SUB),
+            Style::new().fg(t.sub),
         )],
         _ => vec![Span::styled(
             "new personal best",
-            Style::new().fg(theme::MAIN).add_modifier(Modifier::BOLD),
+            Style::new().fg(t.main).add_modifier(Modifier::BOLD),
         )],
     };
     if app.save_failed {
         spans.push(Span::styled(
             " · history not saved",
-            Style::new().fg(theme::ERROR),
+            Style::new().fg(t.error),
         ));
     }
     Line::from(spans)

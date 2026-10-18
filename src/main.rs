@@ -1,4 +1,5 @@
 mod app;
+mod config;
 mod engine;
 mod history;
 mod ui;
@@ -13,9 +14,11 @@ use ratatui::crossterm::{
     execute, terminal,
 };
 
-use app::{App, Options};
+use app::App;
+use config::Config;
 use engine::Mode;
 use history::History;
+use ui::theme::Theme;
 
 /// A monkeytype-style typing test for the terminal.
 #[derive(Parser)]
@@ -41,6 +44,10 @@ struct Cli {
     #[arg(short, long)]
     numbers: bool,
 
+    /// Color theme: terminal (default), serika-dark, nord or dracula.
+    #[arg(long, value_name = "NAME")]
+    theme: Option<String>,
+
     /// Print personal bests and the last tests, then quit.
     #[arg(long)]
     history: bool,
@@ -60,18 +67,29 @@ fn main() -> io::Result<()> {
         print!("{}", history::report(&history));
         return Ok(());
     }
-    let mode = match (cli.time, cli.words) {
-        _ if cli.quote => Mode::Quote,
-        (_, Some(n)) => Mode::Words(n.max(1)),
-        (Some(t), None) => Mode::Time(Duration::from_secs(t.max(1))),
-        (None, None) => Mode::Untimed,
-    };
+    // The saved settings, with the command-line flags on top.
+    let config_path = config::default_path();
+    let mut config = config_path
+        .as_deref()
+        .map_or_else(Config::default, Config::load);
+    match (cli.time, cli.words) {
+        _ if cli.quote => config.mode = Mode::Quote,
+        (_, Some(n)) => config.mode = Mode::Words(n.max(1)),
+        (Some(t), None) => config.mode = Mode::Time(Duration::from_secs(t.max(1))),
+        (None, None) => {}
+    }
+    config.options.punctuation |= cli.punctuation;
+    config.options.numbers |= cli.numbers;
+    if let Some(name) = &cli.theme {
+        let Some(theme) = Theme::find(name) else {
+            let names = ui::theme::names().join(", ");
+            eprintln!("error: unknown theme \"{name}\". Themes: {names}");
+            std::process::exit(2);
+        };
+        config.theme = theme;
+    }
     let (width, _) = terminal::size()?;
-    let options = Options {
-        punctuation: cli.punctuation,
-        numbers: cli.numbers,
-    };
-    run(App::new(mode, options, width, history))
+    run(App::new(config, config_path, width, history))
 }
 
 fn run(mut app: App) -> io::Result<()> {

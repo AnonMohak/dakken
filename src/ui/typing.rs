@@ -9,7 +9,7 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-use super::{column, theme};
+use super::{column, theme::Theme};
 use crate::app::App;
 use crate::engine::Mode;
 
@@ -20,6 +20,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     // Rows: status, gap, 3 word lines, 2 gap, hints.
     let area = column(frame.area(), 8);
     let s = &app.session;
+    let t = app.theme;
 
     let status = if s.is_started() {
         let counter = match s.mode() {
@@ -32,14 +33,14 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
             }
         };
         Line::from(vec![
-            Span::styled(counter, Style::new().fg(theme::MAIN)),
+            Span::styled(counter, Style::new().fg(t.main)),
             Span::styled(
                 format!("  {:.0} wpm", s.live_wpm(now)),
-                Style::new().fg(theme::SUB),
+                Style::new().fg(t.sub),
             ),
         ])
     } else {
-        Line::styled(app.label(), Style::new().fg(theme::SUB))
+        Line::styled(app.label(), Style::new().fg(t.sub))
     };
     frame.render_widget(Paragraph::new(status), row(area, 0));
 
@@ -68,7 +69,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
                 let caret_x = (x + s.typed()[i].len()).min(width.saturating_sub(1));
                 frame.set_cursor_position(Position::new(area.x + caret_x as u16, y));
             }
-            word_spans(&s.words()[i], &s.typed()[i], i < s.current(), &mut spans);
+            word_spans(t, &s.words()[i], &s.typed()[i], i < s.current(), &mut spans);
             x += widths[i];
         }
         let line_area = Rect {
@@ -81,7 +82,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
 
     let hints = Line::styled(
         "tab restart · esc menu · ctrl+c quit",
-        Style::new().fg(theme::SUB),
+        Style::new().fg(t.sub),
     );
     frame.render_widget(Paragraph::new(hints).centered(), row(area, 7));
 }
@@ -95,21 +96,27 @@ fn row(area: Rect, n: u16) -> Rect {
 }
 
 /// Colors each letter of one word, the way monkeytype does.
-fn word_spans(target: &[char], typed: &[char], done: bool, out: &mut Vec<Span<'static>>) {
+fn word_spans(
+    theme: Theme,
+    target: &[char],
+    typed: &[char],
+    done: bool,
+    out: &mut Vec<Span<'static>>,
+) {
     let has_error = done && typed != target;
     let base = if has_error {
         Style::new()
             .add_modifier(Modifier::UNDERLINED)
-            .underline_color(theme::ERROR)
+            .underline_color(theme.error)
     } else {
         Style::new()
     };
     for j in 0..target.len().max(typed.len()) {
         let (ch, color) = match (target.get(j), typed.get(j)) {
-            (Some(&t), Some(&c)) if t == c => (t, theme::TEXT),
-            (Some(&t), Some(_)) => (t, theme::ERROR),
-            (None, Some(&c)) => (c, theme::ERROR_EXTRA),
-            (Some(&t), None) => (t, theme::SUB),
+            (Some(&t), Some(&c)) if t == c => (t, theme.text),
+            (Some(&t), Some(_)) => (t, theme.error),
+            (None, Some(&c)) => (c, theme.error_extra),
+            (Some(&t), None) => (t, theme.sub),
             (None, None) => unreachable!(),
         };
         out.push(Span::styled(ch.to_string(), base.fg(color)));

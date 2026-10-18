@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Alignment, Rect},
     style::Style,
     text::Line,
-    widgets::Paragraph,
+    widgets::{Block, Paragraph},
 };
 
 use crate::app::{App, Screen};
@@ -22,13 +22,17 @@ const MIN_HEIGHT: u16 = 10;
 
 pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     let area = frame.area();
+    let t = app.theme;
+    if let Some(bg) = t.bg {
+        frame.render_widget(Block::new().style(Style::new().bg(bg)), area);
+    }
 
     if area.width < MIN_WIDTH || area.height < MIN_HEIGHT {
         let msg = Paragraph::new(vec![
             Line::from("terminal too small"),
             Line::from(format!("need {MIN_WIDTH} x {MIN_HEIGHT}")),
         ])
-        .style(Style::new().fg(theme::SUB))
+        .style(Style::new().fg(t.sub))
         .alignment(Alignment::Center);
         frame.render_widget(msg, center(area, area.width, 2));
         return;
@@ -37,7 +41,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     match &app.screen {
         Screen::Typing => typing::draw(frame, app, now),
         Screen::Results(result) => results::draw(frame, app, result),
-        Screen::Menu { selected } => menu::draw(frame, *selected, app.options),
+        Screen::Menu { selected } => menu::draw(frame, app, *selected),
     }
 }
 
@@ -194,6 +198,14 @@ mod tests {
         );
         assert!(
             out.contains("punctuation off") && out.contains("numbers off"),
+            "{out}"
+        );
+        assert!(out.contains("theme terminal"), "{out}");
+        // A short terminal still shows the selected mode and the hints.
+        a.screen = Screen::Menu { selected: 9 };
+        let out = render(&a, 60, 12);
+        assert!(
+            out.contains("> words 100") && out.contains("t theme"),
             "{out}"
         );
     }

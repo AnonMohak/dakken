@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -9,8 +10,9 @@ use crate::engine::{
 };
 use rand::seq::IndexedRandom;
 
+use crate::config::Config;
 use crate::history::{History, Record};
-use crate::ui;
+use crate::ui::{self, theme::Theme};
 
 /// The modes the menu offers, in menu order.
 pub const MODES: [Mode; 10] = [
@@ -35,6 +37,18 @@ pub fn mode_label(mode: Mode) -> String {
     }
 }
 
+/// The opposite of `mode_label`.
+pub fn parse_mode(label: &str) -> Option<Mode> {
+    match label.split_once(' ') {
+        None if label == "untimed" => Some(Mode::Untimed),
+        None if label == "quote" => Some(Mode::Quote),
+        Some(("time", n)) => Some(Mode::Time(Duration::from_secs(n.parse().ok()?))),
+        Some(("words", n)) => Some(Mode::Words(n.parse().ok()?)),
+        _ => None,
+    }
+    .filter(|&m| m != Mode::Time(Duration::ZERO) && m != Mode::Words(0))
+}
+
 /// Changes to the words, which the menu turns on and off.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Options {
@@ -51,6 +65,9 @@ pub enum Screen {
 pub struct App {
     pub mode: Mode,
     pub options: Options,
+    pub theme: Theme,
+    /// The menu saves the settings here. `None` does not save them.
+    pub config_path: Option<PathBuf>,
     /// Terminal width. Untimed tests get the words that fit on the screen.
     pub width: u16,
     pub session: Session,
@@ -66,14 +83,16 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(mode: Mode, options: Options, width: u16, history: History) -> Self {
-        let (session, source) = new_test(mode, options, width);
+    pub fn new(config: Config, config_path: Option<PathBuf>, width: u16, history: History) -> Self {
+        let (session, source) = new_test(config.mode, config.options, width);
         Self {
-            options,
+            options: config.options,
+            theme: config.theme,
+            config_path,
             width,
             history,
             source,
-            ..Self::with_session(mode, session)
+            ..Self::with_session(config.mode, session)
         }
     }
 
@@ -81,6 +100,8 @@ impl App {
         Self {
             mode,
             options: Options::default(),
+            theme: Theme::default(),
+            config_path: None,
             width: 80,
             session,
             source: None,
@@ -99,6 +120,19 @@ impl App {
 
     fn new_test(&mut self) {
         (self.session, self.source) = new_test(self.mode, self.options, self.width);
+    }
+
+    /// Save the mode, options and theme. Settings are not important enough to
+    /// stop the test, so a failed save is ignored.
+    fn save_config(&self) {
+        if let Some(path) = &self.config_path {
+            let config = Config {
+                mode: self.mode,
+                options: self.options,
+                theme: self.theme,
+            };
+            let _ = config.save(path);
+        }
     }
 
     /// Before the test starts, give an untimed test the words for the new width.
@@ -173,16 +207,23 @@ impl App {
                 }
                 KeyCode::Enter => {
                     self.mode = MODES[selected];
+                    self.save_config();
                     self.restart();
                 }
                 // New words are needed, so these start a new test.
                 KeyCode::Char('p') => {
                     self.options.punctuation = !self.options.punctuation;
+                    self.save_config();
                     self.new_test();
                 }
                 KeyCode::Char('n') => {
                     self.options.numbers = !self.options.numbers;
+                    self.save_config();
                     self.new_test();
+                }
+                KeyCode::Char('t') => {
+                    self.theme = self.theme.next();
+                    self.save_config();
                 }
                 KeyCode::Esc => {
                     self.screen = if self.session.is_finished() {
@@ -347,7 +388,8 @@ mod tests {
 
     #[test]
     fn untimed_test_fits_on_the_screen_and_follows_resize() {
-        let mut a = App::new(Mode::Untimed, Options::default(), 40, History::in_memory());
+        let config = Config::default();
+        let mut a = App::new(config, None, 40, History::in_memory());
         let narrow = a.session.words().len();
         a.on_resize(120);
         assert!(a.session.words().len() > narrow);
@@ -359,7 +401,11 @@ mod tests {
 
     #[test]
     fn quote_mode_types_a_whole_quote() {
-        let mut a = App::new(Mode::Quote, Options::default(), 80, History::in_memory());
+        let config = Config {
+            mode: Mode::Quote,
+            ..Config::default()
+        };
+        let mut a = App::new(config, None, 80, History::in_memory());
         let source = a.source.expect("a quote has a source");
         let text: String = a
             .session
@@ -386,6 +432,39 @@ mod tests {
         );
         type_text(&mut a, "two");
         assert!(matches!(a.screen, Screen::Results(_)));
+    }
+
+    #[test]
+    fn mode_labels_parse_back() {
+        for mode in MODES {
+            assert_eq!(parse_mode(&mode_label(mode)), Some(mode));
+        }
+        assert_eq!(parse_mode("time 0"), None);
+        assert_eq!(parse_mode("words"), None);
+    }
+
+    #[test]
+    fn menu_changes_are_saved_to_the_config() {
+        let dir = std::env::temp_dir().join(format!("typer-config-{}", std::process::id()));
+        let path = dir.join("config.toml");
+        let mut a = app(&["hi"]);
+        a.config_path = Some(path.clone());
+        a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
+        a.on_key(
+            press(KeyCode::Char('t'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        a.on_key(
+            press(KeyCode::Char('p'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        a.on_key(press(KeyCode::Down, KeyModifiers::NONE), Instant::now());
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        let saved = Config::load(&path);
+        assert_eq!(saved.theme, Theme::default().next());
+        assert!(saved.options.punctuation);
+        assert_eq!(saved.mode, MODES[1]);
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
