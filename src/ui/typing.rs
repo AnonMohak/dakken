@@ -4,7 +4,7 @@ use std::time::Instant;
 use ratatui::{
     Frame,
     layout::{Position, Rect},
-    style::{Modifier, Style},
+    style::Style,
     text::{Line, Span},
     widgets::Paragraph,
 };
@@ -95,7 +95,7 @@ fn row(area: Rect, n: u16) -> Rect {
     }
 }
 
-/// Colors each letter of one word, the way monkeytype does.
+/// Colors each letter of one word: wrong, extra and missed letters are red.
 fn word_spans(
     theme: Theme,
     target: &[char],
@@ -103,23 +103,17 @@ fn word_spans(
     done: bool,
     out: &mut Vec<Span<'static>>,
 ) {
-    let has_error = done && typed != target;
-    let base = if has_error {
-        Style::new()
-            .add_modifier(Modifier::UNDERLINED)
-            .underline_color(theme.error)
-    } else {
-        Style::new()
-    };
     for j in 0..target.len().max(typed.len()) {
         let (ch, color) = match (target.get(j), typed.get(j)) {
             (Some(&t), Some(&c)) if t == c => (t, theme.text),
             (Some(&t), Some(_)) => (t, theme.error),
             (None, Some(&c)) => (c, theme.error_extra),
+            // Letters left out of a finished word are errors too.
+            (Some(&t), None) if done => (t, theme.error),
             (Some(&t), None) => (t, theme.sub),
             (None, None) => unreachable!(),
         };
-        out.push(Span::styled(ch.to_string(), base.fg(color)));
+        out.push(Span::styled(ch.to_string(), Style::new().fg(color)));
     }
 }
 

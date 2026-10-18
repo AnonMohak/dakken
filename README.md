@@ -8,8 +8,10 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
   quotes and parentheses.
 - Numbers mode: random numbers in place of some words.
-- Monkeytype rules: wrong letters in red, extra letters in dark red,
+- Monkeytype rules: wrong and missed letters in red, extra letters in dark red,
   backspace into a previous word only if it has an error.
+- Mistakes do not stop you: the test ends when the last word has all its
+  letters, also if some are wrong. Accuracy shows the errors.
 - Colors from your terminal's palette, so the test follows your shell theme.
   Other themes: `serika-dark`, `nord` and `dracula`.
 - Settings are saved: the menu remembers the mode, options and theme.

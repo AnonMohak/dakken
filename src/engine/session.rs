@@ -153,7 +153,11 @@ impl Session {
             correct,
         });
 
-        if self.current == self.words.len() - 1 && self.source.is_none() && *typed == *target {
+        // The last word ends the test when it is full length, also with errors.
+        if self.current == self.words.len() - 1
+            && self.source.is_none()
+            && typed.len() >= target.len()
+        {
             self.end = Some(now);
         }
     }
@@ -372,11 +376,11 @@ mod tests {
     }
 
     #[test]
-    fn words_mode_ends_on_space_after_wrong_last_word() {
+    fn words_mode_ends_on_full_length_wrong_last_word() {
         let mut d = Driver::words(&["hi", "yo"]);
-        d.text("hi yx");
+        d.text("hi y");
         assert!(!d.s.is_finished());
-        d.text(" ");
+        d.text("x");
         assert!(d.s.is_finished());
         assert_eq!(
             d.s.result().chars,
@@ -387,6 +391,15 @@ mod tests {
                 missed: 0
             }
         );
+    }
+
+    #[test]
+    fn words_mode_ends_on_space_after_short_last_word() {
+        let mut d = Driver::words(&["hi", "yo"]);
+        d.text("hi y");
+        d.text(" ");
+        assert!(d.s.is_finished());
+        assert_eq!(d.s.result().chars.missed, 1);
     }
 
     #[test]
