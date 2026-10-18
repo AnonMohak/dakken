@@ -13,7 +13,9 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Numbers mode: random numbers in place of some words.
 - Word lists: `english` (200 common words), `english-1k` (1000 words),
   `code` (keywords, operators and short pieces of code), `spanish` and `german`
-  (250 common words each), and `mistakes`.
+  (250 common words each), `mistakes` and `weak-keys`.
+- Practise your weak keys: the `weak-keys` list uses words with the 5 letters
+  that have the most errors (then the slowest) in your key stats.
 - Practise your mistakes: the `mistakes` list uses the words you typed wrong
   in past tests. A word leaves the list when you type it right there.
 - Monkeytype rules: wrong and missed letters in red, extra letters in dark red,
@@ -119,7 +121,7 @@ mode = "time 30"     # untimed, quote, quote short/medium/long, zen, time N or w
 theme = "terminal"   # terminal, serika-dark, nord or dracula
 punctuation = false
 numbers = false
-words = "english"    # english, english-1k, code, spanish, german or mistakes
+words = "english"    # english, english-1k, code, spanish, german, mistakes or weak-keys
 live = false         # live WPM and accuracy during the test
 pace = false         # pace caret at your personal-best speed
 strict = "off"       # off, stop-on-error, no-backspace or master

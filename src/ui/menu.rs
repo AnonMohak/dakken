@@ -7,7 +7,7 @@ use ratatui::{
 
 use super::column;
 use crate::app::{App, MODES, mode_label};
-use crate::engine::Strict;
+use crate::engine::{Strict, words::WordList};
 use crate::ui::theme::Theme;
 
 /// Rows that are not mode names: gaps, settings and the hint.
@@ -37,7 +37,18 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
     lines.push(setting(t, 'p', "punctuation", state, color));
     let (state, color) = on_off(app.options.numbers);
     lines.push(setting(t, 'n', "numbers", state, color));
-    lines.push(setting(t, 'l', "words", app.options.list.name(), t.text));
+    let list = match app.options.list {
+        WordList::WeakKeys => {
+            let letters: Vec<String> = app.weak_letters().iter().map(char::to_string).collect();
+            if letters.is_empty() {
+                "weak-keys (no data yet)".to_string()
+            } else {
+                format!("weak-keys ({})", letters.join(" "))
+            }
+        }
+        list => list.name().to_string(),
+    };
+    lines.push(setting(t, 'l', "words", &list, t.text));
     lines.push(setting(t, 't', "theme", t.name, t.text));
     let (state, color) = on_off(app.live);
     lines.push(setting(t, 's', "live stats", state, color));

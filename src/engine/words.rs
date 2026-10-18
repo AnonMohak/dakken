@@ -46,16 +46,20 @@ pub enum WordList {
     /// Words typed wrong in past tests. The app gives these words; `words`
     /// gives English for when there are no mistakes yet.
     Mistakes,
+    /// Words from `English1k` with the weakest letters. The app picks the
+    /// words; `words` gives the full list.
+    WeakKeys,
 }
 
 /// The lists in menu order.
-pub const WORD_LISTS: [WordList; 6] = [
+pub const WORD_LISTS: [WordList; 7] = [
     WordList::English,
     WordList::English1k,
     WordList::Code,
     WordList::Spanish,
     WordList::German,
     WordList::Mistakes,
+    WordList::WeakKeys,
 ];
 
 impl WordList {
@@ -67,6 +71,7 @@ impl WordList {
             Self::Spanish => "spanish",
             Self::German => "german",
             Self::Mistakes => "mistakes",
+            Self::WeakKeys => "weak-keys",
         }
     }
 
@@ -84,7 +89,7 @@ impl WordList {
     pub fn words(self) -> Vec<&'static str> {
         let text = match self {
             Self::English | Self::Mistakes => ENGLISH,
-            Self::English1k => ENGLISH_1K,
+            Self::English1k | Self::WeakKeys => ENGLISH_1K,
             Self::Code => CODE,
             Self::Spanish => SPANISH,
             Self::German => GERMAN,
@@ -271,7 +276,7 @@ mod tests {
         for list in WORD_LISTS {
             assert_eq!(WordList::parse(list.name()), Some(list));
         }
-        assert_eq!(WordList::Mistakes.next(), WordList::English);
+        assert_eq!(WordList::WeakKeys.next(), WordList::English);
     }
 
     #[test]

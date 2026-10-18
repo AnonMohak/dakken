@@ -197,7 +197,7 @@ impl App {
             Some(custom) if self.mode == Mode::Custom => {
                 (Session::from_words(self.mode, &custom.words), None)
             }
-            _ => new_test(self.mode, self.options, self.width, self.mistakes.words()),
+            _ => new_test(self.mode, self.options, self.width, self.practice_words()),
         };
         self.session.set_strict(self.strict);
     }
@@ -218,6 +218,30 @@ impl App {
             }
         }
         self.mistakes.update(&wrong, &fixed)
+    }
+
+    /// The letters the weak-keys list practises.
+    pub fn weak_letters(&self) -> Vec<char> {
+        self.key_stats.weakest_letters(5)
+    }
+
+    /// The words of the mistakes and weak-keys lists. `None` uses the
+    /// list's own words: English for mistakes, all of english-1k for weak keys.
+    fn practice_words(&self) -> Option<Vec<String>> {
+        let words: Vec<String> = match self.options.list {
+            WordList::Mistakes => self.mistakes.words().to_vec(),
+            WordList::WeakKeys => {
+                let weak = self.weak_letters();
+                WordList::WeakKeys
+                    .words()
+                    .into_iter()
+                    .filter(|w| w.chars().any(|c| weak.contains(&c)))
+                    .map(String::from)
+                    .collect()
+            }
+            _ => Vec::new(),
+        };
+        (!words.is_empty()).then_some(words)
     }
 
     /// Save the mode, options and theme. Settings are not important enough to
@@ -399,7 +423,7 @@ fn new_test(
     mode: Mode,
     options: Options,
     width: u16,
-    mistakes: &[String],
+    practice: Option<Vec<String>>,
 ) -> (Session, Option<&'static str>) {
     if let Mode::Quote(length) = mode {
         let quotes: Vec<_> = words::quotes()
@@ -412,15 +436,12 @@ fn new_test(
         let words: Vec<&str> = quote.text.split_whitespace().collect();
         return (Session::from_words(mode, &words), Some(quote.source));
     }
-    (new_session(mode, options, width, mistakes), None)
+    (new_session(mode, options, width, practice), None)
 }
 
-fn new_session(mode: Mode, options: Options, width: u16, mistakes: &[String]) -> Session {
-    let list: Vec<String> = if options.list == WordList::Mistakes && !mistakes.is_empty() {
-        mistakes.to_vec()
-    } else {
-        options.list.words().into_iter().map(String::from).collect()
-    };
+fn new_session(mode: Mode, options: Options, width: u16, practice: Option<Vec<String>>) -> Session {
+    let list =
+        practice.unwrap_or_else(|| options.list.words().into_iter().map(String::from).collect());
     let mut words = WordGen::new(list, rand::rng())
         .with_punctuation(options.punctuation)
         .with_numbers(options.numbers);
@@ -802,6 +823,27 @@ mod tests {
         type_text(&mut a, "hx");
         assert_eq!(a.key_stats.get('h').presses, 1);
         assert_eq!(a.key_stats.get('i').errors, 1);
+    }
+
+    #[test]
+    fn weak_keys_list_uses_words_with_the_weakest_letters() {
+        use crate::engine::stats::Press;
+        let mut a = app(&["hi"]);
+        let presses: Vec<Press> = (0..10)
+            .map(|i| Press {
+                at: Duration::from_millis(i * 100),
+                correct: i % 2 == 0,
+                key: Some('q'),
+            })
+            .collect();
+        a.key_stats.add_test(&presses).unwrap();
+        assert_eq!(a.weak_letters(), ['q']);
+        a.options.list = WordList::WeakKeys;
+        a.restart();
+        assert!(
+            a.session.words().iter().all(|w| w.contains(&'q')),
+            "every word has a q"
+        );
     }
 
     #[test]

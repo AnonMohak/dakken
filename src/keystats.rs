@@ -104,6 +104,24 @@ impl KeyStats {
             .collect();
         fs::write(path, text)
     }
+
+    /// The `n` weakest letters a to z with enough presses: the most errors,
+    /// and then the slowest.
+    pub fn weakest_letters(&self, n: usize) -> Vec<char> {
+        let mut letters: Vec<(char, KeyStat)> = self
+            .keys
+            .iter()
+            .filter(|(k, s)| k.is_ascii_lowercase() && s.presses >= MIN_PRESSES)
+            .map(|(&k, &s)| (k, s))
+            .collect();
+        letters.sort_by(|a, b| {
+            let score = |s: &KeyStat| (s.error_rate(), s.avg_ms().unwrap_or(0.0));
+            score(&b.1)
+                .partial_cmp(&score(&a.1))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        letters.into_iter().take(n).map(|(k, _)| k).collect()
+    }
 }
 
 fn key_name(key: char) -> String {
@@ -257,6 +275,20 @@ mod tests {
         assert_eq!(loaded.get(' ').presses, 1);
         assert_eq!(loaded.get('x'), s.get('x'));
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn weakest_letters_have_the_most_errors() {
+        let mut s = KeyStats::in_memory();
+        let mut presses = Vec::new();
+        for i in 0..10 {
+            presses.push(press(i * 100, 'a', true));
+            presses.push(press(i * 100 + 10, 'b', i % 2 == 0));
+            presses.push(press(i * 100 + 20, 'c', i != 0));
+        }
+        presses.push(press(5000, 'z', false));
+        s.add_test(&presses).unwrap();
+        assert_eq!(s.weakest_letters(2), ['b', 'c'], "z has too few presses");
     }
 
     #[test]
