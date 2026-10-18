@@ -255,8 +255,9 @@ fn json_string(s: &str) -> String {
 const HEATMAP_WEEKS: i64 = 26;
 /// Shades from slow to fast: a faster day is darker.
 const SHADES: [char; 4] = ['░', '▒', '▓', '█'];
-/// Green background colors (ANSI 256) from light to dark, for the shades.
-const SHADE_COLORS: [u8; 4] = [157, 114, 34, 22];
+/// Teal colors (ANSI 256), the default theme color, from light to dark,
+/// for the shades.
+const SHADE_COLORS: [u8; 4] = [159, 116, 37, 23];
 
 /// Today as days since 1970-01-01 UTC.
 pub fn today() -> i64 {

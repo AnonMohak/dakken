@@ -177,7 +177,8 @@ pub fn heatmap(stats: &KeyStats, color: bool) -> String {
             } else if s.presses < MIN_PRESSES {
                 out += &cell.dark_grey().to_string();
             } else if s.error_rate() < 0.02 {
-                out += &cell.black().on_green().to_string();
+                // Teal, the default theme color, like `Theme::main`.
+                out += &cell.black().on_dark_cyan().to_string();
             } else if s.error_rate() < 0.05 {
                 out += &cell.black().on_yellow().to_string();
             } else {
@@ -187,7 +188,7 @@ pub fn heatmap(stats: &KeyStats, color: bool) -> String {
         }
         out += "\n";
     }
-    out += "\n  green: under 2%   yellow: 2% to 5%   red: 5% or more   gray: not enough data\n";
+    out += "\n  teal: under 2%   yellow: 2% to 5%   red: 5% or more   gray: not enough data\n";
 
     let mut known: Vec<(char, KeyStat)> = stats
         .keys
