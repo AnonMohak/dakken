@@ -70,6 +70,7 @@ dakken --strict master  # the first wrong key fails the test
 dakken --history  # print personal bests and the last 10 tests
 dakken --stats    # print averages and a graph of WPM by day
 dakken --heatmap  # print a keyboard colored by errors, and the slowest keys
+dakken --export csv > history.csv  # save the history as CSV (or json)
 dakken --keys     # print raw key events (to check your terminal)
 ```
 

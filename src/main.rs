@@ -84,6 +84,10 @@ struct Cli {
     #[arg(long)]
     heatmap: bool,
 
+    /// Print the full history as csv or json, then quit.
+    #[arg(long, value_name = "FORMAT", value_parser = ["csv", "json"])]
+    export: Option<String>,
+
     /// Print each key event, to check how the terminal sends keys.
     #[arg(long)]
     keys: bool,
@@ -98,6 +102,17 @@ fn main() -> io::Result<()> {
     if cli.history {
         print!("{}", history::report(&history));
         return Ok(());
+    }
+    match cli.export.as_deref() {
+        Some("csv") => {
+            print!("{}", history::to_csv(&history));
+            return Ok(());
+        }
+        Some(_) => {
+            print!("{}", history::to_json(&history));
+            return Ok(());
+        }
+        None => {}
     }
     if cli.stats {
         print!("{}", history::stats_report(&history));

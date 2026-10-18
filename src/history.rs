@@ -191,6 +191,66 @@ pub fn report(history: &History) -> String {
     out
 }
 
+/// The full history as CSV, with a header line.
+pub fn to_csv(history: &History) -> String {
+    let mut out =
+        String::from("time_utc,unix_time,mode,wpm,raw_wpm,accuracy,consistency,seconds\n");
+    for r in history.records() {
+        // A label can hold a file name, so quote it.
+        let label = format!("\"{}\"", r.label.replace('"', "\"\""));
+        out += &format!(
+            "{},{},{label},{:.2},{:.2},{:.2},{:.2},{:.2}\n",
+            format_time(r.time),
+            r.time,
+            r.wpm,
+            r.raw_wpm,
+            r.accuracy,
+            r.consistency,
+            r.seconds
+        );
+    }
+    out
+}
+
+/// The full history as a JSON array of objects.
+pub fn to_json(history: &History) -> String {
+    let items: Vec<String> = history
+        .records()
+        .iter()
+        .map(|r| {
+            format!(
+                "  {{\"time_utc\": \"{}\", \"unix_time\": {}, \"mode\": {}, \"wpm\": {:.2}, \"raw_wpm\": {:.2}, \"accuracy\": {:.2}, \"consistency\": {:.2}, \"seconds\": {:.2}}}",
+                format_time(r.time),
+                r.time,
+                json_string(&r.label),
+                r.wpm,
+                r.raw_wpm,
+                r.accuracy,
+                r.consistency,
+                r.seconds
+            )
+        })
+        .collect();
+    if items.is_empty() {
+        return "[]\n".to_string();
+    }
+    format!("[\n{}\n]\n", items.join(",\n"))
+}
+
+fn json_string(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '"' => out += "\\\"",
+            '\\' => out += "\\\\",
+            c if c.is_control() => out += &format!("\\u{:04x}", c as u32),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
 /// Days the stats graph shows, the newest days with tests.
 const STATS_DAYS: usize = 30;
 /// Width of the longest bar in the stats graph.
@@ -349,6 +409,26 @@ mod tests {
             out.contains("1970-01-02  ████████████████████████████████████████ 80"),
             "{out}"
         );
+    }
+
+    #[test]
+    fn export_as_csv_and_json() {
+        let mut h = History::in_memory();
+        assert_eq!(to_json(&h), "[]\n");
+        h.add(record("custom · \"my\" notes.txt", 50.0)).unwrap();
+        let csv = to_csv(&h);
+        assert!(csv.starts_with("time_utc,unix_time,mode,"), "{csv}");
+        assert!(
+            csv.contains("1970-01-01 00:00,0,\"custom · \"\"my\"\" notes.txt\",50.00,50.00,100.00,80.00,30.00"),
+            "{csv}"
+        );
+        let json = to_json(&h);
+        assert!(
+            json.contains("\"mode\": \"custom · \\\"my\\\" notes.txt\""),
+            "{json}"
+        );
+        assert!(json.contains("\"wpm\": 50.00"), "{json}");
+        assert_eq!(json_string("a\\b\u{1}"), "\"a\\\\b\\u0001\"");
     }
 
     #[test]
