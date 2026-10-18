@@ -1,4 +1,6 @@
-use std::path::PathBuf;
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -33,6 +35,7 @@ pub fn mode_label(mode: Mode) -> String {
     match mode {
         Mode::Untimed => "untimed".to_string(),
         Mode::Quote => "quote".to_string(),
+        Mode::Custom => "custom".to_string(),
         Mode::Time(d) => format!("time {}", d.as_secs()),
         Mode::Words(n) => format!("words {n}"),
     }
@@ -48,6 +51,32 @@ pub fn parse_mode(label: &str) -> Option<Mode> {
         _ => None,
     }
     .filter(|&m| m != Mode::Time(Duration::ZERO) && m != Mode::Words(0))
+}
+
+/// The text of a file for custom mode.
+pub struct CustomText {
+    /// The file name, without the folder.
+    pub name: String,
+    pub words: Vec<String>,
+}
+
+impl CustomText {
+    /// Read a text file. Line breaks and tabs become spaces.
+    pub fn load(path: &Path) -> io::Result<Self> {
+        let text = fs::read_to_string(path)?;
+        let words: Vec<String> = text.split_whitespace().map(String::from).collect();
+        if words.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "the file has no text",
+            ));
+        }
+        let name = path.file_name().map_or_else(
+            || path.display().to_string(),
+            |n| n.to_string_lossy().into_owned(),
+        );
+        Ok(Self { name, words })
+    }
 }
 
 /// Changes to the words, which the menu turns on and off.
@@ -80,6 +109,8 @@ pub struct App {
     pub session: Session,
     /// Where the quote of a quote test comes from.
     pub source: Option<&'static str>,
+    /// The text for custom mode, from `--file`.
+    pub custom: Option<CustomText>,
     pub screen: Screen,
     pub history: History,
     pub mistakes: Mistakes,
@@ -97,10 +128,13 @@ impl App {
         width: u16,
         history: History,
         mistakes: Mistakes,
+        custom: Option<CustomText>,
     ) -> Self {
-        let (mut session, source) = new_test(config.mode, config.options, width, mistakes.words());
-        session.set_strict(config.strict);
-        Self {
+        let mode = match custom {
+            Some(_) => Mode::Custom,
+            None => config.mode,
+        };
+        let mut app = Self {
             options: config.options,
             theme: config.theme,
             live: config.live,
@@ -110,9 +144,12 @@ impl App {
             width,
             history,
             mistakes,
-            source,
-            ..Self::with_session(config.mode, session)
-        }
+            custom,
+            // `new_test` below makes the real test.
+            ..Self::with_session(mode, Session::from_words(mode, &["dakken"]))
+        };
+        app.new_test();
+        app
     }
 
     pub fn with_session(mode: Mode, session: Session) -> Self {
@@ -127,6 +164,7 @@ impl App {
             width: 80,
             session,
             source: None,
+            custom: None,
             screen: Screen::Typing,
             history: History::in_memory(),
             mistakes: Mistakes::in_memory(),
@@ -142,8 +180,12 @@ impl App {
     }
 
     fn new_test(&mut self) {
-        (self.session, self.source) =
-            new_test(self.mode, self.options, self.width, self.mistakes.words());
+        (self.session, self.source) = match &self.custom {
+            Some(custom) if self.mode == Mode::Custom => {
+                (Session::from_words(self.mode, &custom.words), None)
+            }
+            _ => new_test(self.mode, self.options, self.width, self.mistakes.words()),
+        };
         self.session.set_strict(self.strict);
     }
 
@@ -168,8 +210,14 @@ impl App {
     /// stop the test, so a failed save is ignored.
     fn save_config(&self) {
         if let Some(path) = &self.config_path {
+            // Custom mode needs a file from the command line, so keep the
+            // saved mode instead.
+            let mode = match self.mode {
+                Mode::Custom => Config::load(path).mode,
+                mode => mode,
+            };
             let config = Config {
-                mode: self.mode,
+                mode,
                 options: self.options,
                 theme: self.theme,
                 live: self.live,
@@ -192,7 +240,11 @@ impl App {
     /// Quotes have their own punctuation and numbers, so options do not apply.
     pub fn label(&self) -> String {
         let mut label = mode_label(self.mode);
-        if self.mode == Mode::Quote {
+        if let (Mode::Custom, Some(custom)) = (self.mode, &self.custom) {
+            label.push_str(" · ");
+            label.push_str(&custom.name);
+        }
+        if matches!(self.mode, Mode::Quote | Mode::Custom) {
             if self.strict != Strict::Off {
                 label.push_str(" · ");
                 label.push_str(self.strict.name());
@@ -483,6 +535,7 @@ mod tests {
             40,
             History::in_memory(),
             Mistakes::in_memory(),
+            None,
         );
         let narrow = a.session.words().len();
         a.on_resize(120);
@@ -505,6 +558,7 @@ mod tests {
             80,
             History::in_memory(),
             Mistakes::in_memory(),
+            None,
         );
         let source = a.source.expect("a quote has a source");
         let text: String = a
@@ -635,6 +689,42 @@ mod tests {
             Instant::now(),
         );
         assert_eq!(a.strict, Strict::StopOnError);
+    }
+
+    #[test]
+    fn custom_text_is_typed_in_order_and_restarts() {
+        let dir = std::env::temp_dir().join(format!("dakken-custom-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("notes.txt");
+        std::fs::write(&path, "Hello,\tworld\n  again ").unwrap();
+        let custom = CustomText::load(&path).unwrap();
+        std::fs::write(&path, " \n").unwrap();
+        assert!(CustomText::load(&path).is_err(), "a file with no text");
+        std::fs::remove_dir_all(&dir).unwrap();
+
+        let mut config = Config::default();
+        config.options.punctuation = true;
+        let mut a = App::new(
+            config,
+            None,
+            80,
+            History::in_memory(),
+            Mistakes::in_memory(),
+            Some(custom),
+        );
+        assert_eq!(a.mode, Mode::Custom);
+        assert_eq!(a.label(), "custom · notes.txt");
+        let words: Vec<String> = a
+            .session
+            .words()
+            .iter()
+            .map(|w| w.iter().collect())
+            .collect();
+        assert_eq!(words, ["Hello,", "world", "again"]);
+        type_text(&mut a, "Hello, world again");
+        assert!(matches!(a.screen, Screen::Results(_)));
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        assert_eq!(a.session.words().len(), 3, "Enter restarts the same text");
     }
 
     #[test]

@@ -6,6 +6,7 @@ mod mistakes;
 mod ui;
 
 use std::io::{self, Write};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use clap::Parser;
@@ -15,7 +16,7 @@ use ratatui::crossterm::{
     execute, terminal,
 };
 
-use app::App;
+use app::{App, CustomText};
 use config::Config;
 use engine::words::{WORD_LISTS, WordList};
 use engine::{Mode, STRICT_MODES, Strict};
@@ -38,6 +39,10 @@ struct Cli {
     /// Quote mode: type one quote from a book, poem or speech.
     #[arg(short, long)]
     quote: bool,
+
+    /// Custom mode: type the text of this file.
+    #[arg(short, long, value_name = "PATH", conflicts_with_all = ["time", "words", "quote"])]
+    file: Option<PathBuf>,
 
     /// Add capitals and punctuation to the words.
     #[arg(short, long)]
@@ -131,7 +136,24 @@ fn main() -> io::Result<()> {
     }
     let (width, _) = terminal::size()?;
     let mistakes = mistakes::default_path().map_or_else(Mistakes::in_memory, Mistakes::load);
-    run(App::new(config, config_path, width, history, mistakes))
+    let custom = match &cli.file {
+        Some(path) => match CustomText::load(path) {
+            Ok(custom) => Some(custom),
+            Err(e) => {
+                eprintln!("error: cannot use {}: {e}", path.display());
+                std::process::exit(2);
+            }
+        },
+        None => None,
+    };
+    run(App::new(
+        config,
+        config_path,
+        width,
+        history,
+        mistakes,
+        custom,
+    ))
 }
 
 fn run(mut app: App) -> io::Result<()> {

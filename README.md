@@ -5,6 +5,7 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 - Untimed mode (the default): type the words on the screen, with no time limit.
 - Time mode (15, 30, 60, 120 s) and words mode (10, 25, 50, 100 words).
 - Quote mode: one quote from a public-domain book, poem or speech.
+- Custom mode: type the text of your own file, with `--file`.
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
   quotes and parentheses.
 - Numbers mode: random numbers in place of some words.
@@ -52,6 +53,7 @@ dakken            # untimed test: the words on the screen
 dakken -t 60      # 60-second test
 dakken -w 25      # 25-word test
 dakken -q         # quote test
+dakken -f notes.txt  # type the text of a file
 dakken -l code    # untimed test with the code word list
 dakken -p         # untimed test with punctuation
 dakken -p -n      # untimed test with punctuation and numbers

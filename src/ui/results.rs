@@ -174,7 +174,7 @@ fn best_line(app: &App, r: &TestResult) -> Line<'static> {
 /// The mode and options, with the word list. Quotes have no word list.
 fn results_label(app: &App) -> String {
     match app.mode {
-        Mode::Quote => app.label(),
+        Mode::Quote | Mode::Custom => app.label(),
         _ if app.options.list == WordList::English => format!("{} · english", app.label()),
         _ => app.label(),
     }
