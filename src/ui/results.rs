@@ -146,6 +146,12 @@ fn draw_graph(frame: &mut Frame, area: Rect, r: &TestResult, t: Theme) {
 /// "new personal best", or the best WPM before this test.
 fn best_line(app: &App, r: &TestResult) -> Line<'static> {
     let t = app.theme;
+    if app.session.is_failed() {
+        return Line::styled(
+            "test failed: a wrong key in master mode",
+            Style::new().fg(t.error).add_modifier(Modifier::BOLD),
+        );
+    }
     let mut spans = match app.previous_best {
         Some(best) if r.wpm <= best => vec![Span::styled(
             format!("best {best:.0} wpm"),

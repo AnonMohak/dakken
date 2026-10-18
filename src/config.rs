@@ -5,7 +5,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::app::{Options, mode_label, parse_mode};
-use crate::engine::{Mode, words::WordList};
+use crate::engine::{Mode, Strict, words::WordList};
 use crate::ui::theme::Theme;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,6 +17,7 @@ pub struct Config {
     pub live: bool,
     /// Show a pace caret at the personal-best speed.
     pub pace: bool,
+    pub strict: Strict,
 }
 
 impl Default for Config {
@@ -27,6 +28,7 @@ impl Default for Config {
             theme: Theme::default(),
             live: false,
             pace: false,
+            strict: Strict::Off,
         }
     }
 }
@@ -46,6 +48,7 @@ impl Config {
                 "theme" => config.theme = Theme::find(value).unwrap_or(config.theme),
                 "live" => config.live = value == "true",
                 "pace" => config.pace = value == "true",
+                "strict" => config.strict = Strict::parse(value).unwrap_or(config.strict),
                 "punctuation" => config.options.punctuation = value == "true",
                 "numbers" => config.options.numbers = value == "true",
                 "words" => {
@@ -66,14 +69,16 @@ impl Config {
              numbers = {}\n\
              words = \"{}\"\n\
              live = {}\n\
-             pace = {}\n",
+             pace = {}\n\
+             strict = \"{}\"\n",
             mode_label(self.mode),
             self.theme.name,
             self.options.punctuation,
             self.options.numbers,
             self.options.list.name(),
             self.live,
-            self.pace
+            self.pace,
+            self.strict.name()
         )
     }
 
@@ -111,6 +116,7 @@ mod tests {
             theme: Theme::find("nord").unwrap(),
             live: true,
             pace: true,
+            strict: Strict::Master,
         };
         assert_eq!(Config::parse(&config.to_text()), config);
     }

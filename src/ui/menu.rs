@@ -7,10 +7,11 @@ use ratatui::{
 
 use super::column;
 use crate::app::{App, MODES, mode_label};
+use crate::engine::Strict;
 use crate::ui::theme::Theme;
 
 /// Rows that are not mode names: gaps, settings and the hint.
-const OTHER_ROWS: u16 = 9;
+const OTHER_ROWS: u16 = 10;
 
 pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
     let t = app.theme;
@@ -42,6 +43,12 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
     lines.push(setting(t, 's', "live stats", state, color));
     let (state, color) = on_off(app.pace);
     lines.push(setting(t, 'c', "pace caret", state, color));
+    let strict_color = if app.strict == Strict::Off {
+        t.text
+    } else {
+        t.main
+    };
+    lines.push(setting(t, 'm', "strict", app.strict.name(), strict_color));
     lines.push(Line::default());
     lines.push(Line::styled(
         "enter start · tab back",

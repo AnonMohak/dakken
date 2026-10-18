@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::engine::{
-    Key, Mode, Session,
+    Key, Mode, Session, Strict,
     stats::TestResult,
     words::{self, WordGen, WordList},
 };
@@ -72,6 +72,7 @@ pub struct App {
     pub live: bool,
     /// Show a pace caret at the personal-best speed.
     pub pace: bool,
+    pub strict: Strict,
     /// The menu saves the settings here. `None` does not save them.
     pub config_path: Option<PathBuf>,
     /// Terminal width. Untimed tests get the words that fit on the screen.
@@ -97,12 +98,14 @@ impl App {
         history: History,
         mistakes: Mistakes,
     ) -> Self {
-        let (session, source) = new_test(config.mode, config.options, width, mistakes.words());
+        let (mut session, source) = new_test(config.mode, config.options, width, mistakes.words());
+        session.set_strict(config.strict);
         Self {
             options: config.options,
             theme: config.theme,
             live: config.live,
             pace: config.pace,
+            strict: config.strict,
             config_path,
             width,
             history,
@@ -119,6 +122,7 @@ impl App {
             theme: Theme::default(),
             live: false,
             pace: false,
+            strict: Strict::Off,
             config_path: None,
             width: 80,
             session,
@@ -140,6 +144,7 @@ impl App {
     fn new_test(&mut self) {
         (self.session, self.source) =
             new_test(self.mode, self.options, self.width, self.mistakes.words());
+        self.session.set_strict(self.strict);
     }
 
     /// Remember the words typed wrong. In the mistakes list, words typed
@@ -169,6 +174,7 @@ impl App {
                 theme: self.theme,
                 live: self.live,
                 pace: self.pace,
+                strict: self.strict,
             };
             let _ = config.save(path);
         }
@@ -187,6 +193,10 @@ impl App {
     pub fn label(&self) -> String {
         let mut label = mode_label(self.mode);
         if self.mode == Mode::Quote {
+            if self.strict != Strict::Off {
+                label.push_str(" · ");
+                label.push_str(self.strict.name());
+            }
             return label;
         }
         if self.options.punctuation {
@@ -194,6 +204,10 @@ impl App {
         }
         if self.options.numbers {
             label.push_str(" · numbers");
+        }
+        if self.strict != Strict::Off {
+            label.push_str(" · ");
+            label.push_str(self.strict.name());
         }
         // English is the default, so old history labels stay the same.
         if self.options.list != WordList::English {
@@ -210,7 +224,9 @@ impl App {
             let result = self.session.result();
             let label = self.label();
             self.previous_best = self.history.best(&label);
-            self.save_failed = self.history.add(Record::new(label, &result)).is_err();
+            // A failed test is not a real result, so it is not saved.
+            self.save_failed =
+                !self.session.is_failed() && self.history.add(Record::new(label, &result)).is_err();
             self.save_failed |= self.update_mistakes().is_err();
             self.screen = Screen::Results(result);
         }
@@ -281,6 +297,11 @@ impl App {
                 KeyCode::Char('c') => {
                     self.pace = !self.pace;
                     self.save_config();
+                }
+                KeyCode::Char('m') => {
+                    self.strict = self.strict.next();
+                    self.save_config();
+                    self.new_test();
                 }
                 KeyCode::Tab | KeyCode::Esc => {
                     self.screen = if self.session.is_finished() {
@@ -591,6 +612,29 @@ mod tests {
         a.session = Session::from_words(a.mode, &["hello"]);
         type_text(&mut a, "hello");
         assert!(a.mistakes.words().is_empty());
+    }
+
+    #[test]
+    fn failed_master_tests_are_not_saved() {
+        let mut a = app(&["hi"]);
+        a.strict = Strict::Master;
+        a.session.set_strict(Strict::Master);
+        type_text(&mut a, "x");
+        assert!(matches!(a.screen, Screen::Results(_)));
+        assert!(a.session.is_failed());
+        assert!(a.history.records().is_empty());
+        assert!(a.label().ends_with(" · master"));
+    }
+
+    #[test]
+    fn m_in_menu_changes_the_strict_mode() {
+        let mut a = app(&["hi"]);
+        a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
+        a.on_key(
+            press(KeyCode::Char('m'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert_eq!(a.strict, Strict::StopOnError);
     }
 
     #[test]

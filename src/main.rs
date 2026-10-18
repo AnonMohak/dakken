@@ -17,8 +17,8 @@ use ratatui::crossterm::{
 
 use app::App;
 use config::Config;
-use engine::Mode;
 use engine::words::{WORD_LISTS, WordList};
+use engine::{Mode, STRICT_MODES, Strict};
 use history::History;
 use mistakes::Mistakes;
 use ui::theme::Theme;
@@ -50,6 +50,10 @@ struct Cli {
     /// Word list: english (default), english-1k, code or mistakes.
     #[arg(short = 'l', long, value_name = "NAME")]
     words_list: Option<String>,
+
+    /// Strict mode: off (default), stop-on-error, no-backspace or master.
+    #[arg(long, value_name = "NAME")]
+    strict: Option<String>,
 
     /// Color theme: terminal (default), serika-dark, nord or dracula.
     #[arg(long, value_name = "NAME")]
@@ -105,6 +109,17 @@ fn main() -> io::Result<()> {
             std::process::exit(2);
         };
         config.options.list = list;
+    }
+    if let Some(name) = &cli.strict {
+        let Some(strict) = Strict::parse(name) else {
+            let names: Vec<&str> = STRICT_MODES.iter().map(|s| s.name()).collect();
+            eprintln!(
+                "error: unknown strict mode \"{name}\". Modes: {}",
+                names.join(", ")
+            );
+            std::process::exit(2);
+        };
+        config.strict = strict;
     }
     if let Some(name) = &cli.theme {
         let Some(theme) = Theme::find(name) else {

@@ -4,4 +4,4 @@ pub mod session;
 pub mod stats;
 pub mod words;
 
-pub use session::{Key, Mode, Session};
+pub use session::{Key, Mode, STRICT_MODES, Session, Strict};

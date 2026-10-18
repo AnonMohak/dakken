@@ -18,6 +18,48 @@ pub enum Mode {
     Words(usize),
 }
 
+/// Rules that make a test harder, like monkeytype's.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Strict {
+    #[default]
+    Off,
+    /// A wrong key does not move the caret. Only the correct key does.
+    StopOnError,
+    /// Backspace does nothing.
+    NoBackspace,
+    /// The first wrong key fails the test.
+    Master,
+}
+
+/// The strict modes in menu order.
+pub const STRICT_MODES: [Strict; 4] = [
+    Strict::Off,
+    Strict::StopOnError,
+    Strict::NoBackspace,
+    Strict::Master,
+];
+
+impl Strict {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Off => "off",
+            Self::StopOnError => "stop-on-error",
+            Self::NoBackspace => "no-backspace",
+            Self::Master => "master",
+        }
+    }
+
+    pub fn parse(name: &str) -> Option<Self> {
+        STRICT_MODES.into_iter().find(|s| s.name() == name)
+    }
+
+    /// The mode after this one in `STRICT_MODES`, for the menu.
+    pub fn next(self) -> Self {
+        let i = STRICT_MODES.iter().position(|&s| s == self).unwrap_or(0);
+        STRICT_MODES[(i + 1) % STRICT_MODES.len()]
+    }
+}
+
 /// Input the engine understands. The UI maps terminal keys to these.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Key {
@@ -42,6 +84,9 @@ pub struct Session {
     start: Option<Instant>,
     end: Option<Instant>,
     source: Option<WordSource>,
+    strict: Strict,
+    /// A wrong key in master mode ended the test.
+    failed: bool,
 }
 
 impl Session {
@@ -73,7 +118,18 @@ impl Session {
             start: None,
             end: None,
             source: None,
+            strict: Strict::Off,
+            failed: false,
         }
+    }
+
+    pub fn set_strict(&mut self, strict: Strict) {
+        self.strict = strict;
+    }
+
+    /// The test ended because of a wrong key in master mode.
+    pub fn is_failed(&self) -> bool {
+        self.failed
     }
 
     pub fn mode(&self) -> Mode {
@@ -147,11 +203,18 @@ impl Session {
         }
         let start = *self.start.get_or_insert(now);
         let correct = target.get(typed.len()) == Some(&c);
-        typed.push(c);
         self.presses.push(Press {
             at: now - start,
             correct,
         });
+        if !correct && self.strict == Strict::StopOnError {
+            return;
+        }
+        typed.push(c);
+        if !correct && self.strict == Strict::Master {
+            self.fail(now);
+            return;
+        }
 
         // The last word ends the test when it is full length, also with errors.
         if self.current == self.words.len() - 1
@@ -172,6 +235,15 @@ impl Session {
             at: now - start,
             correct,
         });
+        match self.strict {
+            // A space before the word is complete is a wrong key too.
+            Strict::StopOnError if !correct => return,
+            Strict::Master if !correct => {
+                self.fail(now);
+                return;
+            }
+            _ => {}
+        }
         self.current += 1;
 
         match self.source.as_mut() {
@@ -186,7 +258,15 @@ impl Session {
         }
     }
 
+    fn fail(&mut self, now: Instant) {
+        self.failed = true;
+        self.end = Some(now);
+    }
+
     fn backspace(&mut self, whole_word: bool) {
+        if self.strict == Strict::NoBackspace {
+            return;
+        }
         if self.typed[self.current].is_empty() {
             // Go back only into a previous word that has an error.
             let prev = match self.current.checked_sub(1) {
@@ -474,6 +554,54 @@ mod tests {
         assert_eq!(s.pace_position(60.0, at(800)), Some((1, 0)));
         assert_eq!(s.pace_position(60.0, at(1400)), Some((1, 2)));
         assert_eq!(s.pace_position(60.0, at(5000)), None);
+    }
+
+    #[test]
+    fn stop_on_error_keeps_the_caret_until_the_right_key() {
+        let mut d = Driver::words(&["hi", "yo"]);
+        d.s.set_strict(Strict::StopOnError);
+        d.text("hx");
+        assert_eq!(d.typed(0), "h");
+        d.text(" ");
+        assert_eq!(d.s.current(), 0, "space before the word is complete");
+        d.text("i yo");
+        assert!(d.s.is_finished() && !d.s.is_failed());
+        let r = d.s.result();
+        assert!(r.accuracy < 100.0, "wrong keys lower accuracy");
+        assert_eq!(r.chars.incorrect, 0, "no wrong letters stay in the text");
+    }
+
+    #[test]
+    fn no_backspace_ignores_backspace() {
+        let mut d = Driver::words(&["hi", "yo"]);
+        d.s.set_strict(Strict::NoBackspace);
+        d.text("hx");
+        d.key(Key::Backspace);
+        d.key(Key::DeleteWord);
+        assert_eq!(d.typed(0), "hx");
+    }
+
+    #[test]
+    fn master_fails_on_the_first_wrong_key() {
+        let mut d = Driver::words(&["hi", "yo"]);
+        d.s.set_strict(Strict::Master);
+        d.text("hi y");
+        assert!(!d.s.is_finished());
+        d.text("x");
+        assert!(d.s.is_finished() && d.s.is_failed());
+
+        let mut d = Driver::words(&["hello", "yo"]);
+        d.s.set_strict(Strict::Master);
+        d.text("he ");
+        assert!(d.s.is_failed(), "a skipped letter fails too");
+    }
+
+    #[test]
+    fn strict_names_parse_back() {
+        for s in STRICT_MODES {
+            assert_eq!(Strict::parse(s.name()), Some(s));
+        }
+        assert_eq!(Strict::Master.next(), Strict::Off);
     }
 
     #[test]

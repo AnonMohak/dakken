@@ -20,6 +20,9 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
   Other themes: `serika-dark`, `nord` and `dracula`.
 - Settings are saved: the menu remembers the mode, options and theme.
 - Optional live WPM and accuracy during the test (off by default).
+- Strict modes, like monkeytype: `stop-on-error` (only the correct key moves
+  the caret), `no-backspace`, and `master` (the first wrong key fails the
+  test; a failed test is not saved).
 - Optional pace caret: a gray letter that moves at your personal-best speed
   for the same mode and options, so you can race it (off by default).
 - Results: WPM, raw WPM, accuracy, consistency, and character counts, with a
@@ -53,6 +56,7 @@ dakken -l code    # untimed test with the code word list
 dakken -p         # untimed test with punctuation
 dakken -p -n      # untimed test with punctuation and numbers
 dakken --theme nord  # use a color theme
+dakken --strict master  # the first wrong key fails the test
 dakken --history  # print personal bests and the last 10 tests
 dakken --stats    # print averages and a graph of WPM by day
 dakken --keys     # print raw key events (to check your terminal)
@@ -70,6 +74,7 @@ The test starts when you type the first letter.
 | `t` (in the menu) | Go to the next color theme |
 | `s` (in the menu) | Show or hide the live WPM and accuracy |
 | `c` (in the menu) | Show or hide the pace caret |
+| `m` (in the menu) | Go to the next strict mode |
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
 | `Ctrl+C` | Quit |
 
@@ -108,6 +113,7 @@ numbers = false
 words = "english"    # english, english-1k, code or mistakes
 live = false         # live WPM and accuracy during the test
 pace = false         # pace caret at your personal-best speed
+strict = "off"       # off, stop-on-error, no-backspace or master
 ```
 
 ## History

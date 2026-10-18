@@ -18,7 +18,7 @@ use crate::app::{App, Screen};
 /// Width of the text column. Wider text is hard to read.
 const MAX_WIDTH: u16 = 80;
 const MIN_WIDTH: u16 = 30;
-const MIN_HEIGHT: u16 = 10;
+const MIN_HEIGHT: u16 = 11;
 
 pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     let area = frame.area();
@@ -217,11 +217,14 @@ mod tests {
             out.contains("theme terminal") && out.contains("words english"),
             "{out}"
         );
-        assert!(out.contains("c  pace caret off"), "{out}");
+        assert!(
+            out.contains("c  pace caret off") && out.contains("m  strict off"),
+            "{out}"
+        );
         // The smallest terminal still shows the selected mode, every setting
         // and the hint.
         a.screen = Screen::Menu { selected: 9 };
-        let out = render(&a, 30, 10);
+        let out = render(&a, 30, 11);
         assert!(
             out.contains("> words 100") && out.contains("pace caret") && out.contains("tab back"),
             "{out}"
