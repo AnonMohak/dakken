@@ -212,7 +212,7 @@ fn main() -> io::Result<()> {
         };
         config.theme = theme;
     }
-    let (width, _) = terminal::size()?;
+    let size = terminal::size()?;
     let mistakes = mistakes::default_path().map_or_else(Mistakes::in_memory, Mistakes::load);
     let custom = match &cli.file {
         Some(path) => match CustomText::load(path) {
@@ -227,7 +227,7 @@ fn main() -> io::Result<()> {
     run(App::new(
         config,
         config_path,
-        width,
+        size,
         history,
         mistakes,
         key_stats,
@@ -258,7 +258,7 @@ fn run(mut app: App) -> io::Result<()> {
             if event::poll(Duration::from_millis(16))? {
                 match event::read()? {
                     Event::Key(key) => app.on_key(key, Instant::now()),
-                    Event::Resize(width, _) => app.on_resize(width),
+                    Event::Resize(width, height) => app.on_resize(width, height),
                     _ => {}
                 }
             }

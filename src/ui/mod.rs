@@ -67,15 +67,38 @@ fn text_width(terminal_width: u16) -> u16 {
     terminal_width.saturating_sub(4).min(MAX_WIDTH)
 }
 
-/// Words that fill the word lines of a terminal `terminal_width` wide.
-pub fn screen_words(terminal_width: u16, mut next_word: impl FnMut() -> String) -> Vec<String> {
-    let width = text_width(terminal_width.max(MIN_WIDTH)) as usize;
-    let mut words = vec![next_word()];
+/// The word area of the typing screen: 80% of the terminal width and
+/// height, in the middle. At least 2 rows stay free above and below, for
+/// the status line and the hint.
+pub fn typing_area(area: Rect) -> Rect {
+    let width = (u32::from(area.width) * 8 / 10) as u16;
+    let height = ((u32::from(area.height) * 8 / 10) as u16).min(area.height.saturating_sub(4));
+    center(area, width.max(1), height.max(1))
+}
+
+/// Words that fill the word area of a terminal `width` x `height`.
+pub fn screen_words(width: u16, height: u16, mut next_word: impl FnMut() -> String) -> Vec<String> {
+    let area = typing_area(Rect::new(
+        0,
+        0,
+        width.max(MIN_WIDTH),
+        height.max(MIN_HEIGHT),
+    ));
+    let (width, lines) = (area.width as usize, area.height as usize);
+    // Fill the lines the way `typing::wrap` does: one space between words,
+    // and a long word on a line of its own.
+    let mut words = Vec::new();
+    let (mut line, mut used) = (1, 0);
     loop {
         let word = next_word();
-        let mut widths: Vec<usize> = words.iter().map(|w| w.chars().count()).collect();
-        widths.push(word.chars().count());
-        if typing::wrap(&widths, width).len() > typing::VISIBLE_LINES {
+        let w = word.chars().count();
+        if used > 0 && used + 1 + w > width {
+            line += 1;
+            used = w;
+        } else {
+            used += if used > 0 { 1 + w } else { w };
+        }
+        if line > lines && !words.is_empty() {
             return words;
         }
         words.push(word);
@@ -134,11 +157,27 @@ mod tests {
     }
 
     #[test]
-    fn screen_words_fill_the_visible_lines() {
-        // Text width 76 holds 15 four-letter words on each line.
-        assert_eq!(screen_words(80, || "abcd".to_string()).len(), 45);
-        // The minimum width (30) gives width 26: 5 words on each line.
-        assert_eq!(screen_words(0, || "abcd".to_string()).len(), 15);
+    fn screen_words_fill_the_word_area() {
+        // 100 x 30: the area is 80 x 24. 16 four-letter words fit on a line.
+        assert_eq!(screen_words(100, 30, || "abcd".to_string()).len(), 16 * 24);
+        // The minimum size (30 x 11): 24 x 7, 5 words on each line.
+        assert_eq!(screen_words(0, 0, || "abcd".to_string()).len(), 5 * 7);
+        // The same count as the real wrapping.
+        let words = screen_words(57, 20, || "abc".to_string());
+        let widths: Vec<usize> = words.iter().map(|w| w.len()).collect();
+        let area = typing_area(Rect::new(0, 0, 57, 20));
+        assert_eq!(
+            typing::wrap(&widths, area.width as usize).len(),
+            area.height as usize
+        );
+    }
+
+    #[test]
+    fn typing_area_is_80_percent_of_the_terminal() {
+        let area = typing_area(Rect::new(0, 0, 200, 50));
+        assert_eq!((area.x, area.y, area.width, area.height), (20, 5, 160, 40));
+        // A short terminal keeps 2 rows above and below.
+        assert_eq!(typing_area(Rect::new(0, 0, 30, 11)).height, 7);
     }
 
     #[test]

@@ -9,17 +9,15 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-use super::{column, theme::Theme};
+use super::{theme::Theme, typing_area};
 use crate::app::App;
 use crate::engine::{Mode, Session};
-
-/// Number of word lines on screen, like monkeytype.
-pub const VISIBLE_LINES: usize = 3;
 
 /// Draw the test `s`: the current test, or a replay of it.
 pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: bool) {
     // Only the words, in the middle of the screen.
-    let area = column(frame.area(), VISIBLE_LINES as u16);
+    let area = typing_area(frame.area());
+    let visible = area.height as usize;
     let t = app.theme;
 
     // Above the words: the time left in time mode, and the live stats when
@@ -55,14 +53,18 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     let lines = wrap(&widths, width);
     let current = s.current().min(s.words().len() - 1);
     let current_line = lines.iter().position(|l| l.contains(&current)).unwrap_or(0);
-    let first = current_line.saturating_sub(1);
+    // Scroll only when the text is longer than the area. Then the current
+    // line is the second line, so the line before it stays in view.
+    let first = current_line
+        .saturating_sub(1)
+        .min(lines.len().saturating_sub(visible));
     // The pace caret runs at the personal best for this mode and options.
     let pace = (app.pace && !replay && s.mode() != Mode::Zen)
         .then(|| app.history.best(&app.label()))
         .flatten()
         .and_then(|wpm| s.pace_position(wpm, now));
 
-    for (offset, range) in lines.iter().skip(first).take(VISIBLE_LINES).enumerate() {
+    for (offset, range) in lines.iter().skip(first).take(visible).enumerate() {
         let y = area.y + offset as u16;
         let mut spans = Vec::new();
         let mut x = 0;

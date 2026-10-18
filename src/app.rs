@@ -127,8 +127,9 @@ pub struct App {
     pub layout: Layout,
     /// The menu saves the settings here. `None` does not save them.
     pub config_path: Option<PathBuf>,
-    /// Terminal width. Untimed tests get the words that fit on the screen.
-    pub width: u16,
+    /// Terminal width and height. Untimed tests get the words that fit on
+    /// the screen.
+    pub size: (u16, u16),
     pub session: Session,
     /// Where the quote of a quote test comes from.
     pub source: Option<&'static str>,
@@ -149,7 +150,7 @@ impl App {
     pub fn new(
         config: Config,
         config_path: Option<PathBuf>,
-        width: u16,
+        size: (u16, u16),
         history: History,
         mistakes: Mistakes,
         key_stats: KeyStats,
@@ -169,7 +170,7 @@ impl App {
             caret: config.caret,
             layout: config.layout,
             config_path,
-            width,
+            size,
             history,
             mistakes,
             key_stats,
@@ -193,7 +194,7 @@ impl App {
             caret: Caret::Block,
             layout: Layout::Qwerty,
             config_path: None,
-            width: 80,
+            size: (80, 24),
             session,
             source: None,
             custom: None,
@@ -217,7 +218,7 @@ impl App {
             Some(custom) if self.mode == Mode::Custom => {
                 (Session::from_words(self.mode, &custom.words), None)
             }
-            _ => new_test(self.mode, self.options, self.width, self.practice_words()),
+            _ => new_test(self.mode, self.options, self.size, self.practice_words()),
         };
         self.session.set_strict(self.strict);
     }
@@ -290,8 +291,8 @@ impl App {
     }
 
     /// Before the test starts, give an untimed test the words for the new width.
-    pub fn on_resize(&mut self, width: u16) {
-        self.width = width;
+    pub fn on_resize(&mut self, width: u16, height: u16) {
+        self.size = (width, height);
         if self.mode == Mode::Untimed && !self.session.is_started() {
             self.new_test();
         }
@@ -462,7 +463,7 @@ impl App {
 fn new_test(
     mode: Mode,
     options: Options,
-    width: u16,
+    size: (u16, u16),
     practice: Option<Vec<String>>,
 ) -> (Session, Option<&'static str>) {
     if let Mode::Quote(length) = mode {
@@ -476,17 +477,23 @@ fn new_test(
         let words: Vec<&str> = quote.text.split_whitespace().collect();
         return (Session::from_words(mode, &words), Some(quote.source));
     }
-    (new_session(mode, options, width, practice), None)
+    (new_session(mode, options, size, practice), None)
 }
 
-fn new_session(mode: Mode, options: Options, width: u16, practice: Option<Vec<String>>) -> Session {
+fn new_session(
+    mode: Mode,
+    options: Options,
+    (width, height): (u16, u16),
+    practice: Option<Vec<String>>,
+) -> Session {
     let list =
         practice.unwrap_or_else(|| options.list.words().into_iter().map(String::from).collect());
     let mut words = WordGen::new(list, rand::rng())
         .with_punctuation(options.punctuation)
         .with_numbers(options.numbers);
     if mode == Mode::Untimed {
-        return Session::from_words(mode, &ui::screen_words(width, || words.next_word()));
+        let words = ui::screen_words(width, height, || words.next_word());
+        return Session::from_words(mode, &words);
     }
     Session::new(mode, move || words.next_word())
 }
@@ -618,18 +625,18 @@ mod tests {
         let mut a = App::new(
             config,
             None,
-            40,
+            (40, 24),
             History::in_memory(),
             Mistakes::in_memory(),
             KeyStats::in_memory(),
             None,
         );
         let narrow = a.session.words().len();
-        a.on_resize(120);
+        a.on_resize(120, 24);
         assert!(a.session.words().len() > narrow);
         type_text(&mut a, "x");
         let started = a.session.words().len();
-        a.on_resize(40);
+        a.on_resize(40, 24);
         assert_eq!(a.session.words().len(), started);
     }
 
@@ -642,7 +649,7 @@ mod tests {
         let mut a = App::new(
             config,
             None,
-            80,
+            (80, 24),
             History::in_memory(),
             Mistakes::in_memory(),
             KeyStats::in_memory(),
@@ -795,7 +802,7 @@ mod tests {
         let mut a = App::new(
             config,
             None,
-            80,
+            (80, 24),
             History::in_memory(),
             Mistakes::in_memory(),
             KeyStats::in_memory(),
@@ -843,7 +850,7 @@ mod tests {
             let mut a = App::new(
                 config,
                 None,
-                80,
+                (80, 24),
                 History::in_memory(),
                 Mistakes::in_memory(),
                 KeyStats::in_memory(),

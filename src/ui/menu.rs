@@ -1,5 +1,6 @@
 use ratatui::{
     Frame,
+    layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::Paragraph,
@@ -65,8 +66,25 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
         "enter start · tab back",
         Style::new().fg(t.sub),
     ));
-    let area = column(frame.area(), lines.len() as u16);
+    let height = lines.len() as u16;
+    let area = column(frame.area(), height);
     frame.render_widget(Paragraph::new(lines).centered(), area);
+
+    // At the bottom, like "• tab for menu" on the typing screen, when it
+    // does not cover the menu.
+    let screen = frame.area();
+    if screen.height >= height + 4 {
+        let hint = Line::styled(
+            "• ctrl+c to exit",
+            Style::new().fg(t.sub).add_modifier(Modifier::ITALIC),
+        );
+        let hint_area = Rect {
+            y: screen.bottom().saturating_sub(2),
+            height: 1,
+            ..screen
+        };
+        frame.render_widget(Paragraph::new(hint).centered(), hint_area);
+    }
 }
 
 /// One setting line, for example "p  punctuation off" with the key in gray.
