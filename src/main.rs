@@ -19,7 +19,7 @@ use ratatui::crossterm::{
 use app::{App, CustomText};
 use config::Config;
 use engine::words::{WORD_LISTS, WordList};
-use engine::{Mode, STRICT_MODES, Strict};
+use engine::{Mode, QuoteLength, STRICT_MODES, Strict};
 use history::History;
 use mistakes::Mistakes;
 use ui::theme::Theme;
@@ -36,9 +36,10 @@ struct Cli {
     #[arg(short, long, value_name = "COUNT", conflicts_with = "quote")]
     words: Option<usize>,
 
-    /// Quote mode: type one quote from a book, poem or speech.
-    #[arg(short, long)]
-    quote: bool,
+    /// Quote mode: type one quote from a book, poem or speech. LENGTH is
+    /// all (default), short, medium or long.
+    #[arg(short, long, value_name = "LENGTH", num_args = 0..=1, default_missing_value = "all")]
+    quote: Option<String>,
 
     /// Custom mode: type the text of this file.
     #[arg(short, long, value_name = "PATH", conflicts_with_all = ["time", "words", "quote"])]
@@ -100,8 +101,15 @@ fn main() -> io::Result<()> {
     let mut config = config_path
         .as_deref()
         .map_or_else(Config::default, Config::load);
+    if let Some(name) = &cli.quote {
+        let Some(length) = QuoteLength::parse(name) else {
+            eprintln!("error: unknown quote length \"{name}\". Lengths: all, short, medium, long");
+            std::process::exit(2);
+        };
+        config.mode = Mode::Quote(length);
+    }
     match (cli.time, cli.words) {
-        _ if cli.quote => config.mode = Mode::Quote,
+        _ if cli.quote.is_some() => {}
         _ if cli.zen => config.mode = Mode::Zen,
         (_, Some(n)) => config.mode = Mode::Words(n.max(1)),
         (Some(t), None) => config.mode = Mode::Time(Duration::from_secs(t.max(1))),

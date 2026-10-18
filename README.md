@@ -4,7 +4,8 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 
 - Untimed mode (the default): type the words on the screen, with no time limit.
 - Time mode (15, 30, 60, 120 s) and words mode (10, 25, 50, 100 words).
-- Quote mode: one quote from a public-domain book, poem or speech.
+- Quote mode: one quote from a public-domain book, poem or speech. Choose
+  short (up to 15 words), medium (16 to 30) or long (more than 30) quotes.
 - Custom mode: type the text of your own file, with `--file`.
 - Zen mode: type anything with no target text. `Enter` ends the test.
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
@@ -54,6 +55,7 @@ dakken            # untimed test: the words on the screen
 dakken -t 60      # 60-second test
 dakken -w 25      # 25-word test
 dakken -q         # quote test
+dakken -q short   # short quote test
 dakken -f notes.txt  # type the text of a file
 dakken -z         # zen: type freely, Enter to finish
 dakken -l code    # untimed test with the code word list
@@ -111,7 +113,7 @@ the same folder as the history. The next start uses them. Command-line flags
 change them for one run only, until you change a setting in the menu.
 
 ```toml
-mode = "time 30"     # untimed, quote, zen, time N or words N
+mode = "time 30"     # untimed, quote, quote short/medium/long, zen, time N or words N
 theme = "terminal"   # terminal, serika-dark, nord or dracula
 punctuation = false
 numbers = false

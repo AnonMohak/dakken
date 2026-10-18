@@ -249,6 +249,18 @@ mod tests {
     }
 
     #[test]
+    fn each_quote_length_has_quotes() {
+        use crate::engine::QuoteLength;
+        for length in [QuoteLength::Short, QuoteLength::Medium, QuoteLength::Long] {
+            let n = quotes()
+                .iter()
+                .filter(|q| length.fits(q.text.split_whitespace().count()))
+                .count();
+            assert!(n >= 5, "{length:?} has {n} quotes");
+        }
+    }
+
+    #[test]
     fn never_repeats_a_word_in_a_row() {
         let mut generator = WordGen::new(vec!["a", "b"], StdRng::seed_from_u64(1));
         let mut prev = generator.next_word();

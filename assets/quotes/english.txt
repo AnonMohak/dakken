@@ -20,3 +20,31 @@ It is not the critic who counts; not the man who points out how the strong man s
 We hold these truths to be self-evident, that all men are created equal, that they are endowed by their Creator with certain unalienable Rights, that among these are Life, Liberty and the pursuit of Happiness.	United States Declaration of Independence
 And so, my fellow Americans: ask not what your country can do for you, ask what you can do for your country.	John F. Kennedy, Inaugural Address
 A journey of a thousand miles begins with a single step.	Laozi, Tao Te Ching
+Brevity is the soul of wit.	William Shakespeare, Hamlet
+The lady doth protest too much, methinks.	William Shakespeare, Hamlet
+We know what we are, but know not what we may be.	William Shakespeare, Hamlet
+All that glisters is not gold.	William Shakespeare, The Merchant of Venice
+The better part of valour is discretion.	William Shakespeare, Henry IV, Part 1
+Hope springs eternal in the human breast.	Alexander Pope, An Essay on Man
+To err is human, to forgive divine.	Alexander Pope, An Essay on Criticism
+A little learning is a dangerous thing.	Alexander Pope, An Essay on Criticism
+Fools rush in where angels fear to tread.	Alexander Pope, An Essay on Criticism
+Beware; for I am fearless, and therefore powerful.	Mary Shelley, Frankenstein
+The mass of men lead lives of quiet desperation.	Henry David Thoreau, Walden
+A foolish consistency is the hobgoblin of little minds.	Ralph Waldo Emerson, Self-Reliance
+A house divided against itself cannot stand.	Abraham Lincoln, House Divided Speech
+Give me liberty, or give me death!	Patrick Henry
+Ask, and it shall be given you; seek, and ye shall find; knock, and it shall be opened unto you.	Matthew 7:7, King James Version
+I wandered lonely as a cloud that floats on high o'er vales and hills, when all at once I saw a crowd, a host, of golden daffodils.	William Wordsworth, I Wandered Lonely as a Cloud
+Once more unto the breach, dear friends, once more; or close the wall up with our English dead.	William Shakespeare, Henry V
+Friends, Romans, countrymen, lend me your ears; I come to bury Caesar, not to praise him.	William Shakespeare, Julius Caesar
+What's in a name? That which we call a rose by any other name would smell as sweet.	William Shakespeare, Romeo and Juliet
+I am no bird; and no net ensnares me: I am a free human being with an independent will.	Charlotte Bronte, Jane Eyre
+A thing of beauty is a joy for ever: its loveliness increases; it will never pass into nothingness.	John Keats, Endymion
+To see a World in a Grain of Sand and a Heaven in a Wild Flower, hold Infinity in the palm of your hand and Eternity in an hour.	William Blake, Auguries of Innocence
+Let me not to the marriage of true minds admit impediments. Love is not love which alters when it alteration finds, or bends with the remover to remove.	William Shakespeare, Sonnet 116
+The Lord is my shepherd; I shall not want. He maketh me to lie down in green pastures: he leadeth me beside the still waters. He restoreth my soul: he leadeth me in the paths of righteousness for his name's sake.	Psalm 23:1-3, King James Version
+To every thing there is a season, and a time to every purpose under the heaven: a time to be born, and a time to die; a time to plant, and a time to pluck up that which is planted.	Ecclesiastes 3:1-2, King James Version
+With malice toward none, with charity for all, with firmness in the right as God gives us to see the right, let us strive on to finish the work we are in, to bind up the nation's wounds.	Abraham Lincoln, Second Inaugural Address
+Shall I compare thee to a summer's day? Thou art more lovely and more temperate: rough winds do shake the darling buds of May, and summer's lease hath all too short a date.	William Shakespeare, Sonnet 18
+We the People of the United States, in Order to form a more perfect Union, establish Justice, insure domestic Tranquility, provide for the common defence, promote the general Welfare, and secure the Blessings of Liberty to ourselves and our Posterity, do ordain and establish this Constitution for the United States of America.	Preamble to the United States Constitution

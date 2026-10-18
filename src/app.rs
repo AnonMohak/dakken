@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::engine::{
-    Key, Mode, Session, Strict,
+    Key, Mode, QuoteLength, Session, Strict,
     stats::TestResult,
     words::{self, WordGen, WordList},
 };
@@ -18,9 +18,12 @@ use crate::mistakes::{self, Mistakes};
 use crate::ui::{self, theme::Theme};
 
 /// The modes the menu offers, in menu order.
-pub const MODES: [Mode; 11] = [
+pub const MODES: [Mode; 14] = [
     Mode::Untimed,
-    Mode::Quote,
+    Mode::Quote(QuoteLength::All),
+    Mode::Quote(QuoteLength::Short),
+    Mode::Quote(QuoteLength::Medium),
+    Mode::Quote(QuoteLength::Long),
     Mode::Zen,
     Mode::Time(Duration::from_secs(15)),
     Mode::Time(Duration::from_secs(30)),
@@ -35,7 +38,8 @@ pub const MODES: [Mode; 11] = [
 pub fn mode_label(mode: Mode) -> String {
     match mode {
         Mode::Untimed => "untimed".to_string(),
-        Mode::Quote => "quote".to_string(),
+        Mode::Quote(QuoteLength::All) => "quote".to_string(),
+        Mode::Quote(length) => format!("quote {}", length.name()),
         Mode::Custom => "custom".to_string(),
         Mode::Zen => "zen".to_string(),
         Mode::Time(d) => format!("time {}", d.as_secs()),
@@ -47,7 +51,8 @@ pub fn mode_label(mode: Mode) -> String {
 pub fn parse_mode(label: &str) -> Option<Mode> {
     match label.split_once(' ') {
         None if label == "untimed" => Some(Mode::Untimed),
-        None if label == "quote" => Some(Mode::Quote),
+        None if label == "quote" => Some(Mode::Quote(QuoteLength::All)),
+        Some(("quote", length)) => Some(Mode::Quote(QuoteLength::parse(length)?)),
         None if label == "zen" => Some(Mode::Zen),
         Some(("time", n)) => Some(Mode::Time(Duration::from_secs(n.parse().ok()?))),
         Some(("words", n)) => Some(Mode::Words(n.parse().ok()?)),
@@ -195,7 +200,7 @@ impl App {
     /// Remember the words typed wrong. In the mistakes list, words typed
     /// right are removed.
     fn update_mistakes(&mut self) -> std::io::Result<()> {
-        let quote = self.mode == Mode::Quote;
+        let quote = matches!(self.mode, Mode::Quote(_));
         let keep_symbols = !quote && self.options.list == WordList::Code;
         let practising = !quote && self.options.list == WordList::Mistakes;
         let (mut wrong, mut fixed) = (Vec::new(), Vec::new());
@@ -248,7 +253,7 @@ impl App {
             label.push_str(&custom.name);
         }
         // These modes have their own text, so word options do not apply.
-        if matches!(self.mode, Mode::Quote | Mode::Custom | Mode::Zen) {
+        if matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen) {
             if self.strict != Strict::Off {
                 label.push_str(" · ");
                 label.push_str(self.strict.name());
@@ -388,10 +393,14 @@ fn new_test(
     width: u16,
     mistakes: &[String],
 ) -> (Session, Option<&'static str>) {
-    if mode == Mode::Quote {
-        let quote = *words::quotes()
+    if let Mode::Quote(length) = mode {
+        let quotes: Vec<_> = words::quotes()
+            .into_iter()
+            .filter(|q| length.fits(q.text.split_whitespace().count()))
+            .collect();
+        let quote = *quotes
             .choose(&mut rand::rng())
-            .expect("the quote list is not empty");
+            .expect("each quote length has quotes");
         let words: Vec<&str> = quote.text.split_whitespace().collect();
         return (Session::from_words(mode, &words), Some(quote.source));
     }
@@ -557,7 +566,7 @@ mod tests {
     #[test]
     fn quote_mode_types_a_whole_quote() {
         let config = Config {
-            mode: Mode::Quote,
+            mode: Mode::Quote(QuoteLength::All),
             ..Config::default()
         };
         let mut a = App::new(
@@ -585,8 +594,8 @@ mod tests {
         a.options.punctuation = true;
         assert_eq!(a.label(), "quote");
         let mut a = app(&["one", "two"]);
-        a.mode = Mode::Quote;
-        a.session = Session::from_words(Mode::Quote, &["one", "two"]);
+        a.mode = Mode::Quote(QuoteLength::All);
+        a.session = Session::from_words(a.mode, &["one", "two"]);
         type_text(&mut a, "one");
         a.on_key(
             press(KeyCode::Char(' '), KeyModifiers::NONE),
@@ -746,6 +755,33 @@ mod tests {
         a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
         assert!(matches!(a.screen, Screen::Results(_)));
         assert_eq!(a.history.records()[0].label, "zen");
+    }
+
+    #[test]
+    fn quote_lengths_pick_quotes_of_that_length() {
+        for (length, ok) in [
+            (QuoteLength::Short, 1..=15),
+            (QuoteLength::Medium, 16..=30),
+            (QuoteLength::Long, 31..=usize::MAX),
+        ] {
+            let config = Config {
+                mode: Mode::Quote(length),
+                ..Config::default()
+            };
+            let mut a = App::new(
+                config,
+                None,
+                80,
+                History::in_memory(),
+                Mistakes::in_memory(),
+                None,
+            );
+            for _ in 0..20 {
+                a.new_test();
+                assert!(ok.contains(&a.session.words().len()), "{length:?}");
+            }
+            assert_eq!(a.label(), format!("quote {}", length.name()));
+        }
     }
 
     #[test]

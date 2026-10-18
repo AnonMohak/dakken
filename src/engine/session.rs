@@ -13,13 +13,52 @@ pub enum Mode {
     /// Type a fixed list of words with no time limit.
     Untimed,
     /// Type one quote with no time limit.
-    Quote,
+    Quote(QuoteLength),
     /// Type the text of a file with no time limit.
     Custom,
     /// Type anything, with no target text. `Session::finish` ends the test.
     Zen,
     Time(Duration),
     Words(usize),
+}
+
+/// Which quotes quote mode uses, by word count.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum QuoteLength {
+    #[default]
+    All,
+    /// 15 words or fewer.
+    Short,
+    /// 16 to 30 words.
+    Medium,
+    /// More than 30 words.
+    Long,
+}
+
+impl QuoteLength {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::All => "all",
+            Self::Short => "short",
+            Self::Medium => "medium",
+            Self::Long => "long",
+        }
+    }
+
+    pub fn parse(name: &str) -> Option<Self> {
+        [Self::All, Self::Short, Self::Medium, Self::Long]
+            .into_iter()
+            .find(|l| l.name() == name)
+    }
+
+    pub fn fits(self, words: usize) -> bool {
+        match self {
+            Self::All => true,
+            Self::Short => words <= 15,
+            Self::Medium => (16..=30).contains(&words),
+            Self::Long => words > 30,
+        }
+    }
 }
 
 /// Rules that make a test harder, like monkeytype's.
@@ -100,7 +139,7 @@ impl Session {
         let count = match mode {
             Mode::Zen => return Self::zen(),
             Mode::Words(n) => n,
-            Mode::Untimed | Mode::Quote | Mode::Custom => 25,
+            Mode::Untimed | Mode::Quote(_) | Mode::Custom => 25,
             Mode::Time(_) => WORDS_AHEAD * 2,
         };
         let words: Vec<String> = (0..count).map(|_| next_word()).collect();
@@ -194,7 +233,7 @@ impl Session {
     pub fn remaining(&self, now: Instant) -> Option<Duration> {
         match self.mode {
             Mode::Time(limit) => Some(limit.saturating_sub(self.elapsed(now))),
-            Mode::Untimed | Mode::Quote | Mode::Custom | Mode::Zen | Mode::Words(_) => None,
+            Mode::Untimed | Mode::Quote(_) | Mode::Custom | Mode::Zen | Mode::Words(_) => None,
         }
     }
 
