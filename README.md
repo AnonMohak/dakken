@@ -3,7 +3,8 @@
 A typing-speed test for the terminal, in the style of [monkeytype](https://monkeytype.com).
 
 - Untimed mode (the default): type the words that fill the screen, with no
-  time limit. The text fills 80% of the terminal.
+  time limit. The text fills 70% of the terminal, with an empty row between
+  lines.
 - Time mode (15, 30, 60, 120 s) and words mode (10, 25, 50, 100 words).
 - Quote mode: one quote from a public-domain book, poem or speech. Choose
   short (up to 15 words), medium (16 to 30) or long (more than 30) quotes.

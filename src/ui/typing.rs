@@ -9,7 +9,7 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-use super::{theme::Theme, typing_area};
+use super::{theme::Theme, typing_area, word_lines};
 use crate::app::App;
 use crate::engine::{Mode, Session};
 
@@ -17,7 +17,7 @@ use crate::engine::{Mode, Session};
 pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: bool) {
     // Only the words, in the middle of the screen.
     let area = typing_area(frame.area());
-    let visible = area.height as usize;
+    let visible = word_lines(area.height);
     let t = app.theme;
 
     // Above the words: the time left in time mode, and the live stats when
@@ -65,7 +65,8 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
         .and_then(|wpm| s.pace_position(wpm, now));
 
     for (offset, range) in lines.iter().skip(first).take(visible).enumerate() {
-        let y = area.y + offset as u16;
+        // An empty row between lines.
+        let y = area.y + 2 * offset as u16;
         let mut spans = Vec::new();
         let mut x = 0;
         for i in range.clone() {
