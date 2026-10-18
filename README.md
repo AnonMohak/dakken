@@ -22,13 +22,18 @@ A typing-speed test for the terminal, in the style of [monkeytype](https://monke
 
 ## Install
 
-You need [Rust](https://rustup.rs). On Windows: `winget install Rustlang.Rustup`.
+**Download:** get the file for your system from
+[Releases](https://github.com/AnonMohak/dakken/releases). On Windows, rename it
+to `dakken.exe` and put it in a folder on your `PATH`.
+
+**Build from source:** you need [Rust](https://rustup.rs). On Windows:
+`winget install Rustlang.Rustup`.
 
 ```sh
-git clone https://github.com/AnonMohak/dakken.git
-cd dakken
-cargo install --path .
+cargo install --git https://github.com/AnonMohak/dakken.git
 ```
+
+Or from a clone: `cargo install --path .`
 
 ## Use
 
@@ -123,6 +128,10 @@ Remove-Item Env:VCINSTALLDIR, Env:VSINSTALLDIR
 cargo test      # engine, app and screen tests
 cargo clippy --all-targets
 ```
+
+CI runs the tests on Windows, Linux and macOS. To publish a release, push a
+tag such as `v0.2.0`: the release workflow builds the binaries and adds them
+to the GitHub Release.
 
 The code has three parts:
 
