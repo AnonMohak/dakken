@@ -251,7 +251,7 @@ mod tests {
     fn menu_lists_the_modes() {
         let mut a = app(&["hi"]);
         a.screen = Screen::Menu { selected: 0 };
-        let out = render(&a, 60, 28);
+        let out = render(&a, 60, 29);
         assert!(
             out.contains("time 15") && out.contains("words 100"),
             "{out}"
@@ -264,10 +264,16 @@ mod tests {
             out.contains("theme terminal") && out.contains("words english"),
             "{out}"
         );
+        // The keys are in their own column, and the logo is next to the modes.
+        let row = |text: &str| out.lines().find(|l| l.contains(text)).unwrap_or_default();
         assert!(
-            out.contains("c  pace caret off") && out.contains("m  strict off"),
+            row("pace caret off").trim_start().starts_with("c "),
             "{out}"
         );
+        assert!(row("start").trim_start().starts_with("enter "), "{out}");
+        let key_column = |text: &str| row(text).find(|c: char| c != ' ');
+        assert_eq!(key_column("strict off"), key_column("back"), "{out}");
+        assert!(out.contains("/_________/"), "{out}");
         // A short terminal shows fewer modes, so the exit hint still fits.
         let out = render(&a, 60, 20);
         assert!(
@@ -275,11 +281,12 @@ mod tests {
             "{out}"
         );
         // The smallest terminal still shows the selected mode, every setting
-        // and the hint.
+        // and the keys, with no logo.
         a.screen = Screen::Menu { selected: 13 };
-        let out = render(&a, 30, 11);
+        let out = render(&a, 30, 12);
+        assert!(!out.contains("_____"), "{out}");
         assert!(
-            out.contains("> words 100") && out.contains("pace caret") && out.contains("tab back"),
+            out.contains("> words 100") && out.contains("pace caret") && out.contains("back"),
             "{out}"
         );
     }
