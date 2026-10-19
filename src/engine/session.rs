@@ -477,7 +477,24 @@ impl Session {
         if !self.is_started() || self.is_finished() {
             return None;
         }
-        let mut chars = (wpm * 5.0 / 60.0 * self.elapsed(now).as_secs_f64()) as usize;
+        let chars = (wpm * 5.0 / 60.0 * self.elapsed(now).as_secs_f64()) as usize;
+        self.position_after(chars)
+    }
+
+    /// Where a past test would be now, as (word, letter). `times` are the
+    /// milliseconds of each correct letter or space in that test, so the
+    /// caret speeds up and slows down like the past test did.
+    pub fn run_position(&self, times: &[u32], now: Instant) -> Option<(usize, usize)> {
+        if !self.is_started() || self.is_finished() {
+            return None;
+        }
+        let ms = self.elapsed(now).as_millis();
+        let chars = times.partition_point(|&t| u128::from(t) <= ms);
+        self.position_after(chars)
+    }
+
+    /// The (word, letter) after `chars` letters and spaces of the text.
+    fn position_after(&self, mut chars: usize) -> Option<(usize, usize)> {
         for (i, word) in self.words.iter().enumerate() {
             if chars < word.len() {
                 return Some((i, chars));
@@ -729,6 +746,20 @@ mod tests {
         assert_eq!(s.pace_position(60.0, at(800)), Some((1, 0)));
         assert_eq!(s.pace_position(60.0, at(1400)), Some((1, 2)));
         assert_eq!(s.pace_position(60.0, at(5000)), None);
+    }
+
+    #[test]
+    fn run_position_follows_the_past_test() {
+        let start = Instant::now();
+        let mut s = Session::from_words(Mode::Words(2), &["abcd", "efgh"]);
+        // A fast start, then a long pause before the second word.
+        let times = [0, 50, 100, 150, 200, 1200, 1250];
+        assert_eq!(s.run_position(&times, start), None);
+        s.handle(Key::Char('a'), start);
+        let at = |ms| start + Duration::from_millis(ms);
+        assert_eq!(s.run_position(&times, at(120)), Some((0, 3)));
+        assert_eq!(s.run_position(&times, at(900)), Some((1, 0)));
+        assert_eq!(s.run_position(&times, at(1260)), Some((1, 2)));
     }
 
     #[test]

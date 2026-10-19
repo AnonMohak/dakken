@@ -58,11 +58,18 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     let first = current_line
         .saturating_sub(1)
         .min(lines.len().saturating_sub(visible));
-    // The pace caret runs at the personal best for this mode and options.
+    // The pace caret replays the personal-best test for this mode and
+    // options. A best from before dakken kept the key times moves at the
+    // best speed.
     let pace = (app.pace && !replay && s.mode() != Mode::Zen)
-        .then(|| app.history.best(&app.label()))
-        .flatten()
-        .and_then(|wpm| s.pace_position(wpm, now));
+        .then(|| {
+            let label = app.label();
+            match app.best_runs.get(&label) {
+                Some(times) => s.run_position(times, now),
+                None => s.pace_position(app.history.best(&label)?, now),
+            }
+        })
+        .flatten();
 
     for (offset, range) in lines.iter().skip(first).take(visible).enumerate() {
         // An empty row between lines.

@@ -1,4 +1,5 @@
 mod app;
+mod best_runs;
 mod config;
 mod engine;
 mod history;
@@ -20,6 +21,7 @@ use ratatui::crossterm::{
 };
 
 use app::{App, CustomText};
+use best_runs::BestRuns;
 use config::{Caret, Config};
 use engine::words::{WORD_LISTS, WordList};
 use engine::{Mode, QuoteLength, STRICT_MODES, Strict};
@@ -238,6 +240,7 @@ fn main() -> io::Result<()> {
         key_stats,
         custom,
     );
+    app.best_runs = best_runs::default_path().map_or_else(BestRuns::in_memory, BestRuns::load);
     if cli.daily {
         app.start_daily(history::today());
     }

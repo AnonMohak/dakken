@@ -12,6 +12,7 @@ use crate::engine::{
 };
 use rand::seq::IndexedRandom;
 
+use crate::best_runs::BestRuns;
 use crate::config::{Caret, Config};
 use crate::history::{History, Record};
 use crate::keystats::KeyStats;
@@ -141,6 +142,8 @@ pub struct App {
     pub history: History,
     pub mistakes: Mistakes,
     pub key_stats: KeyStats,
+    /// The key times of each personal-best test, for the pace caret.
+    pub best_runs: BestRuns,
     /// Best WPM for this label before the last finished test.
     pub previous_best: Option<f64>,
     /// The last finished test could not be added to the history file.
@@ -205,6 +208,7 @@ impl App {
             history: History::in_memory(),
             mistakes: Mistakes::in_memory(),
             key_stats: KeyStats::in_memory(),
+            best_runs: BestRuns::in_memory(),
             previous_best: None,
             save_failed: false,
             quit: false,
@@ -384,7 +388,11 @@ impl App {
             self.previous_best = self.history.best(&label);
             // A failed test is not a real result, so it is not saved.
             if !self.session.is_failed() {
-                self.save_failed = self.history.add(Record::new(label, &result)).is_err();
+                let new_best = self.previous_best.is_none_or(|best| result.wpm > best);
+                let presses = self.session.presses();
+                self.save_failed = (new_best && self.mode != Mode::Zen)
+                    && self.best_runs.set(&label, presses).is_err();
+                self.save_failed |= self.history.add(Record::new(label, &result)).is_err();
                 self.save_failed |= self.key_stats.add_test(self.session.presses()).is_err();
             }
             self.save_failed |= self.update_mistakes().is_err();
@@ -616,6 +624,8 @@ mod tests {
         let mut a = app(&["hi"]);
         type_text(&mut a, "hi");
         assert_eq!(a.previous_best, None);
+        // The first test is the best, so the pace caret can race its key times.
+        assert_eq!(a.best_runs.get(&a.label()).map(<[u32]>::len), Some(2));
         a.session = Session::from_words(a.mode, &["hi"]);
         a.screen = Screen::Typing;
         type_text(&mut a, "hi");

@@ -47,8 +47,10 @@ A typing-speed test for the terminal.
 - Strict modes: `stop-on-error` (only the correct key moves
   the caret), `no-backspace`, and `master` (the first wrong key fails the
   test; a failed test is not saved).
-- Optional pace caret: a gray letter that moves at your personal-best speed
-  for the same mode and options, so you can race it (off by default).
+- Optional pace caret: a gray letter that replays your personal-best test for
+  the same mode and options, key by key, with its fast parts and its pauses,
+  so you can race it (off by default). A best from before v0.4.0 moves at the
+  best speed until you set a new one.
 - Results: WPM, raw WPM, accuracy, consistency, and character counts, with a
   graph of WPM and raw WPM over the test, your slowest word and your fastest
   burst (the fastest single word).
@@ -167,7 +169,7 @@ punctuation = false
 numbers = false
 words = "english"    # english, english-1k, code, spanish, german, mistakes, weak-keys or weak-pairs
 live = false         # live WPM and accuracy during the test
-pace = false         # pace caret at your personal-best speed
+pace = false         # pace caret that replays your personal-best test
 strict = "off"       # off, stop-on-error, no-backspace or master
 caret = "block"      # block, bar or underline
 layout = "qwerty"    # qwerty, dvorak or colemak
