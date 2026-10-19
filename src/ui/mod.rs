@@ -297,6 +297,12 @@ mod tests {
             "{out}"
         );
         assert!(out.contains("enter select · tab back"), "{out}");
+        let start = |text: &str| {
+            out.lines()
+                .find(|l| l.contains(text))
+                .and_then(|l| l.find(text))
+        };
+        assert_eq!(start("mode"), start("time 15"), "{out}");
         let out = render(&a, 30, 11);
         assert!(out.contains("> words 100"), "{out}");
     }
