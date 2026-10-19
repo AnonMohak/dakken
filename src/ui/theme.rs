@@ -20,7 +20,7 @@ const fn rgb(hex: u32) -> Color {
 }
 
 /// The themes in menu order. The first is the default.
-pub const THEMES: [Theme; 4] = [
+pub const THEMES: [Theme; 10] = [
     // The default.
     Theme {
         name: "dracula",
@@ -58,6 +58,61 @@ pub const THEMES: [Theme; 4] = [
         text: rgb(0xd8dee9),
         error: rgb(0xbf616a),
         error_extra: rgb(0x8c4a52),
+    },
+    Theme {
+        name: "tokyo-night",
+        bg: Some(rgb(0x1a1b26)),
+        main: rgb(0x7aa2f7),
+        sub: rgb(0x565f89),
+        text: rgb(0xc0caf5),
+        error: rgb(0xf7768e),
+        error_extra: rgb(0xa3485c),
+    },
+    Theme {
+        name: "catppuccin-mocha",
+        bg: Some(rgb(0x1e1e2e)),
+        main: rgb(0xcba6f7),
+        sub: rgb(0x6c7086),
+        text: rgb(0xcdd6f4),
+        error: rgb(0xf38ba8),
+        error_extra: rgb(0xa35d73),
+    },
+    Theme {
+        name: "rose-pine",
+        bg: Some(rgb(0x191724)),
+        main: rgb(0xebbcba),
+        sub: rgb(0x6e6a86),
+        text: rgb(0xe0def4),
+        error: rgb(0xeb6f92),
+        error_extra: rgb(0xa14e66),
+    },
+    Theme {
+        name: "one-dark",
+        bg: Some(rgb(0x282c34)),
+        main: rgb(0x61afef),
+        sub: rgb(0x5c6370),
+        text: rgb(0xabb2bf),
+        error: rgb(0xe06c75),
+        error_extra: rgb(0x9b4a50),
+    },
+    // Light themes.
+    Theme {
+        name: "catppuccin-latte",
+        bg: Some(rgb(0xeff1f5)),
+        main: rgb(0x8839ef),
+        sub: rgb(0x7c7f93),
+        text: rgb(0x4c4f69),
+        error: rgb(0xd20f39),
+        error_extra: rgb(0xa0102c),
+    },
+    Theme {
+        name: "github-light",
+        bg: Some(rgb(0xffffff)),
+        main: rgb(0x0969da),
+        sub: rgb(0x6e7781),
+        text: rgb(0x1f2328),
+        error: rgb(0xcf222e),
+        error_extra: rgb(0x8a1820),
     },
 ];
 
@@ -128,7 +183,7 @@ mod tests {
             assert_eq!(t, *expected);
         }
         let custom = Theme::custom(&[("main", Some(Color::Magenta))]);
-        assert_eq!(THEMES[3].next(Some(custom)), custom);
+        assert_eq!(THEMES[THEMES.len() - 1].next(Some(custom)), custom);
         assert_eq!(custom.next(Some(custom)), THEMES[0]);
         assert_eq!(Theme::find("nord").map(|t| t.name), Some("nord"));
         assert_eq!(Theme::find("nope"), None);

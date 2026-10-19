@@ -38,8 +38,10 @@ A typing-speed test for the terminal.
 - Mistakes do not stop you: the test ends when the last word has all its
   letters, also if some are wrong. Accuracy shows the errors.
 - Dracula colors by default. The `terminal` theme uses your terminal's
-  palette, so the test follows your shell theme. Other themes: `serika-dark`,
-  `nord`, and your own `custom` theme.
+  palette, so the test follows your shell theme. Other dark themes:
+  `serika-dark`, `nord`, `tokyo-night`, `catppuccin-mocha`, `rose-pine` and
+  `one-dark`. Light themes: `catppuccin-latte` and `github-light`. You can
+  also make your own `custom` theme.
 - Settings are saved: the menu remembers the mode, options and theme.
 - Optional live WPM and accuracy during the test (off by default).
 - Practise Dvorak or Colemak on a QWERTY keyboard: each key gives the
@@ -167,7 +169,7 @@ change them for one run only, until you change a setting in the menu.
 
 ```toml
 mode = "time 30"     # untimed, quote, quote short/medium/long, zen, time N or words N
-theme = "dracula"    # dracula, terminal, serika-dark or nord
+theme = "dracula"    # dracula, terminal, nord, tokyo-night, github-light, ...
 punctuation = false
 numbers = false
 words = "english"    # english, english-1k, code, spanish, german, mistakes, weak-keys or weak-pairs

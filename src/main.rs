@@ -86,8 +86,9 @@ struct Cli {
     #[arg(long, value_name = "NAME")]
     strict: Option<String>,
 
-    /// Color theme: dracula (default), terminal, serika-dark, nord, or custom
-    /// (from the color_* keys in config.toml).
+    /// Color theme: dracula (default), terminal, serika-dark, nord,
+    /// tokyo-night, catppuccin-mocha, rose-pine, one-dark, catppuccin-latte,
+    /// github-light, or custom (from the color_* keys in config.toml).
     #[arg(long, value_name = "NAME")]
     theme: Option<String>,
 
