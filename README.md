@@ -106,6 +106,7 @@ dakken -f notes.txt  # type the text of a file
 dakken -z         # zen: type freely, Enter to finish
 dakken -d         # daily challenge: the same words for everyone today
 dakken -l code    # untimed test with the code word list
+dakken -l weak-pairs  # words with your slowest letter pairs
 dakken -p         # untimed test with punctuation
 dakken -p -n      # untimed test with punctuation and numbers
 dakken --theme nord  # use a color theme
@@ -122,23 +123,45 @@ dakken --keys     # print raw key events (to check your terminal)
 
 The test starts when you type the first letter.
 
+While you type:
+
 | Key | Action |
 |---|---|
-| `Tab` or `Esc` | Open or close the menu |
-| `Enter` (in the menu) | Start a new test |
-| `o` (in the menu) | Choose the mode (`↑`/`↓` or `j`/`k`, then `Enter`) |
-| `Enter` (on the results) | Start a new test |
-| `r` (on the results) | Replay the test at the speed you typed it |
+| `Tab` or `Esc` | Open the menu |
 | `Enter` (in zen mode) | End the test |
-| `p` (in the menu) | Turn punctuation on or off |
-| `n` (in the menu) | Turn numbers on or off |
-| `l` (in the menu) | Go to the next word list |
-| `t` (in the menu) | Go to the next color theme |
-| `s` (in the menu) | Show or hide the live WPM and accuracy |
-| `c` (in the menu) | Show or hide the pace caret |
-| `m` (in the menu) | Go to the next strict mode |
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
-| `Ctrl+C` | Quit |
+| `Ctrl+C` | Quit (on every screen) |
+
+On the results:
+
+| Key | Action |
+|---|---|
+| `Enter` | Start a new test |
+| `r` | Replay the test at the speed you typed it (any key stops it) |
+| `Tab` or `Esc` | Open the menu |
+
+In the menu, each setting shows its key on the left:
+
+| Key | Action |
+|---|---|
+| `o` | Choose the mode: untimed, quote, zen, time or words |
+| `p` | Turn punctuation on or off |
+| `n` | Turn numbers on or off |
+| `l` | Go to the next word list |
+| `t` | Go to the next color theme |
+| `s` | Show or hide the live WPM and accuracy |
+| `c` | Show or hide the pace caret |
+| `m` | Go to the next strict mode |
+| `Enter` | Start a new test |
+| `Tab` or `Esc` | Go back to the test or the results |
+
+On the mode screen (`o`):
+
+| Key | Action |
+|---|---|
+| `↑`/`↓` or `j`/`k` | Move the selection |
+| `Enter` | Choose the mode and go back to the menu |
+| `Tab` or `Esc` | Go back to the menu with no change |
 
 ## Bigger font in WezTerm
 
@@ -163,9 +186,10 @@ end)
 
 ## Settings
 
-The menu saves the mode, punctuation, numbers, word list and theme to `config.toml`, in
-the same folder as the history. The next start uses them. Command-line flags
-change them for one run only, until you change a setting in the menu.
+The menu saves all the settings to `config.toml`, in the same folder as the
+history. The next start uses them. Command-line flags change them for one run
+only, until you change a setting in the menu. The daily challenge (`-d`) is
+never saved as the mode.
 
 ```toml
 mode = "time 30"     # untimed, quote, quote short/medium/long, zen, time N or words N
@@ -204,7 +228,9 @@ Windows, and in `$XDG_DATA_HOME/dakken` or `~/.local/share/dakken` on other
 systems. A personal best counts only tests with the same mode and options,
 for example `time 30 · punctuation`. Delete the file to clear the history.
 
-`keys.tsv` keeps the presses, errors and time for each key, for `--heatmap`.
+`keys.tsv` keeps the presses, errors and time for each key and each letter
+pair, for `--heatmap`, `weak-keys` and `weak-pairs`. `best-runs.tsv` keeps the
+key times of each personal-best test, for the pace caret.
 `mistakes.txt`, in the same folder, keeps the last 100 words you typed wrong.
 If it is empty, the `mistakes` list uses the English words.
 
@@ -232,19 +258,21 @@ Remove-Item Env:VCINSTALLDIR, Env:VSINSTALLDIR
 
 ```sh
 cargo test      # engine, app and screen tests
-cargo clippy --all-targets
+cargo clippy --all-targets -- -D warnings
+cargo fmt --check
 ```
 
 `packaging/` has the Scoop manifest and winget manifests, and `Formula/` has
 the Homebrew formula. Update their version and SHA256 hashes for each release.
 
-CI runs the tests on Windows, Linux and macOS. To publish a release, push a
-tag such as `v0.2.0`: the release workflow builds the binaries and adds them
-to the GitHub Release.
+CI runs fmt, clippy and the tests on Windows, Linux (x86-64 and ARM64) and
+macOS, and builds the Intel macOS binary. To publish a release, push a tag such
+as `v0.4.0`: the release workflow builds the five binaries and adds them to
+the GitHub Release.
 
 The code has three parts:
 
-- `src/engine/`: typing rules, stats and word list. No terminal code.
+- `src/engine/`: typing rules, stats and word lists. No terminal code.
 - `src/app.rs`: screens and key handling.
 - `src/ui/`: drawing with [ratatui](https://ratatui.rs).
 
