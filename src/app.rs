@@ -101,7 +101,12 @@ pub struct Options {
 pub enum Screen {
     Typing,
     Results(TestResult),
-    Menu { selected: usize },
+    /// The settings, each with its key.
+    Menu,
+    /// The list of modes, opened with `o` in the menu.
+    Modes {
+        selected: usize,
+    },
     Replay(Box<Replay>),
 }
 
@@ -436,20 +441,30 @@ impl App {
                 KeyCode::Tab | KeyCode::Esc => self.open_menu(),
                 _ => {}
             },
-            Screen::Menu { selected } => match key.code {
+            Screen::Modes { selected } => match key.code {
                 KeyCode::Up | KeyCode::Char('k') => {
                     let selected = (selected + MODES.len() - 1) % MODES.len();
-                    self.screen = Screen::Menu { selected };
+                    self.screen = Screen::Modes { selected };
                 }
                 KeyCode::Down | KeyCode::Char('j') => {
                     let selected = (selected + 1) % MODES.len();
-                    self.screen = Screen::Menu { selected };
+                    self.screen = Screen::Modes { selected };
                 }
                 KeyCode::Enter => {
                     self.daily = None;
                     self.mode = MODES[selected];
                     self.save_config();
-                    self.restart();
+                    self.new_test();
+                    self.screen = Screen::Menu;
+                }
+                KeyCode::Tab | KeyCode::Esc => self.screen = Screen::Menu,
+                _ => {}
+            },
+            Screen::Menu => match key.code {
+                KeyCode::Enter => self.restart(),
+                KeyCode::Char('o') => {
+                    let selected = MODES.iter().position(|&m| m == self.mode).unwrap_or(0);
+                    self.screen = Screen::Modes { selected };
                 }
                 // New words are needed, so these start a new test.
                 KeyCode::Char('p') => {
@@ -497,8 +512,7 @@ impl App {
     }
 
     fn open_menu(&mut self) {
-        let selected = MODES.iter().position(|&m| m == self.mode).unwrap_or(0);
-        self.screen = Screen::Menu { selected };
+        self.screen = Screen::Menu;
     }
 }
 
@@ -581,6 +595,10 @@ mod tests {
         assert_eq!(a.session.words(), first);
         // Choosing a mode in the menu ends the daily challenge.
         a.open_menu();
+        a.on_key(
+            press(KeyCode::Char('o'), KeyModifiers::NONE),
+            Instant::now(),
+        );
         a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
         assert_eq!(a.daily, None);
     }
@@ -638,11 +656,19 @@ mod tests {
     fn menu_selects_a_new_mode() {
         let mut a = app(&["hi"]);
         a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
-        assert!(matches!(a.screen, Screen::Menu { .. }));
+        assert!(matches!(a.screen, Screen::Menu));
+        a.on_key(
+            press(KeyCode::Char('o'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(matches!(a.screen, Screen::Modes { selected: 0 }));
         a.on_key(press(KeyCode::Up, KeyModifiers::NONE), Instant::now());
         a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
-        assert!(matches!(a.screen, Screen::Typing));
+        // The mode changes and the menu shows it; enter then starts the test.
+        assert!(matches!(a.screen, Screen::Menu));
         assert_eq!(a.mode, MODES[MODES.len() - 1]);
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Typing));
     }
 
     #[test]
@@ -655,7 +681,7 @@ mod tests {
             Instant::now(),
         );
         assert!(a.options.punctuation);
-        assert!(matches!(a.screen, Screen::Menu { .. }));
+        assert!(matches!(a.screen, Screen::Menu));
         assert!(!a.session.is_started());
         assert!(a.label().ends_with(" · punctuation"));
         a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
@@ -768,6 +794,10 @@ mod tests {
             press(KeyCode::Char('p'), KeyModifiers::NONE),
             Instant::now(),
         );
+        a.on_key(
+            press(KeyCode::Char('o'), KeyModifiers::NONE),
+            Instant::now(),
+        );
         a.on_key(press(KeyCode::Down, KeyModifiers::NONE), Instant::now());
         a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
         let saved = Config::load(&path);
@@ -781,7 +811,7 @@ mod tests {
     fn tab_opens_and_closes_the_menu() {
         let mut a = app(&["hi"]);
         a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
-        assert!(matches!(a.screen, Screen::Menu { .. }));
+        assert!(matches!(a.screen, Screen::Menu));
         a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
         assert!(matches!(a.screen, Screen::Typing));
     }

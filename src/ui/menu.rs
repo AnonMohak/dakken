@@ -11,11 +11,7 @@ use crate::app::{App, MODES, mode_label};
 use crate::engine::{Strict, words::WordList};
 use crate::ui::theme::Theme;
 
-/// Rows that are not mode names: a gap and the settings (8), and 4 rows kept
-/// free for the keys line at the bottom.
-const OTHER_ROWS: u16 = 12;
-
-/// The dakken logo, a keycap with speed lines, next to the mode list.
+/// The dakken logo, a keycap with speed lines, above the settings.
 const LOGO: [&str; 7] = [
     r"       __________",
     r" ==   /  \      /|",
@@ -25,48 +21,33 @@ const LOGO: [&str; 7] = [
     r"  /_________/  /",
     r"  \_________\ /",
 ];
-/// Width of the key column without the logo: one letter.
-const KEY_WIDTH: usize = 1;
 /// Space between the key column and the text column.
-const GAP: usize = 4;
+const GAP: usize = 6;
 /// Space kept free on the left and the right of the menu.
-const MARGIN: usize = 4;
+const MARGIN: u16 = 4;
+/// Rows kept free under the menu for the keys line.
+const HINT_ROWS: u16 = 4;
 
-pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
+/// The menu: the logo, then one row for each setting with its key.
+pub fn draw(frame: &mut Frame, app: &App) {
     let t = app.theme;
     let screen = frame.area();
-    // Each row is a key column and a text column: (key, text spans).
-    let mut rows: Vec<(Option<&str>, Vec<Span>)> = Vec::new();
-    // In a short terminal, show only the modes around the selected one.
-    let modes = (screen.height.saturating_sub(OTHER_ROWS) as usize).clamp(1, MODES.len());
-    let first = selected.saturating_sub(modes / 2).min(MODES.len() - modes);
-    for (i, &mode) in MODES.iter().enumerate().skip(first).take(modes) {
-        let span = if i == selected {
-            Span::styled(
-                format!("> {}", mode_label(mode)),
-                Style::new().fg(t.main).add_modifier(Modifier::BOLD),
-            )
-        } else {
-            Span::styled(format!("  {}", mode_label(mode)), Style::new().fg(t.text))
-        };
-        rows.push((None, vec![span]));
-    }
-    rows.push((None, Vec::new()));
+    let mut rows: Vec<(char, Span)> = Vec::new();
+    let mut setting = |key, name: &str, value: &str, color: Color| {
+        let text = format!("{name} {value}");
+        rows.push((key, Span::styled(text, Style::new().fg(color))));
+    };
+    let mode = match app.daily {
+        Some(_) => "daily".to_string(),
+        None => mode_label(app.mode),
+    };
+    setting('o', "mode", &mode, t.main);
     // Each setting shows the key that changes it.
     let on_off = |on: bool| if on { ("on", t.main) } else { ("off", t.text) };
-    let mut setting = |key, name: &str, value: &str, color: Color| {
-        rows.push((
-            Some(key),
-            vec![Span::styled(
-                format!("{name} {value}"),
-                Style::new().fg(color),
-            )],
-        ));
-    };
     let (state, color) = on_off(app.options.punctuation);
-    setting("p", "punctuation", state, color);
+    setting('p', "punctuation", state, color);
     let (state, color) = on_off(app.options.numbers);
-    setting("n", "numbers", state, color);
+    setting('n', "numbers", state, color);
     let list = match app.options.list {
         WordList::WeakKeys => {
             let letters: Vec<String> = app.weak_letters().iter().map(char::to_string).collect();
@@ -86,102 +67,140 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
         }
         list => list.name().to_string(),
     };
-    setting("l", "words", &list, t.text);
-    setting("t", "theme", t.name, t.text);
+    setting('l', "words", &list, t.text);
+    setting('t', "theme", t.name, t.text);
     let (state, color) = on_off(app.live);
-    setting("s", "live stats", state, color);
+    setting('s', "live stats", state, color);
     let (state, color) = on_off(app.pace);
-    setting("c", "pace caret", state, color);
+    setting('c', "pace caret", state, color);
     let strict_color = if app.strict == Strict::Off {
         t.text
     } else {
         t.main
     };
-    setting("m", "strict", app.strict.name(), strict_color);
+    setting('m', "strict", app.strict.name(), strict_color);
+
     let sub = Style::new().fg(t.sub);
-
-    // The logo needs all its rows next to the modes, and room on the sides.
-    let text_width = rows
-        .iter()
-        .map(|(_, spans)| {
-            spans
-                .iter()
-                .map(|s| s.content.chars().count())
-                .sum::<usize>()
-        })
-        .max()
-        .unwrap_or(0);
-    let logo_width = LOGO.iter().map(|l| l.chars().count()).max().unwrap_or(0);
-    let with_logo =
-        modes >= LOGO.len() && logo_width + GAP + text_width + 2 * MARGIN <= screen.width as usize;
-    let key_width = if with_logo { logo_width } else { KEY_WIDTH };
-    let logo_top = modes.saturating_sub(LOGO.len()) / 2;
-
-    let lines: Vec<Line> = rows
+    let settings: Vec<Line> = rows
         .into_iter()
-        .enumerate()
-        .map(|(i, (key, text))| {
-            let mut spans = match key {
-                Some(k) => vec![Span::styled(format!("{k:<key_width$}"), sub)],
-                None if with_logo && (logo_top..logo_top + LOGO.len()).contains(&i) => {
-                    logo_line(t, LOGO[i - logo_top], key_width)
-                }
-                None => vec![Span::raw(" ".repeat(key_width))],
-            };
-            // The "> " of the selected mode sits in the gap, so the mode
-            // names line up with the settings.
-            let marked = key.is_none()
-                && text
-                    .first()
-                    .is_some_and(|s| s.content.starts_with(['>', ' ']));
-            let gap = if marked { GAP - 2 } else { GAP };
-            spans.push(Span::raw(" ".repeat(gap)));
-            spans.extend(text);
-            Line::from(spans)
+        .map(|(key, text)| {
+            Line::from(vec![
+                Span::styled(format!("{key}{}", " ".repeat(GAP)), sub),
+                text,
+            ])
         })
         .collect();
+    let width = settings.iter().map(Line::width).max().unwrap_or(0) as u16;
+    // The logo goes on top when there is room for it.
+    let logo_height = LOGO.len() as u16 + 1;
+    let with_logo = screen.height >= settings.len() as u16 + logo_height + HINT_ROWS;
+    let mut lines: Vec<Line> = Vec::new();
+    if with_logo {
+        lines.extend(logo_lines(t));
+        lines.push(Line::default());
+    }
+    let logo_rows = lines.len();
+    lines.extend(settings);
 
     let height = lines.len() as u16;
-    let width = (key_width + GAP + text_width) as u16;
-    // Centered, with at least the margin on the left.
-    let left = ((screen.width.saturating_sub(width)) / 2).max(MARGIN as u16);
+    let area = column(screen, height);
+    let left = (screen.width.saturating_sub(width) / 2).max(MARGIN);
+    let settings_area = Rect {
+        x: screen.x + left.min(screen.width),
+        y: area.y + logo_rows as u16,
+        width: width.min(screen.width.saturating_sub(left)),
+        height: height - logo_rows as u16,
+    };
+    if with_logo {
+        let logo_area = Rect {
+            height: logo_rows as u16,
+            ..area
+        };
+        frame.render_widget(
+            Paragraph::new(lines[..logo_rows].to_vec()).centered(),
+            logo_area,
+        );
+    }
+    frame.render_widget(Paragraph::new(lines[logo_rows..].to_vec()), settings_area);
+    keys_line(frame, t, height, "enter start · tab back · ctrl+c exit");
+}
+
+/// The list of modes, from `o` in the menu.
+pub fn draw_modes(frame: &mut Frame, app: &App, selected: usize) {
+    let t = app.theme;
+    let screen = frame.area();
+    // In a short terminal, show only the modes around the selected one.
+    let rows = (screen.height.saturating_sub(HINT_ROWS + 2) as usize).clamp(1, MODES.len());
+    let first = selected.saturating_sub(rows / 2).min(MODES.len() - rows);
+    let mut lines = vec![
+        Line::styled("mode", Style::new().fg(t.sub)),
+        Line::default(),
+    ];
+    for (i, &mode) in MODES.iter().enumerate().skip(first).take(rows) {
+        lines.push(if i == selected {
+            Line::styled(
+                format!("> {}", mode_label(mode)),
+                Style::new().fg(t.main).add_modifier(Modifier::BOLD),
+            )
+        } else {
+            Line::styled(format!("  {}", mode_label(mode)), Style::new().fg(t.text))
+        });
+    }
+    let height = lines.len() as u16;
+    let width = lines.iter().map(Line::width).max().unwrap_or(0) as u16;
+    let area = column(screen, height);
+    let left = (screen.width.saturating_sub(width) / 2).max(MARGIN);
     let area = Rect {
         x: screen.x + left.min(screen.width),
         width: width.min(screen.width.saturating_sub(left)),
-        ..column(screen, height)
+        ..area
     };
     frame.render_widget(Paragraph::new(lines), area);
-
-    // The keys at the bottom, like "• tab for menu" on the typing screen.
-    // A short terminal puts them on the last row, under the menu.
-    let below = if screen.height >= height + 4 { 2 } else { 1 };
-    if screen.height > height {
-        let hint = Line::styled(
-            "enter start · tab back · ctrl+c exit",
-            sub.add_modifier(Modifier::ITALIC),
-        );
-        let hint_area = Rect {
-            y: screen.bottom().saturating_sub(below),
-            height: 1,
-            ..screen
-        };
-        frame.render_widget(Paragraph::new(hint).centered(), hint_area);
-    }
+    keys_line(frame, t, height, "↑↓ choose · enter select · tab back");
 }
 
-/// One row of the logo, padded to `width`, in the theme color: the speed
-/// lines plain, the keycap bold.
-fn logo_line(t: Theme, row: &str, width: usize) -> Vec<Span<'static>> {
-    let row = format!("{row:<width$}");
-    let split = row
-        .find(|c: char| c != '=' && c != ' ')
-        .unwrap_or(row.len());
-    let (lines, cap) = row.split_at(split);
-    vec![
-        Span::styled(lines.to_string(), Style::new().fg(t.main)),
-        Span::styled(
-            cap.to_string(),
-            Style::new().fg(t.main).add_modifier(Modifier::BOLD),
-        ),
-    ]
+/// The logo rows, padded to one width so they stay in shape when centered:
+/// the speed lines plain, the keycap bold, both in the theme color.
+fn logo_lines(t: Theme) -> Vec<Line<'static>> {
+    let width = LOGO.iter().map(|l| l.chars().count()).max().unwrap_or(0);
+    LOGO.iter()
+        .map(|row| {
+            let row = format!("{row:<width$}");
+            let split = row
+                .find(|c: char| c != '=' && c != ' ')
+                .unwrap_or(row.len());
+            let (speed, cap) = row.split_at(split);
+            Line::from(vec![
+                Span::styled(speed.to_string(), Style::new().fg(t.main)),
+                Span::styled(
+                    cap.to_string(),
+                    Style::new().fg(t.main).add_modifier(Modifier::BOLD),
+                ),
+            ])
+        })
+        .collect()
+}
+
+/// The keys at the bottom, like "• tab for menu" on the typing screen. A
+/// short terminal puts them on the last row, under the menu.
+fn keys_line(frame: &mut Frame, t: Theme, menu_height: u16, keys: &str) {
+    let screen = frame.area();
+    if screen.height <= menu_height {
+        return;
+    }
+    let below = if screen.height >= menu_height + HINT_ROWS {
+        2
+    } else {
+        1
+    };
+    let hint = Line::styled(
+        keys.to_string(),
+        Style::new().fg(t.sub).add_modifier(Modifier::ITALIC),
+    );
+    let area = Rect {
+        y: screen.bottom().saturating_sub(below),
+        height: 1,
+        ..screen
+    };
+    frame.render_widget(Paragraph::new(hint).centered(), area);
 }

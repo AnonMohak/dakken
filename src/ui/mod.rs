@@ -42,7 +42,8 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
         Screen::Typing => typing::draw(frame, app, &app.session, now, false),
         Screen::Replay(replay) => typing::draw(frame, app, &replay.session, now, true),
         Screen::Results(result) => results::draw(frame, app, result),
-        Screen::Menu { selected } => menu::draw(frame, app, *selected),
+        Screen::Menu => menu::draw(frame, app),
+        Screen::Modes { selected } => menu::draw_modes(frame, app, *selected),
     }
 }
 
@@ -248,53 +249,55 @@ mod tests {
     }
 
     #[test]
-    fn menu_lists_the_modes() {
+    fn menu_shows_the_settings_with_keys_and_the_logo() {
         let mut a = app(&["hi"]);
-        a.screen = Screen::Menu { selected: 0 };
+        a.screen = Screen::Menu;
         let out = render(&a, 60, 29);
-        assert!(
-            out.contains("time 15") && out.contains("words 100"),
-            "{out}"
-        );
-        assert!(
-            out.contains("punctuation off") && out.contains("numbers off"),
-            "{out}"
-        );
-        assert!(
-            out.contains("theme terminal") && out.contains("words english"),
-            "{out}"
-        );
-        // The keys are in their own column, and the logo is next to the modes.
         let row = |text: &str| out.lines().find(|l| l.contains(text)).unwrap_or_default();
-        assert!(
-            row("pace caret off").trim_start().starts_with("c "),
-            "{out}"
-        );
-        let key_column = |text: &str| row(text).find(|c: char| c != ' ');
-        assert_eq!(
-            key_column("strict off"),
-            key_column("punctuation off"),
-            "{out}"
-        );
+        for (key, text) in [
+            ("o", "mode words 1"),
+            ("p", "punctuation off"),
+            ("n", "numbers off"),
+            ("l", "words english"),
+            ("t", "theme dracula"),
+            ("s", "live stats off"),
+            ("c", "pace caret off"),
+            ("m", "strict off"),
+        ] {
+            assert!(
+                row(text).trim_start().starts_with(&format!("{key}      ")),
+                "{out}"
+            );
+        }
+        // Keys and text are each in one column.
+        let start = |text: &str| row(text).find(|c: char| c != ' ');
+        assert_eq!(start("mode words 1"), start("strict off"), "{out}");
+        assert!(out.contains("/_________/"), "{out}");
+        assert!(!out.contains("time 15"), "{out}");
         assert!(
             out.contains("enter start · tab back · ctrl+c exit"),
             "{out}"
         );
-        assert!(out.contains("/_________/"), "{out}");
-        // A short terminal shows fewer modes, so the exit hint still fits.
-        let out = render(&a, 60, 20);
-        assert!(
-            out.contains("> untimed") && out.contains("ctrl+c exit"),
-            "{out}"
-        );
-        // The smallest terminal still shows the selected mode, every setting
-        // and the keys line, with no logo.
-        a.screen = Screen::Menu { selected: 13 };
-        let out = render(&a, 40, 11);
+        // The smallest terminal drops the logo but keeps every setting.
+        let out = render(&a, 30, 11);
         assert!(!out.contains("_____"), "{out}");
         assert!(
-            out.contains("> words 100") && out.contains("pace caret") && out.contains("tab back"),
+            out.contains("mode words 1") && out.contains("strict off"),
             "{out}"
         );
+    }
+
+    #[test]
+    fn mode_screen_lists_the_modes() {
+        let mut a = app(&["hi"]);
+        a.screen = Screen::Modes { selected: 13 };
+        let out = render(&a, 60, 24);
+        assert!(
+            out.contains("  time 15") && out.contains("> words 100"),
+            "{out}"
+        );
+        assert!(out.contains("enter select · tab back"), "{out}");
+        let out = render(&a, 30, 11);
+        assert!(out.contains("> words 100"), "{out}");
     }
 }

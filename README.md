@@ -37,8 +37,9 @@ A typing-speed test for the terminal.
   backspace into a previous word only if it has an error.
 - Mistakes do not stop you: the test ends when the last word has all its
   letters, also if some are wrong. Accuracy shows the errors.
-- Colors from your terminal's palette, so the test follows your shell theme.
-  Other themes: `serika-dark`, `nord`, `dracula`, and your own `custom` theme.
+- Dracula colors by default. The `terminal` theme uses your terminal's
+  palette, so the test follows your shell theme. Other themes: `serika-dark`,
+  `nord`, and your own `custom` theme.
 - Settings are saved: the menu remembers the mode, options and theme.
 - Optional live WPM and accuracy during the test (off by default).
 - Practise Dvorak or Colemak on a QWERTY keyboard: each key gives the
@@ -121,7 +122,9 @@ The test starts when you type the first letter.
 
 | Key | Action |
 |---|---|
-| `Tab` or `Esc` | Open or close the menu (`↑`/`↓` or `j`/`k`, then `Enter`) |
+| `Tab` or `Esc` | Open or close the menu |
+| `Enter` (in the menu) | Start a new test |
+| `o` (in the menu) | Choose the mode (`↑`/`↓` or `j`/`k`, then `Enter`) |
 | `Enter` (on the results) | Start a new test |
 | `r` (on the results) | Replay the test at the speed you typed it |
 | `Enter` (in zen mode) | End the test |
@@ -164,7 +167,7 @@ change them for one run only, until you change a setting in the menu.
 
 ```toml
 mode = "time 30"     # untimed, quote, quote short/medium/long, zen, time N or words N
-theme = "terminal"   # terminal, serika-dark, nord or dracula
+theme = "dracula"    # dracula, terminal, serika-dark or nord
 punctuation = false
 numbers = false
 words = "english"    # english, english-1k, code, spanish, german, mistakes, weak-keys or weak-pairs

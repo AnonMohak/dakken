@@ -1,5 +1,5 @@
-//! Color themes. The default, "terminal", uses the terminal's own palette, so
-//! the test follows the shell theme.
+//! Color themes. The default is dracula. "terminal" uses the terminal's own
+//! palette, so the test follows the shell theme.
 
 use ratatui::style::Color;
 
@@ -21,6 +21,16 @@ const fn rgb(hex: u32) -> Color {
 
 /// The themes in menu order. The first is the default.
 pub const THEMES: [Theme; 4] = [
+    // The default.
+    Theme {
+        name: "dracula",
+        bg: Some(rgb(0x282a36)),
+        main: rgb(0xbd93f9),
+        sub: rgb(0x6272a4),
+        text: rgb(0xf8f8f2),
+        error: rgb(0xff5555),
+        error_extra: rgb(0xa33d3d),
+    },
     Theme {
         name: "terminal",
         bg: None,
@@ -49,16 +59,10 @@ pub const THEMES: [Theme; 4] = [
         error: rgb(0xbf616a),
         error_extra: rgb(0x8c4a52),
     },
-    Theme {
-        name: "dracula",
-        bg: Some(rgb(0x282a36)),
-        main: rgb(0xbd93f9),
-        sub: rgb(0x6272a4),
-        text: rgb(0xf8f8f2),
-        error: rgb(0xff5555),
-        error_extra: rgb(0xa33d3d),
-    },
 ];
+
+/// The theme with the terminal's own palette.
+const TERMINAL: Theme = THEMES[1];
 
 impl Default for Theme {
     fn default() -> Self {
@@ -84,7 +88,7 @@ impl Theme {
     pub fn custom(colors: &[(&str, Option<Color>)]) -> Self {
         let mut t = Self {
             name: "custom",
-            ..Self::default()
+            ..TERMINAL
         };
         for &(key, color) in colors {
             match (key, color) {
@@ -110,9 +114,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_theme_uses_the_terminal_palette() {
-        let t = Theme::default();
-        assert_eq!((t.name, t.bg, t.text), ("terminal", None, Color::Reset));
+    fn default_theme_is_dracula() {
+        assert_eq!(Theme::default().name, "dracula");
+        let t = Theme::find("terminal").unwrap();
+        assert_eq!((t.bg, t.text), (None, Color::Reset));
     }
 
     #[test]

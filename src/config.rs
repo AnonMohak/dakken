@@ -232,7 +232,11 @@ mod tests {
         assert_eq!(config.theme, custom);
         assert_eq!(custom.main, Color::Rgb(0xff, 0x79, 0xc6));
         assert_eq!(custom.sub, Color::DarkGray);
-        assert_eq!(custom.text, Theme::default().text, "a bad color is skipped");
+        assert_eq!(
+            custom.text,
+            Theme::find("terminal").unwrap().text,
+            "a bad color is skipped"
+        );
         // Saving keeps the colors.
         assert_eq!(Config::parse(&config.to_text()), config);
         // Without color keys, "custom" is not a theme.
