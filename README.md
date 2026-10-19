@@ -48,6 +48,12 @@ A typing-speed test for the terminal.
 
 ## Install
 
+**winget (Windows):**
+
+```powershell
+winget install AnonMohak.dakken
+```
+
 **Scoop (Windows):**
 
 ```powershell
