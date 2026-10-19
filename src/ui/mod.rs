@@ -251,7 +251,7 @@ mod tests {
     fn menu_lists_the_modes() {
         let mut a = app(&["hi"]);
         a.screen = Screen::Menu { selected: 0 };
-        let out = render(&a, 60, 24);
+        let out = render(&a, 60, 28);
         assert!(
             out.contains("time 15") && out.contains("words 100"),
             "{out}"
@@ -266,6 +266,12 @@ mod tests {
         );
         assert!(
             out.contains("c  pace caret off") && out.contains("m  strict off"),
+            "{out}"
+        );
+        // A short terminal shows fewer modes, so the exit hint still fits.
+        let out = render(&a, 60, 20);
+        assert!(
+            out.contains("> untimed") && out.contains("ctrl+c to exit"),
             "{out}"
         );
         // The smallest terminal still shows the selected mode, every setting

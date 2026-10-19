@@ -11,8 +11,9 @@ use crate::app::{App, MODES, mode_label};
 use crate::engine::{Strict, words::WordList};
 use crate::ui::theme::Theme;
 
-/// Rows that are not mode names: gaps, settings and the hint.
-const OTHER_ROWS: u16 = 10;
+/// Rows that are not mode names: gaps and settings (10), and 4 rows kept
+/// free for the "ctrl+c to exit" hint at the bottom.
+const OTHER_ROWS: u16 = 14;
 
 pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
     let t = app.theme;
