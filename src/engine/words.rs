@@ -1,4 +1,4 @@
-use rand::{Rng, RngExt};
+use rand::{Rng, RngExt, SeedableRng, rngs::StdRng};
 
 const ENGLISH: &str = include_str!("../../assets/words/english.txt");
 const ENGLISH_1K: &str = include_str!("../../assets/words/english_1k.txt");
@@ -101,6 +101,19 @@ impl WordList {
     }
 }
 
+/// Words in the daily challenge.
+pub const DAILY_WORDS: usize = 30;
+
+/// The daily challenge for `day` (days since 1970-01-01 UTC): words from
+/// english-1k, the same for everyone on the same day.
+pub fn daily_words(day: i64) -> Vec<String> {
+    let mut words = WordGen::new(
+        WordList::English1k.words(),
+        StdRng::seed_from_u64(day as u64),
+    );
+    (0..DAILY_WORDS).map(|_| words.next_word()).collect()
+}
+
 /// Picks random words from a list and never gives the same word two times in a row.
 pub struct WordGen<R> {
     list: Vec<String>,
@@ -201,7 +214,14 @@ fn capitalize(word: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{SeedableRng, rngs::StdRng};
+
+    #[test]
+    fn daily_words_are_the_same_all_day_and_change_each_day() {
+        let today = daily_words(20_380);
+        assert_eq!(today.len(), DAILY_WORDS);
+        assert_eq!(today, daily_words(20_380));
+        assert_ne!(today, daily_words(20_381));
+    }
 
     #[test]
     fn english_list_has_200_unique_words() {

@@ -18,6 +18,8 @@ A typing-speed test for the terminal.
   short (up to 15 words), medium (16 to 30) or long (more than 30) quotes.
 - Custom mode: type the text of your own file, with `--file`.
 - Zen mode: type anything with no target text. `Enter` ends the test.
+- Daily challenge: the same 30 words for everyone each day (UTC), with your
+  streak of days in a row in `--stats`.
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
   quotes and parentheses.
 - Numbers mode: random numbers in place of some words.
@@ -94,6 +96,7 @@ dakken -q         # quote test
 dakken -q short   # short quote test
 dakken -f notes.txt  # type the text of a file
 dakken -z         # zen: type freely, Enter to finish
+dakken -d         # daily challenge: the same words for everyone today
 dakken -l code    # untimed test with the code word list
 dakken -p         # untimed test with punctuation
 dakken -p -n      # untimed test with punctuation and numbers

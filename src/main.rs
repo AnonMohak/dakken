@@ -53,6 +53,11 @@ struct Cli {
     #[arg(short, long, conflicts_with_all = ["time", "words", "quote", "file"])]
     zen: bool,
 
+    /// Daily challenge: the same 30 words for everyone today. Your streak
+    /// shows in --stats.
+    #[arg(short, long, conflicts_with_all = ["time", "words", "quote", "file", "zen"])]
+    daily: bool,
+
     /// Add capitals and punctuation to the words.
     #[arg(short, long)]
     punctuation: bool,
@@ -224,7 +229,7 @@ fn main() -> io::Result<()> {
         },
         None => None,
     };
-    run(App::new(
+    let mut app = App::new(
         config,
         config_path,
         size,
@@ -232,7 +237,11 @@ fn main() -> io::Result<()> {
         mistakes,
         key_stats,
         custom,
-    ))
+    );
+    if cli.daily {
+        app.start_daily(history::today());
+    }
+    run(app)
 }
 
 fn run(mut app: App) -> io::Result<()> {

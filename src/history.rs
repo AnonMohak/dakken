@@ -357,6 +357,16 @@ pub fn stats_report(history: &History) -> String {
         );
     }
 
+    if let Some(best) = history.best("daily") {
+        let streak = daily_streak(history, today());
+        let s = if streak == 1 { "" } else { "s" };
+        out += &format!(
+            "
+daily challenge: {streak} day{s} in a row, best {best:.0} wpm
+"
+        );
+    }
+
     let days = daily_wpm(history);
     let shown = &days[days.len().saturating_sub(STATS_DAYS)..];
     let top = shown.iter().map(|(_, wpm)| *wpm).fold(0.0, f64::max);
@@ -365,6 +375,23 @@ pub fn stats_report(history: &History) -> String {
         out += &format!("  {day}  {} {wpm:.0}\n", bar(*wpm, top, BAR_WIDTH));
     }
     out
+}
+
+/// Days in a row with a daily challenge, up to `today`. A streak that ended
+/// yesterday still counts until today is over.
+pub fn daily_streak(history: &History, today: i64) -> usize {
+    let days: std::collections::HashSet<i64> = history
+        .records()
+        .iter()
+        .filter(|r| r.label == "daily")
+        .map(|r| (r.time / 86_400) as i64)
+        .collect();
+    let start = if days.contains(&today) {
+        today
+    } else {
+        today - 1
+    };
+    (0..).take_while(|i| days.contains(&(start - i))).count()
 }
 
 /// The average WPM of each day that has tests, oldest first.
@@ -415,6 +442,22 @@ mod tests {
             consistency: 80.0,
             seconds: 30.0,
         }
+    }
+
+    #[test]
+    fn daily_streak_counts_days_in_a_row() {
+        let mut h = History::in_memory();
+        for day in [10, 11, 12, 14] {
+            let mut r = record("daily", 100.0);
+            r.time = day * 86_400 + 60;
+            h.add(r).unwrap();
+        }
+        h.add(record("time 30", 90.0)).unwrap();
+        assert_eq!(daily_streak(&h, 14), 1);
+        // Day 15 has no test yet, so the streak to day 14 still counts.
+        assert_eq!(daily_streak(&h, 15), 1);
+        assert_eq!(daily_streak(&h, 13), 3);
+        assert_eq!(daily_streak(&h, 17), 0);
     }
 
     #[test]

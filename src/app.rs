@@ -114,6 +114,8 @@ pub struct Replay {
 
 pub struct App {
     pub mode: Mode,
+    /// The day (since 1970-01-01 UTC) of the daily challenge, in daily mode.
+    pub daily: Option<i64>,
     pub options: Options,
     pub theme: Theme,
     /// The theme from the `color_*` keys in the config, if any.
@@ -185,6 +187,7 @@ impl App {
     pub fn with_session(mode: Mode, session: Session) -> Self {
         Self {
             mode,
+            daily: None,
             options: Options::default(),
             theme: Theme::default(),
             custom_theme: None,
@@ -208,6 +211,13 @@ impl App {
         }
     }
 
+    /// Start the daily challenge for `day`: the same words for everyone.
+    pub fn start_daily(&mut self, day: i64) {
+        self.daily = Some(day);
+        self.mode = Mode::Words(words::DAILY_WORDS);
+        self.new_test();
+    }
+
     fn restart(&mut self) {
         self.new_test();
         self.screen = Screen::Typing;
@@ -215,6 +225,10 @@ impl App {
 
     fn new_test(&mut self) {
         (self.session, self.source) = match &self.custom {
+            _ if self.daily.is_some() => {
+                let words = words::daily_words(self.daily.unwrap_or_default());
+                (Session::from_words(self.mode, &words), None)
+            }
             Some(custom) if self.mode == Mode::Custom => {
                 (Session::from_words(self.mode, &custom.words), None)
             }
@@ -272,6 +286,7 @@ impl App {
             // Custom mode needs a file from the command line, so keep the
             // saved mode instead.
             let mode = match self.mode {
+                _ if self.daily.is_some() => Config::load(path).mode,
                 Mode::Custom => Config::load(path).mode,
                 mode => mode,
             };
@@ -301,6 +316,10 @@ impl App {
     /// The mode and its options, for example "time 30 · punctuation".
     /// Quotes have their own punctuation and numbers, so options do not apply.
     pub fn label(&self) -> String {
+        // One fixed text, so options do not apply.
+        if self.daily.is_some() {
+            return "daily".to_string();
+        }
         let mut parts = vec![mode_label(self.mode)];
         if let (Mode::Custom, Some(custom)) = (self.mode, &self.custom) {
             parts.push(custom.name.clone());
@@ -404,6 +423,7 @@ impl App {
                     self.screen = Screen::Menu { selected };
                 }
                 KeyCode::Enter => {
+                    self.daily = None;
                     self.mode = MODES[selected];
                     self.save_config();
                     self.restart();
@@ -524,6 +544,22 @@ mod tests {
     fn app(words: &[&str]) -> App {
         let mode = Mode::Words(words.len());
         App::with_session(mode, Session::from_words(mode, words))
+    }
+
+    #[test]
+    fn daily_challenge_has_its_own_label_and_fixed_words() {
+        let mut a = app(&["hi"]);
+        a.options.punctuation = true;
+        a.start_daily(20_380);
+        assert_eq!(a.label(), "daily");
+        assert_eq!(a.mode, Mode::Words(words::DAILY_WORDS));
+        let first = a.session.words().to_vec();
+        a.restart();
+        assert_eq!(a.session.words(), first);
+        // Choosing a mode in the menu ends the daily challenge.
+        a.open_menu();
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        assert_eq!(a.daily, None);
     }
 
     fn type_text(app: &mut App, text: &str) {
