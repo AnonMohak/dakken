@@ -270,23 +270,30 @@ mod tests {
             row("pace caret off").trim_start().starts_with("c "),
             "{out}"
         );
-        assert!(row("start").trim_start().starts_with("enter "), "{out}");
         let key_column = |text: &str| row(text).find(|c: char| c != ' ');
-        assert_eq!(key_column("strict off"), key_column("back"), "{out}");
+        assert_eq!(
+            key_column("strict off"),
+            key_column("punctuation off"),
+            "{out}"
+        );
+        assert!(
+            out.contains("enter start · tab back · ctrl+c exit"),
+            "{out}"
+        );
         assert!(out.contains("/_________/"), "{out}");
         // A short terminal shows fewer modes, so the exit hint still fits.
         let out = render(&a, 60, 20);
         assert!(
-            out.contains("> untimed") && out.contains("ctrl+c to exit"),
+            out.contains("> untimed") && out.contains("ctrl+c exit"),
             "{out}"
         );
         // The smallest terminal still shows the selected mode, every setting
-        // and the keys, with no logo.
+        // and the keys line, with no logo.
         a.screen = Screen::Menu { selected: 13 };
-        let out = render(&a, 30, 12);
+        let out = render(&a, 40, 11);
         assert!(!out.contains("_____"), "{out}");
         assert!(
-            out.contains("> words 100") && out.contains("pace caret") && out.contains("back"),
+            out.contains("> words 100") && out.contains("pace caret") && out.contains("tab back"),
             "{out}"
         );
     }
