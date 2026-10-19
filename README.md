@@ -6,6 +6,10 @@
 
 A typing-speed test for the terminal.
 
+<p align="center">
+  <img src="docs/demo.gif" width="800" alt="dakken: typing with a live wpm, the mode menu, and the results screen">
+</p>
+
 - Untimed mode (the default): type the words that fill the screen, with no
   time limit. The text fills 70% of the terminal, with an empty row between
   lines.
