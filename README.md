@@ -85,6 +85,10 @@ brew install AnonMohak/dakken/dakken
 [Releases](https://github.com/AnonMohak/dakken/releases). On Windows, rename it
 to `dakken.exe` and put it in a folder on your `PATH`.
 
+Each file is one program with nothing else to install: the Windows file needs
+no Visual C++ Redistributable, and the Linux files are static, so they run on
+old and new systems.
+
 **Build from source:** you need [Rust](https://rustup.rs). On Windows:
 `winget install Rustlang.Rustup`.
 

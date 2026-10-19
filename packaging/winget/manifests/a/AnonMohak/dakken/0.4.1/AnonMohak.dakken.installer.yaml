@@ -1,13 +1,13 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
 
 PackageIdentifier: AnonMohak.dakken
-PackageVersion: 0.4.0
+PackageVersion: 0.4.1
 InstallerType: portable
 Commands:
 - dakken
 Installers:
 - Architecture: x64
-  InstallerUrl: https://github.com/AnonMohak/dakken/releases/download/v0.4.0/dakken-v0.4.0-x86_64-pc-windows-msvc.exe
-  InstallerSha256: E563AD53A8F5BFAF3683BE6761D01921B183495760ADCACB1EE9D76EAB9AFFA8
+  InstallerUrl: https://github.com/AnonMohak/dakken/releases/download/v0.4.1/dakken-v0.4.1-x86_64-pc-windows-msvc.exe
+  InstallerSha256: 623DBD46AD4A7D1AB5A77FA78934A21CF3E2F3E22A0F1279B88EE18AFD99C8AA
 ManifestType: installer
 ManifestVersion: 1.12.0
