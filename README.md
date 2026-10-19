@@ -37,9 +37,9 @@ A typing-speed test for the terminal.
   backspace into a previous word only if it has an error.
 - Mistakes do not stop you: the test ends when the last word has all its
   letters, also if some are wrong. Accuracy shows the errors.
-- Dracula colors by default. The `terminal` theme uses your terminal's
+- Tokyo Night colors by default. The `terminal` theme uses your terminal's
   palette, so the test follows your shell theme. Other dark themes:
-  `serika-dark`, `nord`, `tokyo-night`, `catppuccin-mocha`, `rose-pine` and
+  `dracula`, `serika-dark`, `nord`, `catppuccin-mocha`, `rose-pine` and
   `one-dark`. Light themes: `catppuccin-latte` and `github-light`. You can
   also make your own `custom` theme.
 - Settings are saved: the menu remembers the mode, options and theme.
@@ -193,7 +193,7 @@ never saved as the mode.
 
 ```toml
 mode = "time 30"     # untimed, quote, quote short/medium/long, zen, time N or words N
-theme = "dracula"    # dracula, terminal, nord, tokyo-night, github-light, ...
+theme = "tokyo-night"  # tokyo-night, terminal, dracula, nord, github-light, ...
 punctuation = false
 numbers = false
 words = "english"    # english, english-1k, code, spanish, german, mistakes, weak-keys or weak-pairs

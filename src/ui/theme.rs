@@ -1,4 +1,4 @@
-//! Color themes. The default is dracula. "terminal" uses the terminal's own
+//! Color themes. The default is tokyo-night. "terminal" uses the terminal's own
 //! palette, so the test follows the shell theme.
 
 use ratatui::style::Color;
@@ -23,13 +23,13 @@ const fn rgb(hex: u32) -> Color {
 pub const THEMES: [Theme; 10] = [
     // The default.
     Theme {
-        name: "dracula",
-        bg: Some(rgb(0x282a36)),
-        main: rgb(0xbd93f9),
-        sub: rgb(0x6272a4),
-        text: rgb(0xf8f8f2),
-        error: rgb(0xff5555),
-        error_extra: rgb(0xa33d3d),
+        name: "tokyo-night",
+        bg: Some(rgb(0x1a1b26)),
+        main: rgb(0x7aa2f7),
+        sub: rgb(0x565f89),
+        text: rgb(0xc0caf5),
+        error: rgb(0xf7768e),
+        error_extra: rgb(0xa3485c),
     },
     Theme {
         name: "terminal",
@@ -39,6 +39,15 @@ pub const THEMES: [Theme; 10] = [
         text: Color::Reset,
         error: Color::LightRed,
         error_extra: Color::Red,
+    },
+    Theme {
+        name: "dracula",
+        bg: Some(rgb(0x282a36)),
+        main: rgb(0xbd93f9),
+        sub: rgb(0x6272a4),
+        text: rgb(0xf8f8f2),
+        error: rgb(0xff5555),
+        error_extra: rgb(0xa33d3d),
     },
     // Dark gray with a gold accent.
     Theme {
@@ -58,15 +67,6 @@ pub const THEMES: [Theme; 10] = [
         text: rgb(0xd8dee9),
         error: rgb(0xbf616a),
         error_extra: rgb(0x8c4a52),
-    },
-    Theme {
-        name: "tokyo-night",
-        bg: Some(rgb(0x1a1b26)),
-        main: rgb(0x7aa2f7),
-        sub: rgb(0x565f89),
-        text: rgb(0xc0caf5),
-        error: rgb(0xf7768e),
-        error_extra: rgb(0xa3485c),
     },
     Theme {
         name: "catppuccin-mocha",
@@ -169,8 +169,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_theme_is_dracula() {
-        assert_eq!(Theme::default().name, "dracula");
+    fn default_theme_is_tokyo_night() {
+        assert_eq!(Theme::default().name, "tokyo-night");
         let t = Theme::find("terminal").unwrap();
         assert_eq!((t.bg, t.text), (None, Color::Reset));
     }

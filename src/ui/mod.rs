@@ -259,7 +259,7 @@ mod tests {
             ("p", "punctuation off"),
             ("n", "numbers off"),
             ("l", "words english"),
-            ("t", "theme dracula"),
+            ("t", "theme tokyo-night"),
             ("s", "live stats off"),
             ("c", "pace caret off"),
             ("m", "strict off"),

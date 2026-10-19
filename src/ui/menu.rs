@@ -132,8 +132,9 @@ pub fn draw_modes(frame: &mut Frame, app: &App, selected: usize) {
     // In a short terminal, show only the modes around the selected one.
     let rows = (screen.height.saturating_sub(HINT_ROWS + 2) as usize).clamp(1, MODES.len());
     let first = selected.saturating_sub(rows / 2).min(MODES.len() - rows);
+    // The title lines up with the mode names, after the "> " column.
     let mut lines = vec![
-        Line::styled("mode", Style::new().fg(t.sub)),
+        Line::styled("  mode", Style::new().fg(t.sub)),
         Line::default(),
     ];
     for (i, &mode) in MODES.iter().enumerate().skip(first).take(rows) {
