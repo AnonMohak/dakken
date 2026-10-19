@@ -708,7 +708,10 @@ mod tests {
 
     #[test]
     fn untimed_test_fits_on_the_screen_and_follows_resize() {
-        let config = Config::default();
+        let config = Config {
+            mode: Mode::Untimed,
+            ..Config::default()
+        };
         let mut a = App::new(
             config,
             None,
