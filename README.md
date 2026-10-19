@@ -10,10 +10,10 @@ A typing-speed test for the terminal.
   <img src="docs/demo.gif" width="800" alt="dakken: typing with a live wpm, the mode menu, and the results screen">
 </p>
 
-- Untimed mode (the default): type the words that fill the screen, with no
-  time limit. The text fills 70% of the terminal, with an empty row between
-  lines.
-- Time mode (15, 30, 60, 120 s) and words mode (10, 25, 50, 100 words).
+- Words mode (10, 25, 50, 100 words); 100 words is the default.
+- Time mode (15, 30, 60, 120 s).
+- Untimed mode: type the words that fill the screen, with no time limit.
+- The text fills 70% of the terminal, with an empty row between lines.
 - Quote mode: one quote from a public-domain book, poem or speech. Choose
   short (up to 15 words), medium (16 to 30) or long (more than 30) quotes.
 - Custom mode: type the text of your own file, with `--file`.
@@ -97,7 +97,7 @@ Or from a clone: `cargo install --path .`
 ## Use
 
 ```sh
-dakken            # untimed test: the words on the screen
+dakken            # 100-word test (or the mode you chose in the menu)
 dakken -t 60      # 60-second test
 dakken -w 25      # 25-word test
 dakken -q         # quote test
@@ -105,10 +105,10 @@ dakken -q short   # short quote test
 dakken -f notes.txt  # type the text of a file
 dakken -z         # zen: type freely, Enter to finish
 dakken -d         # daily challenge: the same words for everyone today
-dakken -l code    # untimed test with the code word list
+dakken -l code    # test with the code word list
 dakken -l weak-pairs  # words with your slowest letter pairs
-dakken -p         # untimed test with punctuation
-dakken -p -n      # untimed test with punctuation and numbers
+dakken -p         # test with punctuation
+dakken -p -n      # test with punctuation and numbers
 dakken --theme nord  # use a color theme
 dakken --strict master  # the first wrong key fails the test
 dakken --caret bar  # a thin bar caret (or block, underline)
@@ -192,7 +192,7 @@ only, until you change a setting in the menu. The daily challenge (`-d`) is
 never saved as the mode.
 
 ```toml
-mode = "time 30"     # untimed, quote, quote short/medium/long, zen, time N or words N
+mode = "words 100"   # untimed, quote, quote short/medium/long, zen, time N or words N
 theme = "tokyo-night"  # tokyo-night, terminal, dracula, nord, github-light, ...
 punctuation = false
 numbers = false

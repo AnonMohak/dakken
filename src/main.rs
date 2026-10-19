@@ -34,7 +34,7 @@ use ui::theme::Theme;
 #[derive(Parser)]
 #[command(version, about)]
 struct Cli {
-    /// Time mode: test length in seconds. With no mode, the test is untimed.
+    /// Time mode: test length in seconds. With no mode, the test is 100 words.
     #[arg(short, long, value_name = "SECONDS", conflicts_with_all = ["words", "quote"])]
     time: Option<u64>,
 

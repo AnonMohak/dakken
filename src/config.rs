@@ -57,7 +57,7 @@ const COLOR_KEYS: [&str; 6] = ["bg", "main", "sub", "text", "error", "error_extr
 impl Default for Config {
     fn default() -> Self {
         Self {
-            mode: Mode::Untimed,
+            mode: Mode::Words(100),
             options: Options::default(),
             theme: Theme::default(),
             live: false,
@@ -247,7 +247,7 @@ mod tests {
     fn bad_lines_keep_the_defaults() {
         let config =
             Config::parse("mode = \"time x\"\ntheme = nope\nnot a setting\nnumbers = true # yes\n");
-        assert_eq!(config.mode, Mode::Untimed);
+        assert_eq!(config.mode, Mode::Words(100));
         assert_eq!(config.theme, Theme::default());
         assert!(config.options.numbers);
     }
