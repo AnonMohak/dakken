@@ -74,7 +74,7 @@ winget install AnonMohak.dakken
 scoop install https://raw.githubusercontent.com/AnonMohak/dakken/master/packaging/scoop/dakken.json
 ```
 
-**Homebrew (Apple Silicon macOS, Linux x86-64):**
+**Homebrew (macOS and Linux, on Intel or ARM):**
 
 ```sh
 brew tap AnonMohak/dakken https://github.com/AnonMohak/dakken
