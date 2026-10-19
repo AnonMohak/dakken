@@ -47,6 +47,14 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
                 format!("weak-keys ({})", letters.join(" "))
             }
         }
+        WordList::WeakPairs => {
+            let pairs = app.weak_pairs();
+            if pairs.is_empty() {
+                "weak-pairs (no data yet)".to_string()
+            } else {
+                format!("weak-pairs ({})", pairs.join(" "))
+            }
+        }
         list => list.name().to_string(),
     };
     lines.push(setting(t, 'l', "words", &list, t.text));

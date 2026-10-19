@@ -260,8 +260,14 @@ impl App {
         self.key_stats.weakest_letters(5)
     }
 
-    /// The words of the mistakes and weak-keys lists. `None` uses the
-    /// list's own words: English for mistakes, all of english-1k for weak keys.
+    /// The letter pairs the weak-pairs list practises.
+    pub fn weak_pairs(&self) -> Vec<String> {
+        self.key_stats.weakest_pairs(5)
+    }
+
+    /// The words of the mistakes, weak-keys and weak-pairs lists. `None`
+    /// uses the list's own words: English for mistakes, all of english-1k for
+    /// weak keys and weak pairs.
     fn practice_words(&self) -> Option<Vec<String>> {
         let words: Vec<String> = match self.options.list {
             WordList::Mistakes => self.mistakes.words().to_vec(),
@@ -271,6 +277,15 @@ impl App {
                     .words()
                     .into_iter()
                     .filter(|w| w.chars().any(|c| weak.contains(&c)))
+                    .map(String::from)
+                    .collect()
+            }
+            WordList::WeakPairs => {
+                let weak = self.weak_pairs();
+                WordList::WeakPairs
+                    .words()
+                    .into_iter()
+                    .filter(|w| weak.iter().any(|p| w.contains(p.as_str())))
                     .map(String::from)
                     .collect()
             }

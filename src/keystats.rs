@@ -1,5 +1,7 @@
 //! Speed and errors for each key, from all saved tests. One key on each line:
 //! the key, presses, errors and the total time to type it in milliseconds.
+//! Letter pairs follow on lines named `pair:th`, with the same numbers for the
+//! second letter of the pair.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -40,6 +42,8 @@ pub struct KeyStats {
     /// `None` keeps the stats in memory only.
     path: Option<PathBuf>,
     keys: BTreeMap<char, KeyStat>,
+    /// Two letters typed one after the other, for example ('t', 'h').
+    pairs: BTreeMap<(char, char), KeyStat>,
 }
 
 impl KeyStats {
@@ -47,19 +51,19 @@ impl KeyStats {
         Self {
             path: None,
             keys: BTreeMap::new(),
+            pairs: BTreeMap::new(),
         }
     }
 
     /// Read the stats. A missing file gives no stats, and bad lines are skipped.
     pub fn load(path: PathBuf) -> Self {
-        let keys = fs::read_to_string(&path)
-            .unwrap_or_default()
-            .lines()
-            .filter_map(parse_line)
-            .collect();
+        let text = fs::read_to_string(&path).unwrap_or_default();
+        let keys = text.lines().filter_map(parse_line).collect();
+        let pairs = text.lines().filter_map(parse_pair_line).collect();
         Self {
             path: Some(path),
             keys,
+            pairs,
         }
     }
 
@@ -70,17 +74,30 @@ impl KeyStats {
     /// Add the presses of one test, and write the file if there is one.
     pub fn add_test(&mut self, presses: &[Press]) -> io::Result<()> {
         let mut before = None;
+        let mut before_key: Option<char> = None;
         for p in presses {
             if let Some(key) = p.key {
+                let ms = before.map(|b| (p.at.saturating_sub(b)).as_millis() as u64);
                 let stat = self.keys.entry(key).or_default();
                 stat.presses += 1;
                 stat.errors += u64::from(!p.correct);
-                if let Some(b) = before {
-                    stat.total_ms += (p.at.saturating_sub(b)).as_millis() as u64;
+                if let Some(ms) = ms {
+                    stat.total_ms += ms;
+                    stat.timed += 1;
+                }
+                if let (Some(first), Some(ms)) = (before_key, ms)
+                    && first.is_ascii_lowercase()
+                    && key.is_ascii_lowercase()
+                {
+                    let stat = self.pairs.entry((first, key)).or_default();
+                    stat.presses += 1;
+                    stat.errors += u64::from(!p.correct);
+                    stat.total_ms += ms;
                     stat.timed += 1;
                 }
             }
             before = Some(p.at);
+            before_key = p.key;
         }
         let Some(path) = &self.path else {
             return Ok(());
@@ -88,21 +105,40 @@ impl KeyStats {
         if let Some(dir) = path.parent() {
             fs::create_dir_all(dir)?;
         }
-        let text: String = self
-            .keys
+        let line = |name: String, s: &KeyStat| {
+            format!(
+                "{name}\t{}\t{}\t{}\t{}\n",
+                s.presses, s.errors, s.total_ms, s.timed
+            )
+        };
+        let keys = self.keys.iter().map(|(&k, s)| line(key_name(k), s));
+        let pairs = (self.pairs.iter()).map(|(&(a, b), s)| line(format!("pair:{a}{b}"), s));
+        fs::write(path, keys.chain(pairs).collect::<String>())
+    }
+
+    /// The `n` weakest letter pairs with enough presses: the slowest, with
+    /// errors counting as extra time.
+    pub fn weakest_pairs(&self, n: usize) -> Vec<String> {
+        let mut pairs = self.known_pairs();
+        pairs.truncate(n);
+        pairs.into_iter().map(|(p, _)| p).collect()
+    }
+
+    /// Pairs with enough presses, weakest first.
+    fn known_pairs(&self) -> Vec<(String, KeyStat)> {
+        let score = |s: &KeyStat| s.avg_ms().unwrap_or(0.0) * (1.0 + 4.0 * s.error_rate());
+        let mut pairs: Vec<(String, KeyStat)> = self
+            .pairs
             .iter()
-            .map(|(&k, s)| {
-                format!(
-                    "{}\t{}\t{}\t{}\t{}\n",
-                    key_name(k),
-                    s.presses,
-                    s.errors,
-                    s.total_ms,
-                    s.timed
-                )
-            })
+            .filter(|(_, s)| s.presses >= MIN_PRESSES)
+            .map(|(&(a, b), &s)| (format!("{a}{b}"), s))
             .collect();
-        fs::write(path, text)
+        pairs.sort_by(|a, b| {
+            score(&b.1)
+                .partial_cmp(&score(&a.1))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        pairs
     }
 
     /// The `n` weakest letters a to z with enough presses: the most errors,
@@ -155,6 +191,16 @@ fn parse_line(line: &str) -> Option<(char, KeyStat)> {
         timed: num()?,
     };
     Some((key, stat))
+}
+
+/// A `pair:th` line.
+fn parse_pair_line(line: &str) -> Option<((char, char), KeyStat)> {
+    let rest = line.strip_prefix("pair:")?;
+    let mut chars = rest.chars();
+    let (a, b) = (chars.next()?, chars.next()?);
+    // The numbers after the pair, read as a line for a stand-in key.
+    let (_, stat) = parse_line(&format!("x{}", chars.as_str()))?;
+    Some(((a, b), stat))
 }
 
 pub fn default_path() -> Option<PathBuf> {
@@ -226,6 +272,15 @@ pub fn heatmap(stats: &KeyStats, color: bool) -> String {
             s.presses
         );
     }
+    let pairs = stats.known_pairs();
+    if !pairs.is_empty() {
+        out += "\nslowest letter pairs (practise with -l weak-pairs)\n";
+        for (p, s) in pairs.iter().take(5) {
+            let ms = s.avg_ms().unwrap_or(0.0);
+            let errors = s.error_rate() * 100.0;
+            out += &format!("  {p:<6} {ms:>4.0} ms  {errors:>4.1}% errors\n");
+        }
+    }
     out
 }
 
@@ -241,6 +296,26 @@ mod tests {
             key: Some(key),
             word: 0,
         }
+    }
+
+    #[test]
+    fn letter_pairs_are_timed_and_saved() {
+        let path = std::env::temp_dir().join(format!("dakken-pairs-{}.tsv", std::process::id()));
+        let mut s = KeyStats::load(path.clone());
+        // "th" is slow (300 ms) and "he" is fast (100 ms), five times each.
+        let mut presses = Vec::new();
+        for i in 0..5 {
+            let t = i * 1000;
+            presses.push(press(t, 't', true));
+            presses.push(press(t + 300, 'h', true));
+            presses.push(press(t + 400, 'e', true));
+        }
+        s.add_test(&presses).unwrap();
+        assert_eq!(s.weakest_pairs(2), ["th", "he"]);
+        let loaded = KeyStats::load(path.clone());
+        assert_eq!(loaded.weakest_pairs(2), ["th", "he"]);
+        assert_eq!(loaded.get('t').presses, 5);
+        let _ = fs::remove_file(path);
     }
 
     #[test]

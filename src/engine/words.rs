@@ -49,10 +49,13 @@ pub enum WordList {
     /// Words from `English1k` with the weakest letters. The app picks the
     /// words; `words` gives the full list.
     WeakKeys,
+    /// Words from `English1k` with the slowest letter pairs, like "th". The
+    /// app picks the words; `words` gives the full list.
+    WeakPairs,
 }
 
 /// The lists in menu order.
-pub const WORD_LISTS: [WordList; 7] = [
+pub const WORD_LISTS: [WordList; 8] = [
     WordList::English,
     WordList::English1k,
     WordList::Code,
@@ -60,6 +63,7 @@ pub const WORD_LISTS: [WordList; 7] = [
     WordList::German,
     WordList::Mistakes,
     WordList::WeakKeys,
+    WordList::WeakPairs,
 ];
 
 impl WordList {
@@ -72,6 +76,7 @@ impl WordList {
             Self::German => "german",
             Self::Mistakes => "mistakes",
             Self::WeakKeys => "weak-keys",
+            Self::WeakPairs => "weak-pairs",
         }
     }
 
@@ -89,7 +94,7 @@ impl WordList {
     pub fn words(self) -> Vec<&'static str> {
         let text = match self {
             Self::English | Self::Mistakes => ENGLISH,
-            Self::English1k | Self::WeakKeys => ENGLISH_1K,
+            Self::English1k | Self::WeakKeys | Self::WeakPairs => ENGLISH_1K,
             Self::Code => CODE,
             Self::Spanish => SPANISH,
             Self::German => GERMAN,
@@ -296,7 +301,8 @@ mod tests {
         for list in WORD_LISTS {
             assert_eq!(WordList::parse(list.name()), Some(list));
         }
-        assert_eq!(WordList::WeakKeys.next(), WordList::English);
+        assert_eq!(WordList::WeakKeys.next(), WordList::WeakPairs);
+        assert_eq!(WordList::WeakPairs.next(), WordList::English);
     }
 
     #[test]
