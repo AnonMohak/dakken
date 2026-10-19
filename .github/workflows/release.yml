@@ -28,13 +28,22 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             exe: dakken
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            exe: dakken
           - os: macos-latest
             target: aarch64-apple-darwin
+            exe: dakken
+          # Intel macOS: cross-built on the Apple Silicon runner.
+          - os: macos-latest
+            target: x86_64-apple-darwin
             exe: dakken
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo build --release --locked
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo build --release --locked --target ${{ matrix.target }}
       - name: Upload
         shell: bash
         env:
@@ -42,5 +51,5 @@ jobs:
         run: |
           name="dakken-$GITHUB_REF_NAME-${{ matrix.target }}"
           case "${{ matrix.exe }}" in *.exe) name="$name.exe" ;; esac
-          cp "target/release/${{ matrix.exe }}" "$name"
+          cp "target/${{ matrix.target }}/release/${{ matrix.exe }}" "$name"
           gh release upload "$GITHUB_REF_NAME" "$name" --repo "$GITHUB_REPOSITORY"
