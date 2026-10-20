@@ -41,9 +41,10 @@ pub fn draw(frame: &mut Frame, app: &App) {
         let text = format!("{name} {value}");
         rows.push((key, Span::styled(text, Style::new().fg(color))));
     };
-    let mode = match app.daily {
-        Some(_) => "daily".to_string(),
-        None => mode_label(app.mode),
+    let mode = match (app.daily, &app.race) {
+        (Some(_), _) => "daily".to_string(),
+        (None, Some(_)) => "race".to_string(),
+        (None, None) => mode_label(app.mode),
     };
     setting('o', "mode", &mode, t.main);
     // Each setting shows the key that changes it.

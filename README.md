@@ -67,6 +67,10 @@ A typing-speed test for the terminal.
   target WPM with 90% accuracy to pass, and the next target is 5 WPM
   higher. The first target is 80% of your recent average, and the pace caret
   moves at the target speed. A failed round ends the climb.
+- Ghost races: press `x` on the results to save the test as a race file
+  (in the `races` folder next to the history). Send it to a friend, who
+  races its ghost with `dakken --race FILE`: the same words, with a pace
+  caret that types like you did. The results say who won.
 - Results: WPM, raw WPM, accuracy, consistency, and character counts, with a
   graph of WPM and raw WPM over the test, your slowest word and your fastest
   burst (the fastest single word).
@@ -135,6 +139,7 @@ dakken -p -n      # test with punctuation and numbers
 dakken --theme nord  # use a color theme
 dakken --strict master  # the first wrong key fails the test
 dakken -g survival  # 3 lives: each wrong word takes one
+dakken --race race.txt  # race the ghost of a saved test
 dakken --caret bar  # a thin bar caret (or block, underline)
 dakken --layout dvorak  # practise Dvorak (or colemak) on a QWERTY keyboard
 dakken --history  # print personal bests and the last 10 tests
@@ -164,6 +169,7 @@ On the results:
 | `Enter` | Start a new test |
 | `r` | Replay the test at the speed you typed it (any key stops it) |
 | `y` | Copy the score card (daily challenge only) |
+| `x` | Save the test as a race file for `--race` |
 | `Tab` or `Esc` | Open the menu |
 
 In the menu, each setting shows its key on the left:

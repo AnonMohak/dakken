@@ -58,6 +58,7 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
         )),
         best_line(app, r),
         climb_line(app),
+        race_line(app, r),
         reward_line(app),
         badges_line(app, super::text_width(frame.area().width)),
         Line::from(label(&keys_text(app))),
@@ -178,14 +179,42 @@ fn best_line(app: &App, r: &TestResult) -> Line<'static> {
     Line::from(spans)
 }
 
-/// The keys of the results screen, with `y` after a daily challenge.
+/// The keys of the results screen, with `y` after a daily challenge and
+/// `x` for a test that can be a race.
 fn keys_text(app: &App) -> String {
+    let mut keys = vec!["enter restart", "r replay"];
+    if app.can_save_race() {
+        keys.push("x save race");
+    }
     match (app.daily, app.copied) {
-        (Some(_), true) => "score card copied · enter restart · r replay · tab menu".to_string(),
-        (Some(_), false) if app.reward.is_some() => {
-            "enter restart · r replay · y copy score card · tab menu".to_string()
-        }
-        _ => "enter restart · r replay · tab menu".to_string(),
+        (Some(_), true) => keys.insert(0, "score card copied"),
+        (Some(_), false) if app.reward.is_some() => keys.push("y copy score card"),
+        _ => {}
+    }
+    keys.push("tab menu");
+    keys.join(" · ")
+}
+
+/// Who won the race, or where the race file went after `x`.
+fn race_line(app: &App, r: &TestResult) -> Line<'static> {
+    let t = app.theme;
+    if let Some(saved) = &app.race_saved {
+        return Line::styled(saved.clone(), Style::new().fg(t.sub));
+    }
+    let Some(race) = &app.race else {
+        return Line::default();
+    };
+    let gap = r.wpm - race.wpm;
+    if gap > 0.0 {
+        Line::styled(
+            format!("you beat the ghost by {gap:.0} wpm"),
+            Style::new().fg(t.main).add_modifier(Modifier::BOLD),
+        )
+    } else {
+        Line::styled(
+            format!("the ghost won by {:.0} wpm", -gap),
+            Style::new().fg(t.sub),
+        )
     }
 }
 

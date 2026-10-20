@@ -10,6 +10,7 @@ mod keystats;
 mod layout;
 mod mistakes;
 mod progress;
+mod race;
 mod ui;
 mod update;
 
@@ -64,6 +65,10 @@ struct Cli {
     /// shows in --stats.
     #[arg(short, long, conflicts_with_all = ["time", "words", "quote", "file", "zen"])]
     daily: bool,
+
+    /// Race the ghost of a race file, saved with x on the results.
+    #[arg(long, value_name = "PATH", conflicts_with_all = ["time", "words", "quote", "file", "zen", "daily"])]
+    race: Option<PathBuf>,
 
     /// Add capitals and punctuation to the words.
     #[arg(short, long)]
@@ -286,6 +291,15 @@ fn main() -> io::Result<()> {
     app.badges = badges;
     if cli.daily {
         app.start_daily(history::today());
+    }
+    if let Some(path) = &cli.race {
+        match race::Race::load(path) {
+            Ok(race) => app.start_race(race),
+            Err(e) => {
+                eprintln!("error: cannot race {}: {e}", path.display());
+                std::process::exit(2);
+            }
+        }
     }
     run(app)
 }

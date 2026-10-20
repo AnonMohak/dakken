@@ -22,6 +22,7 @@ use crate::keystats::KeyStats;
 use crate::layout::Layout;
 use crate::mistakes::{self, Mistakes};
 use crate::progress::{self, Level};
+use crate::race::{self, Race};
 use crate::ui::{self, theme::Theme};
 
 /// The modes the menu offers, in menu order.
@@ -139,6 +140,10 @@ pub struct App {
     pub mode: Mode,
     /// The day (since 1970-01-01 UTC) of the daily challenge, in daily mode.
     pub daily: Option<i64>,
+    /// The race from `--race`: its words, and the ghost that types them.
+    pub race: Option<Race>,
+    /// Where `x` saved the last test as a race, or why it could not.
+    pub race_saved: Option<String>,
     pub options: Options,
     pub theme: Theme,
     /// The theme from the `color_*` keys in the config, if any.
@@ -230,6 +235,8 @@ impl App {
         Self {
             mode,
             daily: None,
+            race: None,
+            race_saved: None,
             options: Options::default(),
             theme: Theme::default(),
             custom_theme: None,
@@ -269,6 +276,49 @@ impl App {
         self.new_test();
     }
 
+    /// Race the ghost of a saved test: the same words, with its pace caret.
+    pub fn start_race(&mut self, race: Race) {
+        self.race = Some(race);
+        self.new_test();
+    }
+
+    /// The daily challenge and races have their own text, so challenges
+    /// and the mode do not apply.
+    fn fixed_text(&self) -> bool {
+        self.daily.is_some() || self.race.is_some()
+    }
+
+    /// Save the finished test as a race file, for `--race`.
+    fn save_race(&mut self) {
+        if self.session.checked_words().is_empty() {
+            self.race_saved = Some("race not saved: no words typed".to_string());
+            return;
+        }
+        let result = self.session.result();
+        let race = Race {
+            label: self.label(),
+            wpm: result.wpm,
+            accuracy: result.accuracy,
+            // Only the words the test reached: time mode has more ready.
+            words: (self.session.checked_words().into_iter())
+                .map(|(word, _)| word)
+                .collect(),
+            times: (self.session.presses().iter())
+                .filter(|p| p.correct)
+                .map(|p| p.at.as_millis() as u32)
+                .collect(),
+        };
+        let now = self.history.records().last().map_or(0, |r| r.time);
+        let saved = match race::default_dir() {
+            Some(dir) => race.save(&dir, now),
+            None => Err(std::io::Error::other("no data folder")),
+        };
+        self.race_saved = Some(match saved {
+            Ok(path) => format!("race saved: {}", path.display()),
+            Err(e) => format!("race not saved: {e}"),
+        });
+    }
+
     fn restart(&mut self) {
         self.new_test();
         self.screen = Screen::Typing;
@@ -279,6 +329,14 @@ impl App {
             _ if self.daily.is_some() => {
                 let words = words::daily_words(self.daily.unwrap_or_default());
                 (Session::from_words(self.mode, &words), None)
+            }
+            _ if self.race.is_some() => {
+                let words = self
+                    .race
+                    .as_ref()
+                    .map(|r| r.words.clone())
+                    .unwrap_or_default();
+                (Session::from_words(Mode::Words(words.len()), &words), None)
             }
             Some(custom) if self.mode == Mode::Custom => {
                 (Session::from_words(self.mode, &custom.words), None)
@@ -297,7 +355,7 @@ impl App {
         if self.climb_on() && self.climb.is_none() {
             self.climb = Some(challenge::Climb::start(self.history.records()));
         }
-        if self.daily.is_none() && self.challenge == Challenge::Survival {
+        if !self.fixed_text() && self.challenge == Challenge::Survival {
             self.session.set_lives(challenge::LIVES);
         }
     }
@@ -344,16 +402,21 @@ impl App {
         }
     }
 
+    /// A finished test with a target text can be saved as a race.
+    pub fn can_save_race(&self) -> bool {
+        self.reward.is_some() && self.mode != Mode::Zen && self.race_saved.is_none()
+    }
+
     /// This test is a round of the climb challenge.
     pub fn climb_on(&self) -> bool {
         let own_text = matches!(self.mode, Mode::Custom | Mode::Zen);
-        self.challenge == Challenge::Climb && self.daily.is_none() && !own_text
+        self.challenge == Challenge::Climb && !self.fixed_text() && !own_text
     }
 
     /// Boss words are in this test: the boss challenge, with random words.
     pub fn boss_on(&self) -> bool {
         let own_text = matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen);
-        self.challenge == Challenge::Boss && self.daily.is_none() && !own_text
+        self.challenge == Challenge::Boss && !self.fixed_text() && !own_text
     }
 
     /// The boss words typed right, and the boss words reached.
@@ -424,7 +487,7 @@ impl App {
             // Custom mode needs a file from the command line, so keep the
             // saved mode instead.
             let mode = match self.mode {
-                _ if self.daily.is_some() => Config::load(path).mode,
+                _ if self.fixed_text() => Config::load(path).mode,
                 Mode::Custom => Config::load(path).mode,
                 mode => mode,
             };
@@ -459,6 +522,9 @@ impl App {
         // One fixed text, so options do not apply.
         if self.daily.is_some() {
             return "daily".to_string();
+        }
+        if self.race.is_some() {
+            return "race".to_string();
         }
         // Rounds of fixed length, so the mode does not apply.
         if self.climb_on() {
@@ -539,6 +605,7 @@ impl App {
                 self.climb = passed.then(|| climb.next());
             }
             self.copied = false;
+            self.race_saved = None;
             self.screen = Screen::Results(result);
         }
     }
@@ -576,6 +643,7 @@ impl App {
                         next: 0,
                     }));
                 }
+                KeyCode::Char('x') if self.can_save_race() => self.save_race(),
                 KeyCode::Char('y') if self.reward.is_some() => {
                     if let Some(day) = self.daily {
                         self.copy = Some(self.score_card(day, result.wpm, result.accuracy));
@@ -596,6 +664,7 @@ impl App {
                 }
                 KeyCode::Enter => {
                     self.daily = None;
+                    self.race = None;
                     self.mode = MODES[selected];
                     self.save_config();
                     self.new_test();
@@ -913,6 +982,25 @@ mod tests {
         assert_eq!(a.climb, None);
         a.restart();
         assert_eq!(a.climb.map(|c| c.round), Some(1));
+    }
+
+    #[test]
+    fn a_race_uses_the_saved_words_and_its_own_label() {
+        let mut a = app(&["hi"]);
+        a.challenge = Challenge::Survival;
+        a.start_race(Race {
+            label: "words 2".to_string(),
+            wpm: 50.0,
+            accuracy: 100.0,
+            words: vec!["two".into(), "words".into()],
+            times: vec![100, 200],
+        });
+        assert_eq!(a.label(), "race");
+        assert_eq!(a.session.words().len(), 2);
+        assert_eq!(a.session.lives(), None, "challenges do not apply");
+        type_text(&mut a, "two words");
+        assert!(matches!(a.screen, Screen::Results(_)));
+        assert!(a.can_save_race());
     }
 
     #[test]

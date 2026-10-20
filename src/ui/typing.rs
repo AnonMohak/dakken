@@ -74,7 +74,9 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     // best speed.
     // In a climb, the pace caret moves at the target speed of the round.
     let climb = app.climb.filter(|_| app.climb_on() && !replay);
-    let pace = if let Some(climb) = climb {
+    let pace = if let Some(race) = app.race.as_ref().filter(|_| !replay) {
+        s.run_position(&race.times, now)
+    } else if let Some(climb) = climb {
         s.pace_position(climb.target, now)
     } else {
         (app.pace && !replay && s.mode() != Mode::Zen)
