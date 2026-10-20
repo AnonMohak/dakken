@@ -19,6 +19,18 @@ const fn rgb(hex: u32) -> Color {
     Color::Rgb((hex >> 16) as u8, (hex >> 8) as u8, hex as u8)
 }
 
+/// The momo theme: night sakura. It is on in momo mode only, so it is not
+/// in `THEMES`. Errors are coral, apart from the pink accent.
+pub const MOMO: Theme = Theme {
+    name: "momo",
+    bg: Some(rgb(0x1e1420)),
+    main: rgb(0xff8fb8),
+    sub: rgb(0x6e5566),
+    text: rgb(0xf3e4ec),
+    error: rgb(0xff7a45),
+    error_extra: rgb(0xa3462a),
+};
+
 /// The themes in menu order. The first is the default.
 pub const THEMES: [Theme; 10] = [
     // The default.

@@ -27,7 +27,7 @@ use crate::race::{self, Race};
 use crate::ui::{self, theme::Theme};
 
 /// The modes the menu offers, in menu order.
-pub const MODES: [Mode; 14] = [
+pub const MODES: [Mode; 15] = [
     Mode::Untimed,
     Mode::Quote(QuoteLength::All),
     Mode::Quote(QuoteLength::Short),
@@ -42,6 +42,7 @@ pub const MODES: [Mode; 14] = [
     Mode::Words(25),
     Mode::Words(50),
     Mode::Words(100),
+    Mode::Momo,
 ];
 
 pub fn mode_label(mode: Mode) -> String {
@@ -51,6 +52,7 @@ pub fn mode_label(mode: Mode) -> String {
         Mode::Quote(length) => format!("quote {}", length.name()),
         Mode::Custom => "custom".to_string(),
         Mode::Zen => "zen".to_string(),
+        Mode::Momo => "momo".to_string(),
         Mode::Time(d) => format!("time {}", d.as_secs()),
         Mode::Words(n) => format!("words {n}"),
     }
@@ -63,6 +65,7 @@ pub fn parse_mode(label: &str) -> Option<Mode> {
         None if label == "quote" => Some(Mode::Quote(QuoteLength::All)),
         Some(("quote", length)) => Some(Mode::Quote(QuoteLength::parse(length)?)),
         None if label == "zen" => Some(Mode::Zen),
+        None if label == "momo" => Some(Mode::Momo),
         Some(("time", n)) => Some(Mode::Time(Duration::from_secs(n.parse().ok()?))),
         Some(("words", n)) => Some(Mode::Words(n.parse().ok()?)),
         _ => None,
@@ -369,7 +372,10 @@ impl App {
     /// right are removed.
     fn update_mistakes(&mut self) -> std::io::Result<()> {
         // Quote, custom and zen tests have their own text, not a word list.
-        let own_text = matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen);
+        let own_text = matches!(
+            self.mode,
+            Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
+        );
         let list = (!own_text).then_some(self.options.list);
         let practising = list == Some(WordList::Mistakes);
         let (mut wrong, mut fixed) = (Vec::new(), Vec::new());
@@ -385,7 +391,10 @@ impl App {
 
     /// The XP and new badges of the test just added to the history.
     fn give_reward(&mut self, xp_before: u64, had_mistakes: bool) -> Reward {
-        let own_text = matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen);
+        let own_text = matches!(
+            self.mode,
+            Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
+        );
         let practising = !own_text && self.options.list == WordList::Mistakes;
         let cleared = practising && had_mistakes && self.mistakes.words().is_empty();
         let records = self.history.records();
@@ -417,15 +426,28 @@ impl App {
         self.reward.is_some() && self.mode != Mode::Zen && self.race_saved.is_none()
     }
 
+    /// The theme on the screen: the momo theme in momo mode, else the
+    /// chosen theme.
+    pub fn theme(&self) -> Theme {
+        if self.mode == Mode::Momo && !self.fixed_text() {
+            ui::theme::MOMO
+        } else {
+            self.theme
+        }
+    }
+
     /// This test is a round of the climb challenge.
     pub fn climb_on(&self) -> bool {
-        let own_text = matches!(self.mode, Mode::Custom | Mode::Zen);
+        let own_text = matches!(self.mode, Mode::Momo | Mode::Custom | Mode::Zen);
         self.challenge == Challenge::Climb && !self.fixed_text() && !own_text
     }
 
     /// Boss words are in this test: the boss challenge, with random words.
     pub fn boss_on(&self) -> bool {
-        let own_text = matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen);
+        let own_text = matches!(
+            self.mode,
+            Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
+        );
         self.challenge == Challenge::Boss && !self.fixed_text() && !own_text
     }
 
@@ -553,7 +575,10 @@ impl App {
             parts.push(custom.name.clone());
         }
         // These modes have their own text, so word options do not apply.
-        let own_text = matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen);
+        let own_text = matches!(
+            self.mode,
+            Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
+        );
         if !own_text && self.options.punctuation {
             parts.push("punctuation".to_string());
         }
@@ -763,6 +788,14 @@ fn new_test(
     practice: Option<Vec<String>>,
     boss: Option<Vec<String>>,
 ) -> (Session, Option<&'static str>) {
+    if mode == Mode::Momo {
+        let quotes = words::momo_quotes();
+        let quote = *quotes
+            .choose(&mut rand::rng())
+            .expect("momo mode has quotes");
+        let words: Vec<&str> = quote.text.split_whitespace().collect();
+        return (Session::from_words(mode, &words), Some(quote.source));
+    }
     if let Mode::Quote(length) = mode {
         let quotes: Vec<_> = words::quotes()
             .into_iter()
@@ -1051,6 +1084,41 @@ mod tests {
             a.on_key(press(KeyCode::Char('c'), modifiers), Instant::now());
             assert!(a.quit, "{modifiers:?}");
         }
+    }
+
+    #[test]
+    fn momo_mode_types_a_momo_quote_in_the_momo_theme() {
+        let config = Config {
+            mode: Mode::Momo,
+            ..Config::default()
+        };
+        let mut a = App::new(
+            config,
+            None,
+            (80, 24),
+            History::in_memory(),
+            Mistakes::in_memory(),
+            KeyStats::in_memory(),
+            None,
+        );
+        let source = a.source.expect("a momo quote has a source");
+        assert!(
+            words::momo_quotes().iter().any(|q| q.source == source),
+            "{source}"
+        );
+        assert_eq!(a.label(), "momo");
+        assert_eq!(parse_mode("momo"), Some(Mode::Momo));
+        assert_eq!(a.theme().name, "momo");
+        // The chosen theme stays saved, and comes back in other modes.
+        assert_eq!(a.theme.name, Theme::default().name);
+        a.mode = Mode::Words(10);
+        assert_eq!(a.theme().name, Theme::default().name);
+        // Boss words and climb do not apply to momo quotes.
+        a.mode = Mode::Momo;
+        a.challenge = Challenge::Climb;
+        assert!(!a.climb_on());
+        a.challenge = Challenge::Boss;
+        assert!(!a.boss_on());
     }
 
     #[test]

@@ -18,12 +18,18 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     // Only the words, in the middle of the screen.
     let area = typing_area(frame.area());
     let visible = word_lines(area.height);
-    let t = app.theme;
+    let t = app.theme();
 
     // Above the words: the time left in time mode, the climb round, the
     // lives in survival, and the live stats when they are on.
     let mut status: Vec<Vec<Span>> = Vec::new();
     let sub = |text: String| vec![Span::styled(text, Style::new().fg(t.sub))];
+    if s.mode() == Mode::Momo {
+        status.push(vec![Span::styled(
+            "momo mode",
+            Style::new().fg(t.main).add_modifier(Modifier::BOLD),
+        )]);
+    }
     if let (Mode::Time(_), true) = (s.mode(), s.is_started()) {
         let left = s.remaining(now).unwrap_or_default();
         status.push(sub(format!("{}", left.as_secs_f64().ceil() as u64)));

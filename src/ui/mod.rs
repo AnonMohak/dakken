@@ -22,7 +22,7 @@ const MIN_HEIGHT: u16 = 11;
 
 pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     let area = frame.area();
-    let t = app.theme;
+    let t = app.theme();
     if let Some(bg) = t.bg {
         frame.render_widget(Block::new().style(Style::new().bg(bg)), area);
     }
@@ -237,7 +237,7 @@ mod tests {
             .filter(|c| c.symbol() == "♥" || c.symbol() == "♡")
             .map(|c| (c.symbol().to_string(), c.fg))
             .collect();
-        let t = a.theme;
+        let t = a.theme();
         assert_eq!(
             hearts,
             [
@@ -246,6 +246,16 @@ mod tests {
                 ("♡".to_string(), t.sub)
             ]
         );
+    }
+
+    #[test]
+    fn momo_mode_shows_its_title_above_the_words() {
+        let mode = Mode::Momo;
+        let a = App::with_session(mode, Session::from_words(mode, &["I'm", "gonna"]));
+        let out = render(&a, 60, 20);
+        let title = out.lines().position(|l| l.contains("momo mode"));
+        let words = out.lines().position(|l| l.contains("I'm gonna"));
+        assert!(title.is_some_and(|t| words.is_some_and(|w| t < w)), "{out}");
     }
 
     #[test]

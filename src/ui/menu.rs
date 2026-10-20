@@ -34,7 +34,7 @@ const XP_BAR: usize = 16;
 
 /// The menu: the logo, then one row for each setting with its key.
 pub fn draw(frame: &mut Frame, app: &App) {
-    let t = app.theme;
+    let t = app.theme();
     let screen = frame.area();
     let mut rows: Vec<(char, Span)> = Vec::new();
     let mut setting = |key, name: &str, value: &str, color: Color| {
@@ -73,7 +73,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
         list => list.name().to_string(),
     };
     setting('l', "words", &list, t.text);
-    setting('t', "theme", t.name, t.text);
+    // The chosen theme, also in momo mode, where the momo theme is on.
+    setting('t', "theme", app.theme.name, t.text);
     let (state, color) = on_off(app.live);
     setting('s', "live stats", state, color);
     let (state, color) = on_off(app.pace);
@@ -146,7 +147,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
 /// The list of modes, from `o` in the menu.
 pub fn draw_modes(frame: &mut Frame, app: &App, selected: usize) {
-    let t = app.theme;
+    let t = app.theme();
     let screen = frame.area();
     // In a short terminal, show only the modes around the selected one.
     let rows = (screen.height.saturating_sub(HINT_ROWS + 2) as usize).clamp(1, MODES.len());

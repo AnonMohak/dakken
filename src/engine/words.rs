@@ -6,6 +6,7 @@ const CODE: &str = include_str!("../../assets/words/code.txt");
 const SPANISH: &str = include_str!("../../assets/words/spanish.txt");
 const GERMAN: &str = include_str!("../../assets/words/german.txt");
 const QUOTES: &str = include_str!("../../assets/quotes/english.txt");
+const MOMO_QUOTES: &str = include_str!("../../assets/quotes/momo.txt");
 
 /// A quote to type, and where it comes from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,8 +18,18 @@ pub struct Quote {
 /// The built-in quotes, all from public-domain texts. One quote on each line:
 /// the text, a tab, then the source.
 pub fn quotes() -> Vec<Quote> {
-    QUOTES
-        .lines()
+    parse_quotes(QUOTES)
+}
+
+/// The quotes of momo mode: short quotes from One Piece, Hunter x Hunter and
+/// Vinland Saga. The source is the speaker and the series. These are not
+/// public domain; they belong to their owners.
+pub fn momo_quotes() -> Vec<Quote> {
+    parse_quotes(MOMO_QUOTES)
+}
+
+fn parse_quotes(text: &'static str) -> Vec<Quote> {
+    text.lines()
         .filter_map(|line| {
             let (text, source) = line.split_once('\t')?;
             Some(Quote {

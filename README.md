@@ -16,6 +16,10 @@ A typing-speed test for the terminal.
 - The text fills 70% of the terminal, with an empty row between lines.
 - Quote mode: one quote from a public-domain book, poem or speech. Choose
   short (up to 15 words), medium (16 to 30) or long (more than 30) quotes.
+- Momo mode: one famous quote from One Piece, Hunter x Hunter or Vinland
+  Saga, with the speaker and the series on the results. The screen says
+  "momo mode" above the words and uses its own night sakura colors. Your
+  chosen theme comes back when you leave momo mode.
 - Custom mode: type the text of your own file, with `--file`.
 - Zen mode: type anything with no target text. `Enter` ends the test.
 - Daily challenge: the same 30 words for everyone each day (UTC), with your
@@ -329,7 +333,11 @@ The code has three parts:
 ## Word lists and quotes
 
 The word lists (English, code, Spanish and German) were written for this
-project. The quotes are from public-domain books, poems and speeches.
+project. The quotes of quote mode are from public-domain books, poems and
+speeches. The momo mode quotes (`assets/quotes/momo.txt`) are short quotes
+from One Piece (Eiichiro Oda), Hunter x Hunter (Yoshihiro Togashi) and
+Vinland Saga (Makoto Yukimura). They are not public domain and belong to
+their owners; the MIT license does not cover them.
 
 ## License
 

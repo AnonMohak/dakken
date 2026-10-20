@@ -18,7 +18,7 @@ use crate::engine::stats::TestResult;
 use crate::engine::{Mode, words::WordList};
 
 pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
-    let t = app.theme;
+    let t = app.theme();
     let label = |s: &str| Span::styled(s.to_string(), Style::new().fg(t.sub));
     let big = |s: String| Span::styled(s, Style::new().fg(t.main).add_modifier(Modifier::BOLD));
     let value = |s: String| Span::styled(s, Style::new().fg(t.main));
@@ -151,7 +151,7 @@ fn draw_graph(frame: &mut Frame, area: Rect, r: &TestResult, t: Theme) {
 
 /// "new personal best", or the best WPM before this test.
 fn best_line(app: &App, r: &TestResult) -> Line<'static> {
-    let t = app.theme;
+    let t = app.theme();
     if app.session.is_failed() {
         return Line::styled(
             "test failed: a wrong key in master mode",
@@ -198,7 +198,7 @@ fn keys_text(app: &App) -> String {
 
 /// Who won the race, or where the race file went after `x`.
 fn race_line(app: &App, r: &TestResult) -> Line<'static> {
-    let t = app.theme;
+    let t = app.theme();
     if let Some(saved) = &app.race_saved {
         return Line::styled(saved.clone(), Style::new().fg(t.sub));
     }
@@ -221,7 +221,7 @@ fn race_line(app: &App, r: &TestResult) -> Line<'static> {
 
 /// The climb round: passed with the next target, or the end of the climb.
 fn climb_line(app: &App) -> Line<'static> {
-    let t = app.theme;
+    let t = app.theme();
     match app.climb_result {
         Some((c, true)) => Line::styled(
             format!(
@@ -246,7 +246,7 @@ fn climb_line(app: &App) -> Line<'static> {
 
 /// The XP of the test, then a new level and new badges in the accent color.
 fn reward_line(app: &App) -> Line<'static> {
-    let t = app.theme;
+    let t = app.theme();
     let Some(reward) = &app.reward else {
         return Line::default();
     };
@@ -290,7 +290,9 @@ fn quests_line(app: &App) -> Line<'static> {
     let s = if done.len() == 1 { "" } else { "s" };
     Line::styled(
         format!("quest{s} done: {}", goals.join(", ")),
-        Style::new().fg(app.theme.main).add_modifier(Modifier::BOLD),
+        Style::new()
+            .fg(app.theme().main)
+            .add_modifier(Modifier::BOLD),
     )
 }
 
@@ -309,14 +311,16 @@ fn badges_line(app: &App, width: u16) -> Line<'static> {
     };
     Line::styled(
         text,
-        Style::new().fg(app.theme.main).add_modifier(Modifier::BOLD),
+        Style::new()
+            .fg(app.theme().main)
+            .add_modifier(Modifier::BOLD),
     )
 }
 
 /// The mode and options, with the word list. Quotes have no word list.
 fn results_label(app: &App) -> String {
     match app.mode {
-        Mode::Quote(_) | Mode::Custom | Mode::Zen => app.label(),
+        Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen => app.label(),
         _ if app.options.list == WordList::English => format!("{} · english", app.label()),
         _ => app.label(),
     }

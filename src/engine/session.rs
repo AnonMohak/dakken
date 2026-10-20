@@ -14,6 +14,8 @@ pub enum Mode {
     Untimed,
     /// Type one quote with no time limit.
     Quote(QuoteLength),
+    /// Momo mode: one quote from One Piece, Hunter x Hunter or Vinland Saga.
+    Momo,
     /// Type the text of a file with no time limit.
     Custom,
     /// Type anything, with no target text. `Session::finish` ends the test.
@@ -145,7 +147,7 @@ impl Session {
         let count = match mode {
             Mode::Zen => return Self::zen(),
             Mode::Words(n) => n,
-            Mode::Untimed | Mode::Quote(_) | Mode::Custom => 25,
+            Mode::Untimed | Mode::Quote(_) | Mode::Momo | Mode::Custom => 25,
             Mode::Time(_) => WORDS_AHEAD * 2,
         };
         let words: Vec<String> = (0..count).map(|_| next_word()).collect();
@@ -271,7 +273,12 @@ impl Session {
     pub fn remaining(&self, now: Instant) -> Option<Duration> {
         match self.mode {
             Mode::Time(limit) => Some(limit.saturating_sub(self.elapsed(now))),
-            Mode::Untimed | Mode::Quote(_) | Mode::Custom | Mode::Zen | Mode::Words(_) => None,
+            Mode::Untimed
+            | Mode::Quote(_)
+            | Mode::Momo
+            | Mode::Custom
+            | Mode::Zen
+            | Mode::Words(_) => None,
         }
     }
 
