@@ -9,6 +9,7 @@ use ratatui::{
 use super::column;
 use crate::app::{App, MODES, mode_label};
 use crate::engine::{Strict, words::WordList};
+use crate::progress::{self, Level};
 use crate::ui::theme::Theme;
 
 /// The dakken logo, a keycap with speed lines, above the settings.
@@ -27,6 +28,8 @@ const GAP: usize = 6;
 const MARGIN: u16 = 4;
 /// Rows kept free under the menu for the keys line.
 const HINT_ROWS: u16 = 4;
+/// Cells in the XP bar under the logo.
+const XP_BAR: usize = 16;
 
 /// The menu: the logo, then one row for each setting with its key.
 pub fn draw(frame: &mut Frame, app: &App) {
@@ -91,12 +94,15 @@ pub fn draw(frame: &mut Frame, app: &App) {
         })
         .collect();
     let width = settings.iter().map(Line::width).max().unwrap_or(0) as u16;
-    // The logo goes on top when there is room for it.
-    let logo_height = LOGO.len() as u16 + 1;
+    // The logo and the level go on top when there is room for them.
+    let level = Level::from_xp(progress::total_xp(app.history.records()));
+    let logo_height = LOGO.len() as u16 + 3;
     let with_logo = screen.height >= settings.len() as u16 + logo_height + HINT_ROWS;
     let mut lines: Vec<Line> = Vec::new();
     if with_logo {
-        lines.extend(logo_lines(t));
+        lines.extend(logo_lines(t, level.rank_index()));
+        lines.push(Line::default());
+        lines.push(level_line(t, level));
         lines.push(Line::default());
     }
     let logo_rows = lines.len();
@@ -160,13 +166,32 @@ pub fn draw_modes(frame: &mut Frame, app: &App, selected: usize) {
     keys_line(frame, t, height, "↑↓ choose · enter select · tab back");
 }
 
+/// "level 7 homing" and a bar of the XP in this level.
+fn level_line(t: Theme, level: Level) -> Line<'static> {
+    let (filled, empty) = level.bar(XP_BAR);
+    Line::from(vec![
+        Span::styled(
+            format!("level {} {}  ", level.level, level.rank()),
+            Style::new().fg(t.sub),
+        ),
+        Span::styled("━".repeat(filled), Style::new().fg(t.main)),
+        Span::styled("─".repeat(empty), Style::new().fg(t.sub)),
+    ])
+}
+
 /// The logo rows, padded to one width so they stay in shape when centered:
-/// the speed lines plain, the keycap bold, both in the theme color.
-fn logo_lines(t: Theme) -> Vec<Line<'static>> {
+/// the speed lines plain, the keycap bold, both in the theme color. Each
+/// rank above the first makes the speed lines one cell longer.
+fn logo_lines(t: Theme, rank: usize) -> Vec<Line<'static>> {
     let width = LOGO.iter().map(|l| l.chars().count()).max().unwrap_or(0);
     LOGO.iter()
         .map(|row| {
-            let row = format!("{row:<width$}");
+            // Every row gets `rank` more cells, so the keycap stays in shape.
+            let indent = row.len() - row.trim_start().len();
+            let (front, back) = row.split_at(indent);
+            let more = if back.starts_with('=') { "=" } else { " " };
+            let pad = width - indent;
+            let row = format!("{front}{}{back:<pad$}", more.repeat(rank));
             let split = row
                 .find(|c: char| c != '=' && c != ' ')
                 .unwrap_or(row.len());

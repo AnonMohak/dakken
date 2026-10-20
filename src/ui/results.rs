@@ -57,6 +57,8 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
             &app.source.map_or(String::new(), |s| format!("— {s}")),
         )),
         best_line(app, r),
+        reward_line(app),
+        badges_line(app, super::text_width(frame.area().width)),
         Line::from(label("enter restart · r replay · tab menu")),
     ];
     let text_height = lines.len() as u16;
@@ -170,6 +172,50 @@ fn best_line(app: &App, r: &TestResult) -> Line<'static> {
         ));
     }
     Line::from(spans)
+}
+
+/// The XP of the test, then a new level and new badges in the accent color.
+fn reward_line(app: &App) -> Line<'static> {
+    let t = app.theme;
+    let Some(reward) = &app.reward else {
+        return Line::default();
+    };
+    let accent = Style::new().fg(t.main).add_modifier(Modifier::BOLD);
+    let mut spans = vec![Span::styled(
+        format!("+{} xp", reward.xp),
+        Style::new().fg(t.sub),
+    )];
+    let after = reward.after;
+    if after.level > reward.before.level {
+        spans.push(Span::styled(" · ", Style::new().fg(t.sub)));
+        let rank_up = after.rank_index() > reward.before.rank_index();
+        let text = if rank_up {
+            format!("level {} · new rank {}", after.level, after.rank())
+        } else {
+            format!("level {}", after.level)
+        };
+        spans.push(Span::styled(text, accent));
+    }
+    Line::from(spans)
+}
+
+/// The new badges, or how many there are when the names do not fit.
+fn badges_line(app: &App, width: u16) -> Line<'static> {
+    let badges = app.reward.as_ref().map_or(&[][..], |r| &r.badges[..]);
+    let s = if badges.len() == 1 { "" } else { "s" };
+    let text = match badges {
+        [] => String::new(),
+        _ => format!("new badge{s}: {}", badges.join(", ")),
+    };
+    let text = if text.chars().count() > width as usize {
+        format!("{} new badges · dakken --badges", badges.len())
+    } else {
+        text
+    };
+    Line::styled(
+        text,
+        Style::new().fg(app.theme.main).add_modifier(Modifier::BOLD),
+    )
 }
 
 /// The mode and options, with the word list. Quotes have no word list.

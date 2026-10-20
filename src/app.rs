@@ -12,12 +12,14 @@ use crate::engine::{
 };
 use rand::seq::IndexedRandom;
 
+use crate::badges::{self, Badges};
 use crate::best_runs::BestRuns;
 use crate::config::{Caret, Config};
 use crate::history::{History, Record};
 use crate::keystats::KeyStats;
 use crate::layout::Layout;
 use crate::mistakes::{self, Mistakes};
+use crate::progress::{self, Level};
 use crate::ui::{self, theme::Theme};
 
 /// The modes the menu offers, in menu order.
@@ -118,6 +120,15 @@ pub struct Replay {
     next: usize,
 }
 
+/// What the last test gave: XP, a new level, new badges.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Reward {
+    pub xp: u64,
+    pub before: Level,
+    pub after: Level,
+    pub badges: Vec<&'static str>,
+}
+
 pub struct App {
     pub mode: Mode,
     /// The day (since 1970-01-01 UTC) of the daily challenge, in daily mode.
@@ -149,6 +160,9 @@ pub struct App {
     pub key_stats: KeyStats,
     /// The key times of each personal-best test, for the pace caret.
     pub best_runs: BestRuns,
+    pub badges: Badges,
+    /// What the last finished test gave. `None` for a failed test.
+    pub reward: Option<Reward>,
     /// Best WPM for this label before the last finished test.
     pub previous_best: Option<f64>,
     /// The last finished test could not be added to the history file.
@@ -214,6 +228,8 @@ impl App {
             mistakes: Mistakes::in_memory(),
             key_stats: KeyStats::in_memory(),
             best_runs: BestRuns::in_memory(),
+            badges: Badges::in_memory(),
+            reward: None,
             previous_best: None,
             save_failed: false,
             quit: false,
@@ -262,6 +278,23 @@ impl App {
             }
         }
         self.mistakes.update(&wrong, &fixed)
+    }
+
+    /// The XP and new badges of the test just added to the history.
+    fn give_reward(&mut self, xp_before: u64, had_mistakes: bool) -> Reward {
+        let own_text = matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen);
+        let practising = !own_text && self.options.list == WordList::Mistakes;
+        let cleared = practising && had_mistakes && self.mistakes.words().is_empty();
+        let earned = badges::earned(self.history.records(), cleared);
+        let (new, saved) = self.badges.add(&earned);
+        self.save_failed |= saved.is_err();
+        let xp_after = progress::total_xp(self.history.records());
+        Reward {
+            xp: xp_after - xp_before,
+            before: Level::from_xp(xp_before),
+            after: Level::from_xp(xp_after),
+            badges: new,
+        }
     }
 
     /// The letters the weak-keys list practises.
@@ -391,8 +424,11 @@ impl App {
             let result = self.session.result();
             let label = self.label();
             self.previous_best = self.history.best(&label);
+            let xp_before = progress::total_xp(self.history.records());
+            let had_mistakes = !self.mistakes.words().is_empty();
             // A failed test is not a real result, so it is not saved.
-            if !self.session.is_failed() {
+            let failed = self.session.is_failed();
+            if !failed {
                 let new_best = self.previous_best.is_none_or(|best| result.wpm > best);
                 let presses = self.session.presses();
                 self.save_failed = (new_best && self.mode != Mode::Zen)
@@ -401,6 +437,7 @@ impl App {
                 self.save_failed |= self.key_stats.add_test(self.session.presses()).is_err();
             }
             self.save_failed |= self.update_mistakes().is_err();
+            self.reward = (!failed).then(|| self.give_reward(xp_before, had_mistakes));
             self.screen = Screen::Results(result);
         }
     }
@@ -650,6 +687,19 @@ mod tests {
         assert_eq!(a.history.records().len(), 2);
         assert!(a.previous_best.is_some());
         assert!(!a.save_failed);
+    }
+
+    #[test]
+    fn finished_tests_give_xp_and_badges_once() {
+        let mut a = app(&["hi"]);
+        type_text(&mut a, "hi");
+        let reward = a.reward.clone().expect("a finished test has a reward");
+        assert_eq!(reward.before.level, 1);
+        assert_eq!(reward.badges, ["first press"]);
+        a.session = Session::from_words(a.mode, &["hi"]);
+        a.screen = Screen::Typing;
+        type_text(&mut a, "hi");
+        assert!(a.reward.as_ref().is_some_and(|r| r.badges.is_empty()));
     }
 
     #[test]

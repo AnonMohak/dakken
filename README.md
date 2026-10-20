@@ -58,6 +58,12 @@ A typing-speed test for the terminal.
   graph of WPM and raw WPM over the test, your slowest word and your fastest
   burst (the fastest single word).
 - Personal bests and history for each mode and option set.
+- Levels and badges: each test gives XP for its correct characters, with
+  more for punctuation, numbers and strict modes, and less for errors. The
+  menu shows your level, your rank (`blank`, `homing`, `sculpted`,
+  `doubleshot`, `artisan`, `legend`) and an XP bar, and the logo gets longer
+  speed lines at each rank. The results show the XP and each new badge.
+  `--badges` lists all 14 badges; 3 stay hidden until you get them.
 - One `.exe` with no runtime. Made and tested on Windows 11 with WezTerm.
 
 ## Install
@@ -120,6 +126,7 @@ dakken --layout dvorak  # practise Dvorak (or colemak) on a QWERTY keyboard
 dakken --history  # print personal bests and the last 10 tests
 dakken --stats    # print averages and a graph of WPM by day
 dakken --heatmap  # keyboard colored by errors, slowest keys, speed by day
+dakken --badges   # print your level, XP and badges
 dakken --export csv > history.csv  # save the history as CSV (or json)
 dakken --check-update  # ask GitHub if there is a newer release (needs curl)
 dakken --keys     # print raw key events (to check your terminal)
@@ -235,6 +242,8 @@ for example `time 30 · punctuation`. Delete the file to clear the history.
 `keys.tsv` keeps the presses, errors and time for each key and each letter
 pair, for `--heatmap`, `weak-keys` and `weak-pairs`. `best-runs.tsv` keeps the
 key times of each personal-best test, for the pace caret.
+`badges.tsv` keeps each badge you got, with its date. XP and levels come
+from the history, so they need no file of their own.
 `mistakes.txt`, in the same folder, keeps the last 100 words you typed wrong.
 If it is empty, the `mistakes` list uses the English words.
 

@@ -64,7 +64,7 @@ fn column(area: Rect, height: u16) -> Rect {
     center(area, text_width(area.width), height)
 }
 
-fn text_width(terminal_width: u16) -> u16 {
+pub(super) fn text_width(terminal_width: u16) -> u16 {
     terminal_width.saturating_sub(4).min(MAX_WIDTH)
 }
 
@@ -243,6 +243,8 @@ mod tests {
             "consistency",
             "characters",
             "personal best",
+            "xp",
+            "new badge: first press",
         ] {
             assert!(out.contains(label), "missing {label}:\n{out}");
         }
@@ -273,6 +275,7 @@ mod tests {
         let start = |text: &str| row(text).find(|c: char| c != ' ');
         assert_eq!(start("mode words 1"), start("strict off"), "{out}");
         assert!(out.contains("/_________/"), "{out}");
+        assert!(out.contains("level 1 blank  ────"), "{out}");
         assert!(!out.contains("time 15"), "{out}");
         assert!(
             out.contains("enter start · tab back · ctrl+c exit"),

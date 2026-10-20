@@ -1,4 +1,5 @@
 mod app;
+mod badges;
 mod best_runs;
 mod config;
 mod engine;
@@ -6,6 +7,7 @@ mod history;
 mod keystats;
 mod layout;
 mod mistakes;
+mod progress;
 mod ui;
 mod update;
 
@@ -21,6 +23,7 @@ use ratatui::crossterm::{
 };
 
 use app::{App, CustomText};
+use badges::Badges;
 use best_runs::BestRuns;
 use config::{Caret, Config};
 use engine::words::{WORD_LISTS, WordList};
@@ -113,6 +116,10 @@ struct Cli {
     #[arg(long, value_name = "FORMAT", value_parser = ["csv", "json"])]
     export: Option<String>,
 
+    /// Print your level, XP and badges, then quit.
+    #[arg(long)]
+    badges: bool,
+
     /// Print each key event, to check how the terminal sends keys.
     #[arg(long)]
     keys: bool,
@@ -145,6 +152,15 @@ fn main() -> io::Result<()> {
     }
     if cli.stats {
         print!("{}", history::stats_report(&history));
+        return Ok(());
+    }
+    let mut badges = badges::default_path().map_or_else(Badges::in_memory, Badges::load);
+    if cli.badges {
+        // Tests from before badges existed can earn them too.
+        let _ = badges.add(&badges::earned(history.records(), false)).1;
+        use std::io::IsTerminal;
+        let color = io::stdout().is_terminal();
+        print!("{}", badges::report(&history, &badges, color));
         return Ok(());
     }
     let key_stats = keystats::default_path().map_or_else(KeyStats::in_memory, KeyStats::load);
@@ -242,6 +258,7 @@ fn main() -> io::Result<()> {
         custom,
     );
     app.best_runs = best_runs::default_path().map_or_else(BestRuns::in_memory, BestRuns::load);
+    app.badges = badges;
     if cli.daily {
         app.start_daily(history::today());
     }
