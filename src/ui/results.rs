@@ -59,7 +59,7 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
         best_line(app, r),
         reward_line(app),
         badges_line(app, super::text_width(frame.area().width)),
-        Line::from(label("enter restart · r replay · tab menu")),
+        Line::from(label(&keys_text(app))),
     ];
     let text_height = lines.len() as u16;
     let free = frame.area().height.saturating_sub(text_height + 2);
@@ -172,6 +172,17 @@ fn best_line(app: &App, r: &TestResult) -> Line<'static> {
         ));
     }
     Line::from(spans)
+}
+
+/// The keys of the results screen, with `y` after a daily challenge.
+fn keys_text(app: &App) -> String {
+    match (app.daily, app.copied) {
+        (Some(_), true) => "score card copied · enter restart · r replay · tab menu".to_string(),
+        (Some(_), false) if app.reward.is_some() => {
+            "enter restart · r replay · y copy score card · tab menu".to_string()
+        }
+        _ => "enter restart · r replay · tab menu".to_string(),
+    }
 }
 
 /// The XP of the test, then a new level and new badges in the accent color.

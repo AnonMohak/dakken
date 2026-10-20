@@ -19,7 +19,10 @@ A typing-speed test for the terminal.
 - Custom mode: type the text of your own file, with `--file`.
 - Zen mode: type anything with no target text. `Enter` ends the test.
 - Daily challenge: the same 30 words for everyone each day (UTC), with your
-  streak of days in a row in `--stats`.
+  streak of days in a row in `--stats`. After the test, press `y` to copy a
+  score card to paste in a chat: your WPM, accuracy and streak, and a 🟦 for
+  each correct word (⬛ for a wrong word). The copy uses the OSC 52 escape
+  code, which WezTerm, Windows Terminal, kitty and iTerm2 support.
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
   quotes and parentheses.
 - Numbers mode: random numbers in place of some words.
@@ -149,6 +152,7 @@ On the results:
 |---|---|
 | `Enter` | Start a new test |
 | `r` | Replay the test at the speed you typed it (any key stops it) |
+| `y` | Copy the score card (daily challenge only) |
 | `Tab` or `Esc` | Open the menu |
 
 In the menu, each setting shows its key on the left:

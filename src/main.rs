@@ -1,6 +1,7 @@
 mod app;
 mod badges;
 mod best_runs;
+mod card;
 mod config;
 mod engine;
 mod history;
@@ -287,7 +288,14 @@ fn run(mut app: App) -> io::Result<()> {
             // About 60 frames per second keeps the timer smooth.
             if event::poll(Duration::from_millis(16))? {
                 match event::read()? {
-                    Event::Key(key) => app.on_key(key, Instant::now()),
+                    Event::Key(key) => {
+                        app.on_key(key, Instant::now());
+                        if let Some(text) = app.copy.take() {
+                            let mut out = io::stdout();
+                            write!(out, "{}", card::osc52(&text))?;
+                            out.flush()?;
+                        }
+                    }
                     Event::Resize(width, height) => app.on_resize(width, height),
                     _ => {}
                 }

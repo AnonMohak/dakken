@@ -14,8 +14,9 @@ use rand::seq::IndexedRandom;
 
 use crate::badges::{self, Badges};
 use crate::best_runs::BestRuns;
+use crate::card;
 use crate::config::{Caret, Config};
-use crate::history::{History, Record};
+use crate::history::{self, History, Record};
 use crate::keystats::KeyStats;
 use crate::layout::Layout;
 use crate::mistakes::{self, Mistakes};
@@ -165,6 +166,10 @@ pub struct App {
     pub reward: Option<Reward>,
     /// Best WPM for this label before the last finished test.
     pub previous_best: Option<f64>,
+    /// Text for the main loop to put on the clipboard.
+    pub copy: Option<String>,
+    /// The score card of the last test is on the clipboard.
+    pub copied: bool,
     /// The last finished test could not be added to the history file.
     pub save_failed: bool,
     pub quit: bool,
@@ -231,6 +236,8 @@ impl App {
             badges: Badges::in_memory(),
             reward: None,
             previous_best: None,
+            copy: None,
+            copied: false,
             save_failed: false,
             quit: false,
         }
@@ -295,6 +302,18 @@ impl App {
             after: Level::from_xp(xp_after),
             badges: new,
         }
+    }
+
+    /// The score card of the daily challenge just finished.
+    fn score_card(&self, day: i64, wpm: f64, accuracy: f64) -> String {
+        let words: Vec<bool> = self
+            .session
+            .checked_words()
+            .into_iter()
+            .map(|(_, correct)| correct)
+            .collect();
+        let streak = history::daily_streak(&self.history, day);
+        card::score_card(day, wpm, accuracy, &words, streak)
     }
 
     /// The letters the weak-keys list practises.
@@ -438,6 +457,7 @@ impl App {
             }
             self.save_failed |= self.update_mistakes().is_err();
             self.reward = (!failed).then(|| self.give_reward(xp_before, had_mistakes));
+            self.copied = false;
             self.screen = Screen::Results(result);
         }
     }
@@ -466,7 +486,7 @@ impl App {
                 }
             },
             Screen::Replay(_) => self.screen = Screen::Results(self.session.result()),
-            Screen::Results(_) => match key.code {
+            Screen::Results(ref result) => match key.code {
                 KeyCode::Enter => self.restart(),
                 KeyCode::Char('r') if !self.session.log().is_empty() => {
                     self.screen = Screen::Replay(Box::new(Replay {
@@ -474,6 +494,12 @@ impl App {
                         start: now,
                         next: 0,
                     }));
+                }
+                KeyCode::Char('y') if self.reward.is_some() => {
+                    if let Some(day) = self.daily {
+                        self.copy = Some(self.score_card(day, result.wpm, result.accuracy));
+                        self.copied = true;
+                    }
                 }
                 KeyCode::Tab | KeyCode::Esc => self.open_menu(),
                 _ => {}
@@ -700,6 +726,42 @@ mod tests {
         a.screen = Screen::Typing;
         type_text(&mut a, "hi");
         assert!(a.reward.as_ref().is_some_and(|r| r.badges.is_empty()));
+    }
+
+    #[test]
+    fn y_copies_the_daily_score_card() {
+        let mut a = app(&["hi"]);
+        a.start_daily(20_381);
+        let text: Vec<String> = a
+            .session
+            .words()
+            .iter()
+            .map(|w| w.iter().collect())
+            .collect();
+        type_text(&mut a, &text.join(" "));
+        assert!(matches!(a.screen, Screen::Results(_)));
+        a.on_key(
+            press(KeyCode::Char('y'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        let card = a.copy.take().expect("y gives a card to copy");
+        assert!(
+            card.starts_with(
+                "dakken daily 2025-10-20
+"
+            ),
+            "{card}"
+        );
+        assert_eq!(card.matches('🟦').count(), words::DAILY_WORDS, "{card}");
+        assert!(a.copied);
+        // Other tests have no card.
+        let mut b = app(&["hi"]);
+        type_text(&mut b, "hi");
+        b.on_key(
+            press(KeyCode::Char('y'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert_eq!(b.copy, None);
     }
 
     #[test]
