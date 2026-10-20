@@ -44,7 +44,7 @@ pub fn test_xp(r: &Record) -> u64 {
     }
     // Accuracy counts twice: 90% accuracy gives 81% of the XP.
     let accuracy = (r.accuracy / 100.0).clamp(0.0, 1.0);
-    (chars * factor * accuracy * accuracy).round().max(0.0) as u64
+    (chars * factor * accuracy * accuracy).round().max(0.0) as u64 + r.bonus
 }
 
 pub fn total_xp(records: &[Record]) -> u64 {
@@ -162,6 +162,7 @@ mod tests {
             accuracy,
             consistency: 80.0,
             seconds: 60.0,
+            bonus: 0,
         }
     }
 
@@ -177,6 +178,9 @@ mod tests {
         assert_eq!(test_xp(&record("zen", 60.0, 100.0)), 150);
         // A file name is not an option.
         assert_eq!(test_xp(&record("custom · notes.txt", 60.0, 100.0)), 300);
+        let mut boss = record("time 60 · boss", 60.0, 100.0);
+        boss.bonus = 100;
+        assert_eq!(test_xp(&boss), 400);
     }
 
     #[test]

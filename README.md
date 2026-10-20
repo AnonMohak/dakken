@@ -61,7 +61,9 @@ A typing-speed test for the terminal.
   best speed until you set a new one.
 - Challenges (`g` in the menu, or `-g NAME`): `survival` gives you 3 lives
   (♥♥♥ above the words). Each wrong word takes one, and the test ends with
-  the last life.
+  the last life. `boss` makes every 25th word a boss word: a long word in
+  bold, with one of your slow letter pairs when it can. Each boss word you
+  type right gives 50 bonus XP.
 - Results: WPM, raw WPM, accuracy, consistency, and character counts, with a
   graph of WPM and raw WPM over the test, your slowest word and your fastest
   burst (the fastest single word).
@@ -222,7 +224,7 @@ words = "english"    # english, english-1k, code, spanish, german, mistakes, wea
 live = false         # live WPM and accuracy during the test
 pace = false         # pace caret that replays your personal-best test
 strict = "off"       # off, stop-on-error, no-backspace or master
-challenge = "off"    # off or survival
+challenge = "off"    # off, survival or boss
 caret = "block"      # block, bar or underline
 layout = "qwerty"    # qwerty, dvorak or colemak
 weekly_goal = 0      # words to type each week (Monday to Sunday, UTC); 0 is no goal

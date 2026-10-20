@@ -258,6 +258,7 @@ mod tests {
             accuracy: 97.0,
             consistency: 70.0,
             seconds: 60.0,
+            bonus: 0,
         }
     }
 

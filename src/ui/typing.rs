@@ -95,7 +95,8 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
             }
             let pace_letter = pace.filter(|&(w, _)| w == i).map(|(_, l)| l);
             let word = (&s.words()[i][..], &s.typed()[i][..]);
-            word_spans(t, word, i < s.current(), pace_letter, &mut spans);
+            let boss = app.boss_on() && crate::challenge::is_boss(i);
+            word_spans(t, word, (i < s.current(), boss), pace_letter, &mut spans);
             x += widths[i];
         }
         let line_area = Rect {
@@ -128,11 +129,12 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
 }
 
 /// Colors each letter of one word: wrong, extra and missed letters are red.
-/// The `pace` letter gets a gray background.
+/// The `pace` letter gets a gray background. A boss word is bold, and its
+/// letters to type are in the theme color.
 fn word_spans(
     theme: Theme,
     (target, typed): (&[char], &[char]),
-    done: bool,
+    (done, boss): (bool, bool),
     pace: Option<usize>,
     out: &mut Vec<Span<'static>>,
 ) {
@@ -143,10 +145,16 @@ fn word_spans(
             (None, Some(&c)) => (c, theme.error_extra),
             // Letters left out of a finished word are errors too.
             (Some(&t), None) if done => (t, theme.error),
+            (Some(&t), None) if boss => (t, theme.main),
             (Some(&t), None) => (t, theme.sub),
             (None, None) => unreachable!(),
         };
         let style = Style::new().fg(color);
+        let style = if boss {
+            style.add_modifier(Modifier::BOLD)
+        } else {
+            style
+        };
         let style = if pace == Some(j) {
             style.bg(theme.sub)
         } else {

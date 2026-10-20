@@ -131,6 +131,8 @@ pub struct Reward {
     pub badges: Vec<&'static str>,
     /// This test made the words of the week reach the weekly goal.
     pub goal_reached: bool,
+    /// Boss words typed right, of the boss words reached, in a boss test.
+    pub bosses: Option<(usize, usize)>,
 }
 
 pub struct App {
@@ -274,7 +276,16 @@ impl App {
             Some(custom) if self.mode == Mode::Custom => {
                 (Session::from_words(self.mode, &custom.words), None)
             }
-            _ => new_test(self.mode, self.options, self.size, self.practice_words()),
+            _ => {
+                let boss = self.boss_on().then(|| self.weak_pairs());
+                new_test(
+                    self.mode,
+                    self.options,
+                    self.size,
+                    self.practice_words(),
+                    boss,
+                )
+            }
         };
         self.session.set_strict(self.strict);
         if self.daily.is_none() && self.challenge == Challenge::Survival {
@@ -320,7 +331,24 @@ impl App {
             after: Level::from_xp(xp_after),
             badges: new,
             goal_reached,
+            bosses: self.boss_on().then(|| self.bosses()),
         }
+    }
+
+    /// Boss words are in this test: the boss challenge, with random words.
+    pub fn boss_on(&self) -> bool {
+        let own_text = matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen);
+        self.challenge == Challenge::Boss && self.daily.is_none() && !own_text
+    }
+
+    /// The boss words typed right, and the boss words reached.
+    fn bosses(&self) -> (usize, usize) {
+        let checked = self.session.checked_words();
+        let bosses: Vec<bool> = (checked.iter().enumerate())
+            .filter(|(i, _)| challenge::is_boss(*i))
+            .map(|(_, (_, correct))| *correct)
+            .collect();
+        (bosses.iter().filter(|&&c| c).count(), bosses.len())
     }
 
     /// The score card of the daily challenge just finished.
@@ -476,7 +504,11 @@ impl App {
                 let presses = self.session.presses();
                 self.save_failed = (new_best && self.mode != Mode::Zen)
                     && self.best_runs.set(&label, presses).is_err();
-                self.save_failed |= self.history.add(Record::new(label, &result)).is_err();
+                let mut record = Record::new(label, &result);
+                if self.boss_on() {
+                    record.bonus = self.bosses().0 as u64 * challenge::BOSS_XP;
+                }
+                self.save_failed |= self.history.add(record).is_err();
                 self.save_failed |= self.key_stats.add_test(self.session.presses()).is_err();
             }
             self.save_failed |= self.update_mistakes().is_err();
@@ -614,6 +646,7 @@ fn new_test(
     options: Options,
     size: (u16, u16),
     practice: Option<Vec<String>>,
+    boss: Option<Vec<String>>,
 ) -> (Session, Option<&'static str>) {
     if let Mode::Quote(length) = mode {
         let quotes: Vec<_> = words::quotes()
@@ -626,25 +659,40 @@ fn new_test(
         let words: Vec<&str> = quote.text.split_whitespace().collect();
         return (Session::from_words(mode, &words), Some(quote.source));
     }
-    (new_session(mode, options, size, practice), None)
+    (new_session(mode, options, size, practice, boss), None)
 }
 
+/// A session of random words. With `boss` (the weak letter pairs), every
+/// 25th word is a boss word.
 fn new_session(
     mode: Mode,
     options: Options,
     (width, height): (u16, u16),
     practice: Option<Vec<String>>,
+    boss: Option<Vec<String>>,
 ) -> Session {
-    let list =
+    let list: Vec<String> =
         practice.unwrap_or_else(|| options.list.words().into_iter().map(String::from).collect());
+    let bosses = boss.map(|pairs| challenge::boss_words(&list, &pairs));
     let mut words = WordGen::new(list, rand::rng())
         .with_punctuation(options.punctuation)
         .with_numbers(options.numbers);
+    let mut index = 0;
+    let mut next_word = move || {
+        index += 1;
+        match &bosses {
+            Some(bosses) if challenge::is_boss(index - 1) => bosses
+                .choose(&mut rand::rng())
+                .cloned()
+                .unwrap_or_else(|| words.next_word()),
+            _ => words.next_word(),
+        }
+    };
     if mode == Mode::Untimed {
-        let words = ui::screen_words(width, height, || words.next_word());
+        let words = ui::screen_words(width, height, &mut next_word);
         return Session::from_words(mode, &words);
     }
-    Session::new(mode, move || words.next_word())
+    Session::new(mode, next_word)
 }
 
 fn engine_key(key: KeyEvent, layout: Layout) -> Option<Key> {
@@ -785,6 +833,34 @@ mod tests {
         // The daily challenge has no lives.
         a.start_daily(20_381);
         assert_eq!(a.session.lives(), None);
+    }
+
+    #[test]
+    fn boss_words_give_bonus_xp() {
+        let words: Vec<String> = (0..30).map(|i| format!("w{i}")).collect();
+        let mut a = app(&words.iter().map(String::as_str).collect::<Vec<_>>());
+        a.challenge = Challenge::Boss;
+        assert!(a.boss_on());
+        // Word 25 (index 24) is the boss: type it right, and one other word wrong.
+        let mut text = words.clone();
+        text[3] = "xx".to_string();
+        type_text(&mut a, &text.join(" "));
+        let reward = a.reward.clone().expect("a reward");
+        assert_eq!(reward.bosses, Some((1, 1)));
+        assert_eq!(a.history.records()[0].bonus, challenge::BOSS_XP);
+        assert!(reward.xp >= challenge::BOSS_XP);
+    }
+
+    #[test]
+    fn a_boss_test_has_a_long_word_every_25_words() {
+        let options = Options {
+            list: WordList::English1k,
+            ..Options::default()
+        };
+        let s = new_session(Mode::Words(50), options, (80, 24), None, Some(Vec::new()));
+        for i in [24, 49] {
+            assert!(s.words()[i].len() >= 7, "{:?}", s.words()[i]);
+        }
     }
 
     #[test]

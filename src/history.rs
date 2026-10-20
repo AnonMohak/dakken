@@ -18,6 +18,8 @@ pub struct Record {
     pub accuracy: f64,
     pub consistency: f64,
     pub seconds: f64,
+    /// Extra XP, for example for boss words typed right.
+    pub bonus: u64,
 }
 
 impl Record {
@@ -32,19 +34,21 @@ impl Record {
             accuracy: r.accuracy,
             consistency: r.consistency,
             seconds: r.duration.as_secs_f64(),
+            bonus: 0,
         }
     }
 
     fn to_line(&self) -> String {
         format!(
-            "{}\t{}\t{:.2}\t{:.2}\t{:.2}\t{:.2}\t{:.2}",
+            "{}\t{}\t{:.2}\t{:.2}\t{:.2}\t{:.2}\t{:.2}\t{}",
             self.time,
             self.label,
             self.wpm,
             self.raw_wpm,
             self.accuracy,
             self.consistency,
-            self.seconds
+            self.seconds,
+            self.bonus
         )
     }
 
@@ -58,6 +62,8 @@ impl Record {
             accuracy: f.next()?.parse().ok()?,
             consistency: f.next()?.parse().ok()?,
             seconds: f.next()?.parse().ok()?,
+            // Lines from before bonus XP have no bonus.
+            bonus: f.next().and_then(|b| b.parse().ok()).unwrap_or(0),
         };
         Some(record)
     }
@@ -472,6 +478,7 @@ mod tests {
             accuracy: 100.0,
             consistency: 80.0,
             seconds: 30.0,
+            bonus: 0,
         }
     }
 

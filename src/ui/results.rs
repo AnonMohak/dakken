@@ -210,6 +210,13 @@ fn reward_line(app: &App) -> Line<'static> {
         };
         spans.push(Span::styled(text, accent));
     }
+    if let Some((beaten, total)) = reward.bosses {
+        spans.push(Span::styled(" · ", Style::new().fg(t.sub)));
+        spans.push(Span::styled(
+            format!("bosses {beaten}/{total}"),
+            Style::new().fg(t.main),
+        ));
+    }
     if reward.goal_reached {
         spans.push(Span::styled(" · ", Style::new().fg(t.sub)));
         spans.push(Span::styled("weekly goal reached", accent));
