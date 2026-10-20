@@ -359,11 +359,17 @@ pub fn stats_report(history: &History) -> String {
 
     if let Some(best) = history.best("daily") {
         let streak = daily_streak(history, today());
-        let s = if streak == 1 { "" } else { "s" };
+        let s = if streak.days == 1 { "" } else { "s" };
+        let freezes = match streak.freezes {
+            0 => String::new(),
+            1 => ", 1 streak freeze".to_string(),
+            n => format!(", {n} streak freezes"),
+        };
         out += &format!(
             "
-daily challenge: {streak} day{s} in a row, best {best:.0} wpm
-"
+daily challenge: {} day{s} in a row{freezes}, best {best:.0} wpm
+",
+            streak.days
         );
     }
 
@@ -377,21 +383,46 @@ daily challenge: {streak} day{s} in a row, best {best:.0} wpm
     out
 }
 
-/// Days in a row with a daily challenge, up to `today`. A streak that ended
-/// yesterday still counts until today is over.
-pub fn daily_streak(history: &History, today: i64) -> usize {
+/// Each 7 days of a streak give one streak freeze, up to this many.
+pub const MAX_FREEZES: usize = 2;
+
+/// A daily-challenge streak and the freezes kept for it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Streak {
+    /// Days with a daily challenge in the streak.
+    pub days: usize,
+    pub freezes: usize,
+}
+
+/// The daily-challenge streak up to `today`. A missed day uses a streak
+/// freeze if there is one, else it ends the streak. Today is not missed
+/// until it is over.
+pub fn daily_streak(history: &History, today: i64) -> Streak {
     let days: std::collections::HashSet<i64> = history
         .records()
         .iter()
         .filter(|r| r.label == "daily")
         .map(|r| (r.time / 86_400) as i64)
         .collect();
-    let start = if days.contains(&today) {
-        today
-    } else {
-        today - 1
+    let Some(&first) = days.iter().min() else {
+        return Streak::default();
     };
-    (0..).take_while(|i| days.contains(&(start - i))).count()
+    let mut streak = Streak::default();
+    for day in first..=today {
+        if days.contains(&day) {
+            streak.days += 1;
+            if streak.days % 7 == 0 {
+                streak.freezes = (streak.freezes + 1).min(MAX_FREEZES);
+            }
+        } else if day == today {
+            // Today is not over, so it is not missed yet.
+        } else if streak.freezes > 0 && streak.days > 0 {
+            streak.freezes -= 1;
+        } else {
+            streak = Streak::default();
+        }
+    }
+    streak
 }
 
 /// The average WPM of each day that has tests, oldest first.
@@ -453,11 +484,52 @@ mod tests {
             h.add(r).unwrap();
         }
         h.add(record("time 30", 90.0)).unwrap();
-        assert_eq!(daily_streak(&h, 14), 1);
+        let days = |today| daily_streak(&h, today).days;
+        assert_eq!(days(14), 1);
         // Day 15 has no test yet, so the streak to day 14 still counts.
-        assert_eq!(daily_streak(&h, 15), 1);
-        assert_eq!(daily_streak(&h, 13), 3);
-        assert_eq!(daily_streak(&h, 17), 0);
+        assert_eq!(days(15), 1);
+        assert_eq!(days(13), 3);
+        assert_eq!(days(17), 0);
+    }
+
+    #[test]
+    fn streak_freezes_keep_a_streak_over_a_missed_day() {
+        let mut h = History::in_memory();
+        let mut play = |day: i64| {
+            let mut r = record("daily", 100.0);
+            r.time = day as u64 * 86_400 + 60;
+            h.add(r).unwrap();
+        };
+        // 7 days give a freeze, which day 8 uses.
+        for day in 1..=7 {
+            play(day);
+        }
+        play(9);
+        let streak = |h: &History, today| daily_streak(h, today);
+        assert_eq!(
+            streak(&h, 9),
+            Streak {
+                days: 8,
+                freezes: 0
+            }
+        );
+        // No freeze is left for day 10.
+        assert_eq!(streak(&h, 11).days, 0);
+        // 14 days give 2 freezes; more are not kept.
+        let mut h = History::in_memory();
+        for day in 1..=21 {
+            let mut r = record("daily", 100.0);
+            r.time = day * 86_400 + 60;
+            h.add(r).unwrap();
+        }
+        assert_eq!(streak(&h, 21).freezes, MAX_FREEZES);
+        assert_eq!(
+            streak(&h, 24),
+            Streak {
+                days: 21,
+                freezes: 0
+            }
+        );
     }
 
     #[test]

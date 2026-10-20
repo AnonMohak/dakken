@@ -19,7 +19,9 @@ A typing-speed test for the terminal.
 - Custom mode: type the text of your own file, with `--file`.
 - Zen mode: type anything with no target text. `Enter` ends the test.
 - Daily challenge: the same 30 words for everyone each day (UTC), with your
-  streak of days in a row in `--stats`. After the test, press `y` to copy a
+  streak of days in a row in `--stats`. Each 7 days of a streak give a
+  streak freeze (you keep up to 2): a freeze keeps the streak when you miss
+  one day. After the test, press `y` to copy a
   score card to paste in a chat: your WPM, accuracy and streak, and a 🟦 for
   each correct word (⬛ for a wrong word). The copy uses the OSC 52 escape
   code, which WezTerm, Windows Terminal, kitty and iTerm2 support.

@@ -312,7 +312,7 @@ impl App {
             .into_iter()
             .map(|(_, correct)| correct)
             .collect();
-        let streak = history::daily_streak(&self.history, day);
+        let streak = history::daily_streak(&self.history, day).days;
         card::score_card(day, wpm, accuracy, &words, streak)
     }
 
