@@ -179,12 +179,12 @@ pub fn draw_modes(frame: &mut Frame, app: &App, selected: usize) {
     keys_line(frame, t, height, "↑↓ choose · enter select · tab back");
 }
 
-/// "level 7 homing" and a bar of the XP in this level.
+/// "level 7 · rank homing" and a bar of the XP in this level.
 fn level_line(t: Theme, level: Level) -> Line<'static> {
     let (filled, empty) = level.bar(XP_BAR);
     Line::from(vec![
         Span::styled(
-            format!("level {} {}  ", level.level, level.rank()),
+            format!("level {} · rank {}  ", level.level, level.rank()),
             Style::new().fg(t.sub),
         ),
         Span::styled("━".repeat(filled), Style::new().fg(t.main)),

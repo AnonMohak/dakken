@@ -66,7 +66,7 @@ A typing-speed test for the terminal.
   so you can race it (off by default). A best from before v0.4.0 moves at the
   best speed until you set a new one.
 - Challenges (`g` in the menu, or `-g NAME`): `survival` gives you 3 lives
-  (♥♥♥ above the words). Each wrong word takes one, and the test ends with
+  (♥♥♥ above the words; a lost life turns gray ♡). Each wrong word takes one, and the test ends with
   the last life. `boss` makes every 25th word a boss word: a long word in
   bold, with one of your slow letter pairs when it can. Each boss word you
   type right gives 50 bonus XP. `climb` is rounds of 25 words: reach the
@@ -83,8 +83,9 @@ A typing-speed test for the terminal.
 - Personal bests and history for each mode and option set.
 - Levels and badges: each test gives XP for its correct characters, with
   more for punctuation, numbers and strict modes, and less for errors. The
-  menu shows your level, your rank (`blank`, `homing`, `sculpted`,
-  `doubleshot`, `artisan`, `legend`) and an XP bar, and the logo gets longer
+  menu shows your level, your rank (named after keycaps: `blank` from level
+  1, `homing` from 5, `sculpted` from 10, `doubleshot` from 20, `artisan`
+  from 35 and `legend` from 50) and an XP bar, and the logo gets longer
   speed lines at each rank. The results show the XP and each new badge.
   `--badges` lists all 15 badges; 3 stay hidden until you get them.
 - One `.exe` with no runtime. Made and tested on Windows 11 with WezTerm.
@@ -167,7 +168,7 @@ While you type:
 | `Tab` or `Esc` | Open the menu |
 | `Enter` (in zen mode) | End the test |
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
-| `Ctrl+C` | Quit (on every screen) |
+| `Ctrl+C`, or `Cmd+C` on a Mac | Quit (on every screen). Most Mac terminals keep `Cmd+C` for copy, so `Ctrl+C` always works. |
 
 On the results:
 

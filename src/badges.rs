@@ -209,7 +209,7 @@ pub fn report(history: &History, badges: &Badges, color: bool) -> String {
     let xp = progress::total_xp(history.records());
     let level = Level::from_xp(xp);
     let (filled, empty) = level.bar(30);
-    let mut out = format!("level {} · {}\n", level.level, level.rank());
+    let mut out = format!("level {} · rank {}\n", level.level, level.rank());
     out += &format!(
         "  {}{}  {} / {} xp to level {}\n",
         paint(TEAL, &"━".repeat(filled)),
@@ -335,7 +335,7 @@ mod tests {
         let mut b = Badges::in_memory();
         b.add(&earned(h.records(), false, 0)).1.unwrap();
         let out = report(&h, &b, false);
-        assert!(out.starts_with("level 2 · blank\n"), "{out}");
+        assert!(out.starts_with("level 2 · rank blank\n"), "{out}");
         assert!(out.contains("badges: 2 of 15"), "{out}");
         assert!(out.contains("■ century "), "{out}");
         assert!(out.contains("□ clean "), "{out}");

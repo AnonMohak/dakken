@@ -633,7 +633,9 @@ impl App {
         if key.kind != KeyEventKind::Press {
             return;
         }
-        if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        // Cmd+C arrives as SUPER only where the terminal sends it to the app.
+        let quit_keys = KeyModifiers::CONTROL | KeyModifiers::SUPER;
+        if key.code == KeyCode::Char('c') && key.modifiers.intersects(quit_keys) {
             self.quit = true;
             return;
         }
@@ -1040,6 +1042,15 @@ mod tests {
         a.quests.fill(&a.key_stats, 0).unwrap();
         let open: Vec<char> = a.quests.open().map(|q| q.key).collect();
         assert_eq!(a.weak_letters()[..open.len()], open[..]);
+    }
+
+    #[test]
+    fn ctrl_c_and_cmd_c_quit() {
+        for modifiers in [KeyModifiers::CONTROL, KeyModifiers::SUPER] {
+            let mut a = app(&["hi"]);
+            a.on_key(press(KeyCode::Char('c'), modifiers), Instant::now());
+            assert!(a.quit, "{modifiers:?}");
+        }
     }
 
     #[test]

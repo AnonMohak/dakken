@@ -20,30 +20,44 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     let visible = word_lines(area.height);
     let t = app.theme;
 
-    // Above the words: the time left in time mode, and the live stats when
-    // they are on. Nothing before the test starts.
-    let mut status = Vec::new();
+    // Above the words: the time left in time mode, the climb round, the
+    // lives in survival, and the live stats when they are on.
+    let mut status: Vec<Vec<Span>> = Vec::new();
+    let sub = |text: String| vec![Span::styled(text, Style::new().fg(t.sub))];
     if let (Mode::Time(_), true) = (s.mode(), s.is_started()) {
         let left = s.remaining(now).unwrap_or_default();
-        status.push(format!("{}", left.as_secs_f64().ceil() as u64));
+        status.push(sub(format!("{}", left.as_secs_f64().ceil() as u64)));
     }
     if let (true, Some(climb)) = (app.climb_on() && !replay, app.climb) {
-        status.push(format!("round {} · {:.0} wpm", climb.round, climb.target));
+        status.push(sub(format!(
+            "round {} · {:.0} wpm",
+            climb.round, climb.target
+        )));
     }
     if let Some(lives) = s.lives() {
         let lost = crate::challenge::LIVES.saturating_sub(lives) as usize;
-        status.push(format!(
-            "{}{}",
-            "♥".repeat(lives as usize),
-            "♡".repeat(lost)
-        ));
+        // Color shows the lost lives also where the two hearts look alike.
+        status.push(vec![
+            Span::styled(
+                "♥".repeat(lives as usize),
+                Style::new().fg(t.main).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("♡".repeat(lost), Style::new().fg(t.sub)),
+        ]);
     }
     if app.live && s.is_started() {
-        status.push(format!("{:.0} wpm", s.live_wpm(now)));
-        status.push(format!("{:.0}%", s.live_accuracy()));
+        status.push(sub(format!("{:.0} wpm", s.live_wpm(now))));
+        status.push(sub(format!("{:.0}%", s.live_accuracy())));
     }
     if !status.is_empty() {
-        let timer = Line::styled(status.join("  "), Style::new().fg(t.sub));
+        let mut spans = Vec::new();
+        for (i, part) in status.into_iter().enumerate() {
+            if i > 0 {
+                spans.push(Span::raw("  "));
+            }
+            spans.extend(part);
+        }
+        let timer = Line::from(spans);
         if area.y >= 2 {
             let timer_area = Rect {
                 y: area.y - 2,

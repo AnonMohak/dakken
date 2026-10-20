@@ -222,6 +222,33 @@ mod tests {
     }
 
     #[test]
+    fn lost_lives_show_as_gray_hearts() {
+        let mut a = app(&["hello", "world", "again"]);
+        a.session.set_lives(3);
+        a.session
+            .handle(crate::engine::Key::Char('x'), Instant::now());
+        a.session.handle(crate::engine::Key::Space, Instant::now());
+        let mut terminal = Terminal::new(TestBackend::new(60, 20)).unwrap();
+        terminal.draw(|f| draw(f, &a, Instant::now())).unwrap();
+        let buf = terminal.backend().buffer();
+        let hearts: Vec<_> = (0..buf.area.height)
+            .flat_map(|y| (0..buf.area.width).map(move |x| (x, y)))
+            .map(|p| &buf[p])
+            .filter(|c| c.symbol() == "♥" || c.symbol() == "♡")
+            .map(|c| (c.symbol().to_string(), c.fg))
+            .collect();
+        let t = a.theme;
+        assert_eq!(
+            hearts,
+            [
+                ("♥".to_string(), t.main),
+                ("♥".to_string(), t.main),
+                ("♡".to_string(), t.sub)
+            ]
+        );
+    }
+
+    #[test]
     fn small_terminal_shows_a_message() {
         let out = render(&app(&["hello"]), 20, 5);
         assert!(out.contains("too small"), "{out}");
@@ -276,7 +303,7 @@ mod tests {
         let start = |text: &str| row(text).find(|c: char| c != ' ');
         assert_eq!(start("mode words 1"), start("strict off"), "{out}");
         assert!(out.contains("/_________/"), "{out}");
-        assert!(out.contains("level 1 blank  ────"), "{out}");
+        assert!(out.contains("level 1 · rank blank  ────"), "{out}");
         assert!(!out.contains("week 0/"), "{out}");
         a.weekly_goal = 500;
         assert!(render(&a, 60, 29).contains("week 0/500  ────"), "{out}");

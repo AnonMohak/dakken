@@ -396,7 +396,9 @@ fn key_test() -> io::Result<()> {
                 out.flush()?;
                 if key.kind == KeyEventKind::Press
                     && key.code == KeyCode::Char('c')
-                    && key.modifiers.contains(KeyModifiers::CONTROL)
+                    && key
+                        .modifiers
+                        .intersects(KeyModifiers::CONTROL | KeyModifiers::SUPER)
                 {
                     return Ok(());
                 }
