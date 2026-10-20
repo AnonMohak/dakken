@@ -22,7 +22,7 @@ const fn badge(name: &'static str, goal: &'static str, hidden: bool) -> Badge {
     Badge { name, goal, hidden }
 }
 
-pub const BADGES: [Badge; 14] = [
+pub const BADGES: [Badge; 15] = [
     badge("first press", "finish your first test", false),
     badge("regular", "finish 100 tests", false),
     badge("clean", "100% accuracy on 50 words or more", false),
@@ -42,6 +42,7 @@ pub const BADGES: [Badge; 14] = [
         "do the daily challenge 7 days in a row",
         false,
     ),
+    badge("goal getter", "reach your weekly goal of words", false),
     badge(
         "nemesis",
         "beat your best for a mode by 10 wpm on 25 words or more",
@@ -52,8 +53,9 @@ pub const BADGES: [Badge; 14] = [
 ];
 
 /// The badges the history earns, in `BADGES` order. `cleared_mistakes` is
-/// true when the last test emptied the mistakes list.
-pub fn earned(records: &[Record], cleared_mistakes: bool) -> Vec<&'static str> {
+/// true when the last test emptied the mistakes list. A `weekly_goal` of 0
+/// is no goal.
+pub fn earned(records: &[Record], cleared_mistakes: bool, weekly_goal: u32) -> Vec<&'static str> {
     let any = |f: &dyn Fn(&Record) -> bool| records.iter().any(f);
     let has = |r: &Record, option: &str| options(r).any(|o| o == option);
     BADGES
@@ -70,6 +72,12 @@ pub fn earned(records: &[Record], cleared_mistakes: bool) -> Vec<&'static str> {
             "switch hitter" => any(&|r| has(r, "dvorak") || has(r, "colemak")),
             "marathon" => any(&|r| r.label.split(" · ").next() == Some("time 120")),
             "week of keys" => longest_daily_run(records) >= 7,
+            "goal getter" => {
+                weekly_goal > 0
+                    && progress::week_words(records)
+                        .values()
+                        .any(|&w| w >= f64::from(weekly_goal))
+            }
             "nemesis" => beat_best_by(records, 10.0),
             "exorcist" => cleared_mistakes,
             "zen master" => any(&|r| r.label == "zen" && r.seconds >= 300.0),
@@ -255,7 +263,7 @@ mod tests {
 
     #[test]
     fn badges_come_from_the_history() {
-        assert!(earned(&[], false).is_empty());
+        assert!(earned(&[], false, 0).is_empty());
         let mut clean = record("words 50", 60.0);
         clean.accuracy = 100.0;
         let records = vec![
@@ -264,12 +272,12 @@ mod tests {
             record("time 30 · spanish", 40.0),
         ];
         assert_eq!(
-            earned(&records, false),
+            earned(&records, false, 0),
             ["first press", "clean", "century", "iron"]
         );
         let mut more = records.clone();
         more.push(record("time 30 · punctuation · german · dvorak", 40.0));
-        let names = earned(&more, true);
+        let names = earned(&more, true, 0);
         assert!(names.contains(&"polyglot"), "{names:?}");
         assert!(names.contains(&"switch hitter"), "{names:?}");
         assert!(names.contains(&"exorcist"), "{names:?}");
@@ -297,7 +305,9 @@ mod tests {
             .map(daily)
             .collect();
         assert_eq!(longest_daily_run(&records), 7);
-        assert!(earned(&records, false).contains(&"week of keys"));
+        assert!(earned(&records, false, 300).contains(&"goal getter"));
+        assert!(!earned(&records, false, 400).contains(&"goal getter"));
+        assert!(earned(&records, false, 0).contains(&"week of keys"));
     }
 
     #[test]
@@ -322,10 +332,10 @@ mod tests {
         let mut h = History::in_memory();
         h.add(record("time 60", 120.0)).unwrap();
         let mut b = Badges::in_memory();
-        b.add(&earned(h.records(), false)).1.unwrap();
+        b.add(&earned(h.records(), false, 0)).1.unwrap();
         let out = report(&h, &b, false);
         assert!(out.starts_with("level 2 · blank\n"), "{out}");
-        assert!(out.contains("badges: 2 of 14"), "{out}");
+        assert!(out.contains("badges: 2 of 15"), "{out}");
         assert!(out.contains("■ century "), "{out}");
         assert!(out.contains("□ clean "), "{out}");
         assert!(out.contains("□ ???"), "{out}");

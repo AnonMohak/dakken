@@ -51,6 +51,61 @@ pub fn total_xp(records: &[Record]) -> u64 {
     records.iter().map(test_xp).sum()
 }
 
+/// The week of a day (days since 1970-01-01 UTC). Weeks start on Monday;
+/// 1970-01-01 was a Thursday.
+pub fn week(day: i64) -> i64 {
+    (day + 3).div_euclid(7)
+}
+
+/// The words typed in each week, by week.
+pub fn week_words(records: &[Record]) -> std::collections::HashMap<i64, f64> {
+    let mut weeks = std::collections::HashMap::new();
+    for r in records {
+        *weeks.entry(week((r.time / 86_400) as i64)).or_insert(0.0) += words(r);
+    }
+    weeks
+}
+
+/// The words typed in the week of `today`.
+pub fn this_week(records: &[Record], today: i64) -> f64 {
+    week_words(records)
+        .get(&week(today))
+        .copied()
+        .unwrap_or(0.0)
+}
+
+/// A bar `width` cells long for `value` of `goal`: filled and empty cells.
+pub fn goal_bar(value: f64, goal: u32, width: usize) -> (usize, usize) {
+    let filled = if goal == 0 {
+        0
+    } else {
+        ((value / f64::from(goal) * width as f64) as usize).min(width)
+    };
+    (filled, width - filled)
+}
+
+/// The weekly goal line for `--stats`, or nothing when there is no goal.
+pub fn weekly_report(records: &[Record], goal: u32, today: i64) -> String {
+    if goal == 0 {
+        return String::new();
+    }
+    let words = this_week(records, today);
+    let (filled, empty) = goal_bar(words, goal, 30);
+    let done = if words >= f64::from(goal) {
+        "  goal reached"
+    } else {
+        ""
+    };
+    format!(
+        "
+weekly goal (UTC, from Monday)
+  {}{}  {words:.0} of {goal} words{done}
+",
+        "━".repeat(filled),
+        "─".repeat(empty)
+    )
+}
+
 /// A level and the XP in it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Level {
@@ -160,6 +215,26 @@ mod tests {
         assert_eq!(at(49).rank(), "artisan");
         assert_eq!(at(80).rank(), "legend");
         assert_eq!(at(80).rank_index(), 5);
+    }
+
+    #[test]
+    fn weeks_start_on_monday() {
+        // Day 20000 (2024-10-04) is a Friday, and 19996 is the Monday.
+        assert_eq!(week(19_996), week(20_002));
+        assert_ne!(week(19_995), week(19_996));
+        let mut r = record("time 60", 60.0, 100.0);
+        r.time = 19_996 * 86_400;
+        let mut old = r.clone();
+        old.time -= 86_400;
+        let records = [r.clone(), r, old];
+        assert_eq!(this_week(&records, 20_000), 120.0);
+        let out = weekly_report(&records, 240, 20_000);
+        assert!(out.contains("120 of 240 words"), "{out}");
+        assert!(!out.contains("reached"), "{out}");
+        assert!(weekly_report(&records, 100, 20_000).contains("goal reached"));
+        assert_eq!(weekly_report(&records, 0, 20_000), "");
+        assert_eq!(goal_bar(50.0, 100, 10), (5, 5));
+        assert_eq!(goal_bar(500.0, 100, 10), (10, 0));
     }
 
     #[test]

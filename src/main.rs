@@ -153,12 +153,20 @@ fn main() -> io::Result<()> {
     }
     if cli.stats {
         print!("{}", history::stats_report(&history));
+        let goal = config::default_path().map_or(0, |p| Config::load(&p).weekly_goal);
+        print!(
+            "{}",
+            progress::weekly_report(history.records(), goal, history::today())
+        );
         return Ok(());
     }
     let mut badges = badges::default_path().map_or_else(Badges::in_memory, Badges::load);
     if cli.badges {
         // Tests from before badges existed can earn them too.
-        let _ = badges.add(&badges::earned(history.records(), false)).1;
+        let goal = config::default_path().map_or(0, |p| Config::load(&p).weekly_goal);
+        let _ = badges
+            .add(&badges::earned(history.records(), false, goal))
+            .1;
         use std::io::IsTerminal;
         let color = io::stdout().is_terminal();
         print!("{}", badges::report(&history, &badges, color));

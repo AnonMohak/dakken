@@ -128,6 +128,8 @@ pub struct Reward {
     pub before: Level,
     pub after: Level,
     pub badges: Vec<&'static str>,
+    /// This test made the words of the week reach the weekly goal.
+    pub goal_reached: bool,
 }
 
 pub struct App {
@@ -145,6 +147,8 @@ pub struct App {
     pub strict: Strict,
     pub caret: Caret,
     pub layout: Layout,
+    /// Words to type each week. 0 is no goal.
+    pub weekly_goal: u32,
     /// The menu saves the settings here. `None` does not save them.
     pub config_path: Option<PathBuf>,
     /// Terminal width and height. Untimed tests get the words that fit on
@@ -198,6 +202,7 @@ impl App {
             strict: config.strict,
             caret: config.caret,
             layout: config.layout,
+            weekly_goal: config.weekly_goal,
             config_path,
             size,
             history,
@@ -223,6 +228,7 @@ impl App {
             strict: Strict::Off,
             caret: Caret::Block,
             layout: Layout::Qwerty,
+            weekly_goal: 0,
             config_path: None,
             size: (80, 24),
             session,
@@ -292,7 +298,12 @@ impl App {
         let own_text = matches!(self.mode, Mode::Quote(_) | Mode::Custom | Mode::Zen);
         let practising = !own_text && self.options.list == WordList::Mistakes;
         let cleared = practising && had_mistakes && self.mistakes.words().is_empty();
-        let earned = badges::earned(self.history.records(), cleared);
+        let records = self.history.records();
+        let earned = badges::earned(records, cleared, self.weekly_goal);
+        let goal = f64::from(self.weekly_goal);
+        let week = progress::this_week(records, history::today());
+        let last = records.last().map_or(0.0, progress::words);
+        let goal_reached = self.weekly_goal > 0 && week >= goal && week - last < goal;
         let (new, saved) = self.badges.add(&earned);
         self.save_failed |= saved.is_err();
         let xp_after = progress::total_xp(self.history.records());
@@ -301,6 +312,7 @@ impl App {
             before: Level::from_xp(xp_before),
             after: Level::from_xp(xp_after),
             badges: new,
+            goal_reached,
         }
     }
 
@@ -376,6 +388,7 @@ impl App {
                 strict: self.strict,
                 caret: self.caret,
                 layout: self.layout,
+                weekly_goal: self.weekly_goal,
             };
             let _ = config.save(path);
         }
@@ -726,6 +739,20 @@ mod tests {
         a.screen = Screen::Typing;
         type_text(&mut a, "hi");
         assert!(a.reward.as_ref().is_some_and(|r| r.badges.is_empty()));
+    }
+
+    #[test]
+    fn results_say_when_the_weekly_goal_is_reached() {
+        let mut a = app(&["hello", "world"]);
+        // One word is 5 characters, so "hello world" is 2 words.
+        a.weekly_goal = 2;
+        type_text(&mut a, "hello world");
+        assert!(a.reward.as_ref().is_some_and(|r| r.goal_reached));
+        // The next test is over the goal, but did not reach it.
+        a.session = Session::from_words(a.mode, &["hello", "world"]);
+        a.screen = Screen::Typing;
+        type_text(&mut a, "hello world");
+        assert!(a.reward.as_ref().is_some_and(|r| !r.goal_reached));
     }
 
     #[test]

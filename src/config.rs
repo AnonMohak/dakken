@@ -24,6 +24,8 @@ pub struct Config {
     pub layout: Layout,
     /// The theme from the `color_*` keys, if the file has any.
     pub custom_theme: Option<Theme>,
+    /// Words to type each week. 0 is no goal.
+    pub weekly_goal: u32,
 }
 
 /// The shape of the text cursor.
@@ -66,6 +68,7 @@ impl Default for Config {
             caret: Caret::Block,
             layout: Layout::Qwerty,
             custom_theme: None,
+            weekly_goal: 0,
         }
     }
 }
@@ -113,6 +116,7 @@ impl Config {
                 "caret" => config.caret = Caret::parse(value).unwrap_or(config.caret),
                 "layout" => config.layout = Layout::parse(value).unwrap_or(config.layout),
                 "punctuation" => config.options.punctuation = value == "true",
+                "weekly_goal" => config.weekly_goal = value.parse().unwrap_or(config.weekly_goal),
                 "numbers" => config.options.numbers = value == "true",
                 "words" => {
                     config.options.list = WordList::parse(value).unwrap_or(config.options.list)
@@ -142,7 +146,8 @@ impl Config {
              pace = {}\n\
              strict = \"{}\"\n\
              caret = \"{}\"\n\
-             layout = \"{}\"\n",
+             layout = \"{}\"\n\
+             weekly_goal = {}\n",
             mode_label(self.mode),
             self.theme.name,
             self.options.punctuation,
@@ -152,7 +157,8 @@ impl Config {
             self.pace,
             self.strict.name(),
             self.caret.name(),
-            self.layout.name()
+            self.layout.name(),
+            self.weekly_goal
         ) + &self.custom_colors_text()
     }
 
@@ -215,6 +221,7 @@ mod tests {
             caret: Caret::Underline,
             layout: Layout::Colemak,
             custom_theme: None,
+            weekly_goal: 3000,
         };
         assert_eq!(Config::parse(&config.to_text()), config);
     }

@@ -68,7 +68,7 @@ A typing-speed test for the terminal.
   menu shows your level, your rank (`blank`, `homing`, `sculpted`,
   `doubleshot`, `artisan`, `legend`) and an XP bar, and the logo gets longer
   speed lines at each rank. The results show the XP and each new badge.
-  `--badges` lists all 14 badges; 3 stay hidden until you get them.
+  `--badges` lists all 15 badges; 3 stay hidden until you get them.
 - One `.exe` with no runtime. Made and tested on Windows 11 with WezTerm.
 
 ## Install
@@ -219,7 +219,12 @@ pace = false         # pace caret that replays your personal-best test
 strict = "off"       # off, stop-on-error, no-backspace or master
 caret = "block"      # block, bar or underline
 layout = "qwerty"    # qwerty, dvorak or colemak
+weekly_goal = 0      # words to type each week (Monday to Sunday, UTC); 0 is no goal
 ```
+
+With a weekly goal, the menu shows the words of this week under your level,
+`--stats` shows a bar for the goal, and the results say when a test reaches
+it. Reach the goal once for the `goal getter` badge.
 
 ### Custom theme
 

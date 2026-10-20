@@ -96,13 +96,18 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let width = settings.iter().map(Line::width).max().unwrap_or(0) as u16;
     // The logo and the level go on top when there is room for them.
     let level = Level::from_xp(progress::total_xp(app.history.records()));
-    let logo_height = LOGO.len() as u16 + 3;
+    let goal = app.weekly_goal > 0;
+    let logo_height = LOGO.len() as u16 + 3 + u16::from(goal);
     let with_logo = screen.height >= settings.len() as u16 + logo_height + HINT_ROWS;
     let mut lines: Vec<Line> = Vec::new();
     if with_logo {
         lines.extend(logo_lines(t, level.rank_index()));
         lines.push(Line::default());
         lines.push(level_line(t, level));
+        if goal {
+            let words = progress::this_week(app.history.records(), crate::history::today());
+            lines.push(week_line(t, words, app.weekly_goal));
+        }
         lines.push(Line::default());
     }
     let logo_rows = lines.len();
@@ -174,6 +179,16 @@ fn level_line(t: Theme, level: Level) -> Line<'static> {
             format!("level {} {}  ", level.level, level.rank()),
             Style::new().fg(t.sub),
         ),
+        Span::styled("━".repeat(filled), Style::new().fg(t.main)),
+        Span::styled("─".repeat(empty), Style::new().fg(t.sub)),
+    ])
+}
+
+/// "week 1234/5000" and a bar of the words typed this week.
+fn week_line(t: Theme, words: f64, goal: u32) -> Line<'static> {
+    let (filled, empty) = progress::goal_bar(words, goal, XP_BAR);
+    Line::from(vec![
+        Span::styled(format!("week {words:.0}/{goal}  "), Style::new().fg(t.sub)),
         Span::styled("━".repeat(filled), Style::new().fg(t.main)),
         Span::styled("─".repeat(empty), Style::new().fg(t.sub)),
     ])

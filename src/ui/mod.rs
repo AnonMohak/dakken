@@ -276,6 +276,9 @@ mod tests {
         assert_eq!(start("mode words 1"), start("strict off"), "{out}");
         assert!(out.contains("/_________/"), "{out}");
         assert!(out.contains("level 1 blank  ────"), "{out}");
+        assert!(!out.contains("week 0/"), "{out}");
+        a.weekly_goal = 500;
+        assert!(render(&a, 60, 29).contains("week 0/500  ────"), "{out}");
         assert!(!out.contains("time 15"), "{out}");
         assert!(
             out.contains("enter start · tab back · ctrl+c exit"),
