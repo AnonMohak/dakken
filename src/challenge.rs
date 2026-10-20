@@ -1,5 +1,7 @@
 //! Challenges: game rules on top of a test. The menu changes them with `g`.
 
+use crate::history::Record;
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Challenge {
     #[default]
@@ -10,14 +12,59 @@ pub enum Challenge {
     /// Every `BOSS_EVERY`th word is a hard word. Typing it right gives
     /// `BOSS_XP` bonus XP.
     Boss,
+    /// Rounds of `CLIMB_WORDS` words. Pass a round at the target WPM with
+    /// `CLIMB_ACCURACY` accuracy, and the next target is `CLIMB_STEP` higher.
+    Climb,
 }
 
 /// The challenges in menu order.
-pub const CHALLENGES: [Challenge; 3] = [Challenge::Off, Challenge::Survival, Challenge::Boss];
+pub const CHALLENGES: [Challenge; 4] = [
+    Challenge::Off,
+    Challenge::Survival,
+    Challenge::Boss,
+    Challenge::Climb,
+];
 
 pub const LIVES: u8 = 3;
 pub const BOSS_EVERY: usize = 25;
 pub const BOSS_XP: u64 = 50;
+pub const CLIMB_WORDS: usize = 25;
+pub const CLIMB_STEP: f64 = 5.0;
+pub const CLIMB_ACCURACY: f64 = 90.0;
+
+/// One climb: the round and its target WPM.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Climb {
+    pub round: u32,
+    pub target: f64,
+}
+
+impl Climb {
+    /// The first round: 80% of the average of the last 10 tests, down to a
+    /// multiple of 5, and at least 20 WPM. 30 WPM with no history.
+    pub fn start(records: &[Record]) -> Self {
+        let last = &records[records.len().saturating_sub(10)..];
+        let target = if last.is_empty() {
+            30.0
+        } else {
+            let avg = last.iter().map(|r| r.wpm).sum::<f64>() / last.len() as f64;
+            ((avg * 0.8 / CLIMB_STEP).floor() * CLIMB_STEP).max(20.0)
+        };
+        Self { round: 1, target }
+    }
+
+    pub fn passed(self, wpm: f64, accuracy: f64) -> bool {
+        wpm >= self.target && accuracy >= CLIMB_ACCURACY
+    }
+
+    pub fn next(self) -> Self {
+        Self {
+            round: self.round + 1,
+            target: self.target + CLIMB_STEP,
+        }
+    }
+}
+
 /// Boss words have at least this many letters, if the list has such words.
 const BOSS_LETTERS: usize = 7;
 
@@ -49,6 +96,7 @@ impl Challenge {
             Self::Off => "off",
             Self::Survival => "survival",
             Self::Boss => "boss",
+            Self::Climb => "climb",
         }
     }
 
@@ -82,12 +130,46 @@ mod tests {
     }
 
     #[test]
+    fn climb_starts_below_your_average_and_goes_up() {
+        assert_eq!(Climb::start(&[]).target, 30.0);
+        let record = |wpm| Record {
+            time: 0,
+            label: "time 30".to_string(),
+            wpm,
+            raw_wpm: wpm,
+            accuracy: 100.0,
+            consistency: 80.0,
+            seconds: 30.0,
+            bonus: 0,
+        };
+        // 80% of 72 is 57.6, so the first target is 55.
+        let c = Climb::start(&[record(70.0), record(74.0)]);
+        assert_eq!(
+            c,
+            Climb {
+                round: 1,
+                target: 55.0
+            }
+        );
+        assert_eq!(Climb::start(&[record(10.0)]).target, 20.0);
+        assert!(c.passed(55.0, 90.0));
+        assert!(!c.passed(54.9, 100.0) && !c.passed(80.0, 89.0));
+        assert_eq!(
+            c.next(),
+            Climb {
+                round: 2,
+                target: 60.0
+            }
+        );
+    }
+
+    #[test]
     fn names_parse_back_and_next_cycles() {
         for c in CHALLENGES {
             assert_eq!(Challenge::parse(c.name()), Some(c));
         }
         assert_eq!(Challenge::parse("nope"), None);
-        assert_eq!(Challenge::Boss.next(), Challenge::Off);
+        assert_eq!(Challenge::Climb.next(), Challenge::Off);
         assert_eq!(Challenge::Off.next(), Challenge::Survival);
     }
 }

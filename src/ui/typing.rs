@@ -27,6 +27,9 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
         let left = s.remaining(now).unwrap_or_default();
         status.push(format!("{}", left.as_secs_f64().ceil() as u64));
     }
+    if let (true, Some(climb)) = (app.climb_on() && !replay, app.climb) {
+        status.push(format!("round {} · {:.0} wpm", climb.round, climb.target));
+    }
     if let Some(lives) = s.lives() {
         let lost = crate::challenge::LIVES.saturating_sub(lives) as usize;
         status.push(format!(
@@ -69,15 +72,21 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     // The pace caret replays the personal-best test for this mode and
     // options. A best from before dakken kept the key times moves at the
     // best speed.
-    let pace = (app.pace && !replay && s.mode() != Mode::Zen)
-        .then(|| {
-            let label = app.label();
-            match app.best_runs.get(&label) {
-                Some(times) => s.run_position(times, now),
-                None => s.pace_position(app.history.best(&label)?, now),
-            }
-        })
-        .flatten();
+    // In a climb, the pace caret moves at the target speed of the round.
+    let climb = app.climb.filter(|_| app.climb_on() && !replay);
+    let pace = if let Some(climb) = climb {
+        s.pace_position(climb.target, now)
+    } else {
+        (app.pace && !replay && s.mode() != Mode::Zen)
+            .then(|| {
+                let label = app.label();
+                match app.best_runs.get(&label) {
+                    Some(times) => s.run_position(times, now),
+                    None => s.pace_position(app.history.best(&label)?, now),
+                }
+            })
+            .flatten()
+    };
 
     for (offset, range) in lines.iter().skip(first).take(visible).enumerate() {
         // An empty row between lines.

@@ -91,7 +91,7 @@ struct Cli {
     #[arg(long, value_name = "NAME")]
     strict: Option<String>,
 
-    /// Challenge: off (default), survival or boss.
+    /// Challenge: off (default), survival, boss or climb.
     #[arg(short = 'g', long, value_name = "NAME")]
     challenge: Option<String>,
 

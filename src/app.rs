@@ -149,6 +149,8 @@ pub struct App {
     pub pace: bool,
     pub strict: Strict,
     pub challenge: Challenge,
+    /// The round of the climb challenge. `None` starts a new climb.
+    pub climb: Option<challenge::Climb>,
     pub caret: Caret,
     pub layout: Layout,
     /// Words to type each week. 0 is no goal.
@@ -172,6 +174,8 @@ pub struct App {
     pub badges: Badges,
     /// What the last finished test gave. `None` for a failed test.
     pub reward: Option<Reward>,
+    /// The last climb round, and if it was passed.
+    pub climb_result: Option<(challenge::Climb, bool)>,
     /// Best WPM for this label before the last finished test.
     pub previous_best: Option<f64>,
     /// Text for the main loop to put on the clipboard.
@@ -205,6 +209,7 @@ impl App {
             pace: config.pace,
             strict: config.strict,
             challenge: config.challenge,
+            climb: None,
             caret: config.caret,
             layout: config.layout,
             weekly_goal: config.weekly_goal,
@@ -232,6 +237,7 @@ impl App {
             pace: false,
             strict: Strict::Off,
             challenge: Challenge::Off,
+            climb: None,
             caret: Caret::Block,
             layout: Layout::Qwerty,
             weekly_goal: 0,
@@ -247,6 +253,7 @@ impl App {
             best_runs: BestRuns::in_memory(),
             badges: Badges::in_memory(),
             reward: None,
+            climb_result: None,
             previous_best: None,
             copy: None,
             copied: false,
@@ -278,16 +285,18 @@ impl App {
             }
             _ => {
                 let boss = self.boss_on().then(|| self.weak_pairs());
-                new_test(
-                    self.mode,
-                    self.options,
-                    self.size,
-                    self.practice_words(),
-                    boss,
-                )
+                let mode = if self.climb_on() {
+                    Mode::Words(challenge::CLIMB_WORDS)
+                } else {
+                    self.mode
+                };
+                new_test(mode, self.options, self.size, self.practice_words(), boss)
             }
         };
         self.session.set_strict(self.strict);
+        if self.climb_on() && self.climb.is_none() {
+            self.climb = Some(challenge::Climb::start(self.history.records()));
+        }
         if self.daily.is_none() && self.challenge == Challenge::Survival {
             self.session.set_lives(challenge::LIVES);
         }
@@ -333,6 +342,12 @@ impl App {
             goal_reached,
             bosses: self.boss_on().then(|| self.bosses()),
         }
+    }
+
+    /// This test is a round of the climb challenge.
+    pub fn climb_on(&self) -> bool {
+        let own_text = matches!(self.mode, Mode::Custom | Mode::Zen);
+        self.challenge == Challenge::Climb && self.daily.is_none() && !own_text
     }
 
     /// Boss words are in this test: the boss challenge, with random words.
@@ -445,6 +460,10 @@ impl App {
         if self.daily.is_some() {
             return "daily".to_string();
         }
+        // Rounds of fixed length, so the mode does not apply.
+        if self.climb_on() {
+            return "climb".to_string();
+        }
         let mut parts = vec![mode_label(self.mode)];
         if let (Mode::Custom, Some(custom)) = (self.mode, &self.custom) {
             parts.push(custom.name.clone());
@@ -513,6 +532,12 @@ impl App {
             }
             self.save_failed |= self.update_mistakes().is_err();
             self.reward = (!failed).then(|| self.give_reward(xp_before, had_mistakes));
+            self.climb_result = None;
+            if let (true, Some(climb)) = (self.climb_on(), self.climb) {
+                let passed = !failed && climb.passed(result.wpm, result.accuracy);
+                self.climb_result = Some((climb, passed));
+                self.climb = passed.then(|| climb.next());
+            }
             self.copied = false;
             self.screen = Screen::Results(result);
         }
@@ -620,6 +645,7 @@ impl App {
                 }
                 KeyCode::Char('g') => {
                     self.challenge = self.challenge.next();
+                    self.climb = None;
                     self.save_config();
                     self.new_test();
                 }
@@ -861,6 +887,32 @@ mod tests {
         for i in [24, 49] {
             assert!(s.words()[i].len() >= 7, "{:?}", s.words()[i]);
         }
+    }
+
+    #[test]
+    fn climb_rounds_raise_the_target_until_one_fails() {
+        let mut a = app(&["hi"]);
+        a.challenge = Challenge::Climb;
+        a.restart();
+        assert_eq!(a.label(), "climb");
+        assert_eq!(a.session.words().len(), challenge::CLIMB_WORDS);
+        assert_eq!(a.climb.map(|c| (c.round, c.target)), Some((1, 30.0)));
+        // Typing at once is very fast, so the round passes.
+        let text: Vec<String> = (a.session.words().iter())
+            .map(|w| w.iter().collect())
+            .collect();
+        type_text(&mut a, &text.join(" "));
+        assert!(matches!(a.climb_result, Some((_, true))));
+        assert_eq!(a.climb.map(|c| c.round), Some(2));
+        // A round with errors fails, and the next test starts a new climb.
+        a.restart();
+        let wrong: Vec<String> = (0..challenge::CLIMB_WORDS).map(|_| "x".into()).collect();
+        // The space after the short last word ends the test.
+        type_text(&mut a, &(wrong.join(" ") + " "));
+        assert!(matches!(a.climb_result, Some((_, false))));
+        assert_eq!(a.climb, None);
+        a.restart();
+        assert_eq!(a.climb.map(|c| c.round), Some(1));
     }
 
     #[test]

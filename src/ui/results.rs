@@ -57,6 +57,7 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
             &app.source.map_or(String::new(), |s| format!("— {s}")),
         )),
         best_line(app, r),
+        climb_line(app),
         reward_line(app),
         badges_line(app, super::text_width(frame.area().width)),
         Line::from(label(&keys_text(app))),
@@ -185,6 +186,31 @@ fn keys_text(app: &App) -> String {
             "enter restart · r replay · y copy score card · tab menu".to_string()
         }
         _ => "enter restart · r replay · tab menu".to_string(),
+    }
+}
+
+/// The climb round: passed with the next target, or the end of the climb.
+fn climb_line(app: &App) -> Line<'static> {
+    let t = app.theme;
+    match app.climb_result {
+        Some((c, true)) => Line::styled(
+            format!(
+                "round {} passed · next {:.0} wpm",
+                c.round,
+                c.target + crate::challenge::CLIMB_STEP
+            ),
+            Style::new().fg(t.main).add_modifier(Modifier::BOLD),
+        ),
+        Some((c, false)) => Line::styled(
+            format!(
+                "climb over at round {} ({:.0} wpm, {:.0}% accuracy needed)",
+                c.round,
+                c.target,
+                crate::challenge::CLIMB_ACCURACY
+            ),
+            Style::new().fg(t.error),
+        ),
+        None => Line::default(),
     }
 }
 
