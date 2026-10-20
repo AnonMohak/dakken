@@ -36,21 +36,26 @@ default), never green or yellow. Nothing interrupts the typing screen.
   `--stats` show a bar, the results say when you reach it, and the
   `goal getter` badge rewards it.
 
-## 4. Challenge modes
+## 4. Challenge modes (done on the `gamify` branch)
 
-- **Ghost race.** Race a replay file from a friend (`--race friend.replay`).
-- **Boss words.** Every 25 words, one hard word (long, or from your
-  `weak-pairs`). Type it clean for bonus XP.
-- **Survival.** Start with 3 lives. Each wrong word takes one life.
-- **Climb.** The target WPM goes up by 5 for each round that you pass.
+Choose a challenge with `g` in the menu or `-g NAME`.
 
-## 5. Skill trees from your own data
+- **Ghost race.** `x` on the results saves a race file. `--race FILE` types
+  the same words against a ghost caret that replays the saved key times.
+- **Boss words.** Every 25th word is a long word in bold, with one of your
+  `weak-pairs` when it can. Each one typed right gives 50 bonus XP.
+- **Survival.** Start with 3 lives (♥♥♥). Each wrong word takes one life.
+- **Climb.** Rounds of 25 words. Reach the target WPM with 90% accuracy, and
+  the next target is 5 WPM higher. The pace caret moves at the target.
 
-- The key heatmap as a skill map: each key has a level from its accuracy and
-  speed.
-- **Key quests.** For example "make `q` faster than 150 ms". A finished
-  quest makes the key teal on the heatmap.
-- This makes the `weak-keys` practice a goal, not only a drill.
+## 5. Skill trees from your own data (done on the `gamify` branch)
+
+- `--skills` shows a skill map: each key has a level from 1 to 10, from its
+  speed and errors.
+- **Key quests.** The 3 weakest letters get a quest, for example "q under
+  280 ms" in one test with no errors. A finished quest makes the key teal on
+  the skill map.
+- The `weak-keys` list practises the quest letters first.
 
 ## 6. Social (needs a server, so last)
 
@@ -59,5 +64,6 @@ default), never green or yellow. Nothing interrupts the typing screen.
 
 ## Order
 
-Groups 1 to 3 are done. Next: group 4 (challenge modes), then group 5 (skill
-trees). Group 6 needs a server, so it is last.
+Groups 1 to 5 are done. Group 6 needs a server, so it is last. Possible
+small additions: badges for challenges (beat a ghost, climb 10 rounds, finish
+10 quests) and the `night owl` badge once dakken knows the local time zone.
