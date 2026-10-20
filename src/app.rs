@@ -15,6 +15,7 @@ use rand::seq::IndexedRandom;
 use crate::badges::{self, Badges};
 use crate::best_runs::BestRuns;
 use crate::card;
+use crate::challenge::{self, Challenge};
 use crate::config::{Caret, Config};
 use crate::history::{self, History, Record};
 use crate::keystats::KeyStats;
@@ -145,6 +146,7 @@ pub struct App {
     /// Show a pace caret at the personal-best speed.
     pub pace: bool,
     pub strict: Strict,
+    pub challenge: Challenge,
     pub caret: Caret,
     pub layout: Layout,
     /// Words to type each week. 0 is no goal.
@@ -200,6 +202,7 @@ impl App {
             live: config.live,
             pace: config.pace,
             strict: config.strict,
+            challenge: config.challenge,
             caret: config.caret,
             layout: config.layout,
             weekly_goal: config.weekly_goal,
@@ -226,6 +229,7 @@ impl App {
             live: false,
             pace: false,
             strict: Strict::Off,
+            challenge: Challenge::Off,
             caret: Caret::Block,
             layout: Layout::Qwerty,
             weekly_goal: 0,
@@ -273,6 +277,9 @@ impl App {
             _ => new_test(self.mode, self.options, self.size, self.practice_words()),
         };
         self.session.set_strict(self.strict);
+        if self.daily.is_none() && self.challenge == Challenge::Survival {
+            self.session.set_lives(challenge::LIVES);
+        }
     }
 
     /// Remember the words typed wrong. In the mistakes list, words typed
@@ -386,6 +393,7 @@ impl App {
                 live: self.live,
                 pace: self.pace,
                 strict: self.strict,
+                challenge: self.challenge,
                 caret: self.caret,
                 layout: self.layout,
                 weekly_goal: self.weekly_goal,
@@ -423,6 +431,9 @@ impl App {
         }
         if self.strict != Strict::Off {
             parts.push(self.strict.name().to_string());
+        }
+        if self.challenge != Challenge::Off {
+            parts.push(self.challenge.name().to_string());
         }
         // The defaults add nothing, so old history labels stay the same.
         if !own_text && self.options.list != WordList::English {
@@ -572,6 +583,11 @@ impl App {
                 }
                 KeyCode::Char('m') => {
                     self.strict = self.strict.next();
+                    self.save_config();
+                    self.new_test();
+                }
+                KeyCode::Char('g') => {
+                    self.challenge = self.challenge.next();
                     self.save_config();
                     self.new_test();
                 }
@@ -753,6 +769,22 @@ mod tests {
         a.screen = Screen::Typing;
         type_text(&mut a, "hello world");
         assert!(a.reward.as_ref().is_some_and(|r| !r.goal_reached));
+    }
+
+    #[test]
+    fn g_in_menu_turns_on_survival() {
+        let mut a = app(&["hi", "there"]);
+        a.open_menu();
+        a.on_key(
+            press(KeyCode::Char('g'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert_eq!(a.challenge, Challenge::Survival);
+        assert_eq!(a.session.lives(), Some(challenge::LIVES));
+        assert!(a.label().ends_with(" · survival"), "{}", a.label());
+        // The daily challenge has no lives.
+        a.start_daily(20_381);
+        assert_eq!(a.session.lives(), None);
     }
 
     #[test]

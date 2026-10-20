@@ -59,6 +59,9 @@ A typing-speed test for the terminal.
   the same mode and options, key by key, with its fast parts and its pauses,
   so you can race it (off by default). A best from before v0.4.0 moves at the
   best speed until you set a new one.
+- Challenges (`g` in the menu, or `-g NAME`): `survival` gives you 3 lives
+  (♥♥♥ above the words). Each wrong word takes one, and the test ends with
+  the last life.
 - Results: WPM, raw WPM, accuracy, consistency, and character counts, with a
   graph of WPM and raw WPM over the test, your slowest word and your fastest
   burst (the fastest single word).
@@ -126,6 +129,7 @@ dakken -p         # test with punctuation
 dakken -p -n      # test with punctuation and numbers
 dakken --theme nord  # use a color theme
 dakken --strict master  # the first wrong key fails the test
+dakken -g survival  # 3 lives: each wrong word takes one
 dakken --caret bar  # a thin bar caret (or block, underline)
 dakken --layout dvorak  # practise Dvorak (or colemak) on a QWERTY keyboard
 dakken --history  # print personal bests and the last 10 tests
@@ -169,6 +173,7 @@ In the menu, each setting shows its key on the left:
 | `s` | Show or hide the live WPM and accuracy |
 | `c` | Show or hide the pace caret |
 | `m` | Go to the next strict mode |
+| `g` | Go to the next challenge |
 | `Enter` | Start a new test |
 | `Tab` or `Esc` | Go back to the test or the results |
 
@@ -217,6 +222,7 @@ words = "english"    # english, english-1k, code, spanish, german, mistakes, wea
 live = false         # live WPM and accuracy during the test
 pace = false         # pace caret that replays your personal-best test
 strict = "off"       # off, stop-on-error, no-backspace or master
+challenge = "off"    # off or survival
 caret = "block"      # block, bar or underline
 layout = "qwerty"    # qwerty, dvorak or colemak
 weekly_goal = 0      # words to type each week (Monday to Sunday, UTC); 0 is no goal

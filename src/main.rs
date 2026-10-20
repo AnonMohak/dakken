@@ -2,6 +2,7 @@ mod app;
 mod badges;
 mod best_runs;
 mod card;
+mod challenge;
 mod config;
 mod engine;
 mod history;
@@ -89,6 +90,10 @@ struct Cli {
     /// Strict mode: off (default), stop-on-error, no-backspace or master.
     #[arg(long, value_name = "NAME")]
     strict: Option<String>,
+
+    /// Challenge: off (default) or survival.
+    #[arg(short = 'g', long, value_name = "NAME")]
+    challenge: Option<String>,
 
     /// Color theme: tokyo-night (default), terminal, dracula, serika-dark,
     /// nord, catppuccin-mocha, rose-pine, one-dark, catppuccin-latte,
@@ -231,6 +236,17 @@ fn main() -> io::Result<()> {
             std::process::exit(2);
         };
         config.strict = strict;
+    }
+    if let Some(name) = &cli.challenge {
+        let Some(c) = challenge::Challenge::parse(name) else {
+            let names: Vec<&str> = challenge::CHALLENGES.iter().map(|c| c.name()).collect();
+            eprintln!(
+                "error: unknown challenge \"{name}\". Challenges: {}",
+                names.join(", ")
+            );
+            std::process::exit(2);
+        };
+        config.challenge = c;
     }
     if let Some(name) = &cli.theme {
         let custom = config.custom_theme.filter(|_| name == "custom");

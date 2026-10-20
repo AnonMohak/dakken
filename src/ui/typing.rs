@@ -27,6 +27,14 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
         let left = s.remaining(now).unwrap_or_default();
         status.push(format!("{}", left.as_secs_f64().ceil() as u64));
     }
+    if let Some(lives) = s.lives() {
+        let lost = crate::challenge::LIVES.saturating_sub(lives) as usize;
+        status.push(format!(
+            "{}{}",
+            "♥".repeat(lives as usize),
+            "♡".repeat(lost)
+        ));
+    }
     if app.live && s.is_started() {
         status.push(format!("{:.0} wpm", s.live_wpm(now)));
         status.push(format!("{:.0}%", s.live_accuracy()));

@@ -8,6 +8,7 @@ use ratatui::{
 
 use super::column;
 use crate::app::{App, MODES, mode_label};
+use crate::challenge::Challenge;
 use crate::engine::{Strict, words::WordList};
 use crate::progress::{self, Level};
 use crate::ui::theme::Theme;
@@ -82,6 +83,12 @@ pub fn draw(frame: &mut Frame, app: &App) {
         t.main
     };
     setting('m', "strict", app.strict.name(), strict_color);
+    let challenge_color = if app.challenge == Challenge::Off {
+        t.text
+    } else {
+        t.main
+    };
+    setting('g', "challenge", app.challenge.name(), challenge_color);
 
     let sub = Style::new().fg(t.sub);
     let settings: Vec<Line> = rows

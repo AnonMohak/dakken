@@ -130,6 +130,10 @@ pub struct Session {
     strict: Strict,
     /// A wrong key in master mode ended the test.
     failed: bool,
+    /// Lives left in survival. Each wrong word takes one; the last one ends
+    /// the test. `None` is no survival.
+    lives: Option<u8>,
+    start_lives: u8,
     /// Every key after the start, with its time since the start, for replay.
     log: Vec<(Duration, Key)>,
 }
@@ -166,6 +170,8 @@ impl Session {
             source: None,
             strict: Strict::Off,
             failed: false,
+            lives: None,
+            start_lives: 0,
             log: Vec::new(),
         }
     }
@@ -184,6 +190,7 @@ impl Session {
             Self::from_words(self.mode, &words)
         };
         s.strict = self.strict;
+        s.lives = self.lives.map(|_| self.start_lives);
         s
     }
 
@@ -209,6 +216,17 @@ impl Session {
 
     pub fn set_strict(&mut self, strict: Strict) {
         self.strict = strict;
+    }
+
+    /// Survival: the test ends when the `lives` are used up by wrong words.
+    pub fn set_lives(&mut self, lives: u8) {
+        self.lives = Some(lives);
+        self.start_lives = lives;
+    }
+
+    /// Lives left in survival.
+    pub fn lives(&self) -> Option<u8> {
+        self.lives
     }
 
     /// The test ended because of a wrong key in master mode.
@@ -350,6 +368,13 @@ impl Session {
             _ => {}
         }
         self.current += 1;
+        if !correct && let Some(lives) = self.lives.as_mut() {
+            *lives = lives.saturating_sub(1);
+            if *lives == 0 {
+                self.end = Some(now);
+                return;
+            }
+        }
 
         if self.mode == Mode::Zen {
             self.words.push(Vec::new());
@@ -800,6 +825,20 @@ mod tests {
         d.s.set_strict(Strict::Master);
         d.text("he ");
         assert!(d.s.is_failed(), "a skipped letter fails too");
+    }
+
+    #[test]
+    fn survival_ends_after_the_last_life() {
+        let mut d = Driver::words(&["a", "b", "c", "d", "e"]);
+        d.s.set_lives(2);
+        // "x" is wrong and "b" is right.
+        d.text("x b ");
+        assert_eq!(d.s.lives(), Some(1));
+        assert!(!d.s.is_finished());
+        d.text("x ");
+        assert_eq!(d.s.lives(), Some(0));
+        assert!(d.s.is_finished() && !d.s.is_failed());
+        assert_eq!(d.s.replay().lives(), Some(2));
     }
 
     #[test]

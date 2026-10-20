@@ -165,6 +165,9 @@ fn best_line(app: &App, r: &TestResult) -> Line<'static> {
             Style::new().fg(t.main).add_modifier(Modifier::BOLD),
         )],
     };
+    if app.session.lives() == Some(0) {
+        spans.push(Span::styled(" · out of lives", Style::new().fg(t.error)));
+    }
     if app.save_failed {
         spans.push(Span::styled(
             " · history not saved",

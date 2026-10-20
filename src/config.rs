@@ -5,6 +5,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::app::{Options, mode_label, parse_mode};
+use crate::challenge::Challenge;
 use crate::engine::{Mode, Strict, words::WordList};
 use crate::layout::Layout;
 use crate::ui::theme::Theme;
@@ -20,6 +21,7 @@ pub struct Config {
     /// Show a pace caret at the personal-best speed.
     pub pace: bool,
     pub strict: Strict,
+    pub challenge: Challenge,
     pub caret: Caret,
     pub layout: Layout,
     /// The theme from the `color_*` keys, if the file has any.
@@ -65,6 +67,7 @@ impl Default for Config {
             live: false,
             pace: false,
             strict: Strict::Off,
+            challenge: Challenge::Off,
             caret: Caret::Block,
             layout: Layout::Qwerty,
             custom_theme: None,
@@ -113,6 +116,9 @@ impl Config {
                 "live" => config.live = value == "true",
                 "pace" => config.pace = value == "true",
                 "strict" => config.strict = Strict::parse(value).unwrap_or(config.strict),
+                "challenge" => {
+                    config.challenge = Challenge::parse(value).unwrap_or(config.challenge)
+                }
                 "caret" => config.caret = Caret::parse(value).unwrap_or(config.caret),
                 "layout" => config.layout = Layout::parse(value).unwrap_or(config.layout),
                 "punctuation" => config.options.punctuation = value == "true",
@@ -145,6 +151,7 @@ impl Config {
              live = {}\n\
              pace = {}\n\
              strict = \"{}\"\n\
+             challenge = \"{}\"\n\
              caret = \"{}\"\n\
              layout = \"{}\"\n\
              weekly_goal = {}\n",
@@ -156,6 +163,7 @@ impl Config {
             self.live,
             self.pace,
             self.strict.name(),
+            self.challenge.name(),
             self.caret.name(),
             self.layout.name(),
             self.weekly_goal
@@ -218,6 +226,7 @@ mod tests {
             live: true,
             pace: true,
             strict: Strict::Master,
+            challenge: Challenge::Survival,
             caret: Caret::Underline,
             layout: Layout::Colemak,
             custom_theme: None,

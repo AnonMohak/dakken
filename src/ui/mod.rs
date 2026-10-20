@@ -265,6 +265,7 @@ mod tests {
             ("s", "live stats off"),
             ("c", "pace caret off"),
             ("m", "strict off"),
+            ("g", "challenge off"),
         ] {
             assert!(
                 row(text).trim_start().starts_with(&format!("{key}      ")),
