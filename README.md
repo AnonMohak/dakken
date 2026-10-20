@@ -33,6 +33,12 @@ A typing-speed test for the terminal.
   (250 common words each), `mistakes`, `weak-keys` and `weak-pairs`.
 - Practise your weak keys: the `weak-keys` list uses words with the 5 letters
   that have the most errors (then the slowest) in your key stats.
+- Skill map and key quests: `--skills` shows a keyboard with a level from 1
+  to 10 for each key, from its speed and errors. dakken gives your 3 weakest
+  letters a quest, for example "q under 180 ms": type that letter at least 3
+  times in one test, faster than the target and with no errors. The
+  `weak-keys` list practises the quest letters first, the results say when
+  you finish a quest, and the key turns teal on the skill map.
 - Practise your slow letter pairs: the `weak-pairs` list uses words with the
   5 slowest letter pairs (like `th` or `er`) in your key stats. `--heatmap`
   shows them.
@@ -146,6 +152,7 @@ dakken --history  # print personal bests and the last 10 tests
 dakken --stats    # print averages and a graph of WPM by day
 dakken --heatmap  # keyboard colored by errors, slowest keys, speed by day
 dakken --badges   # print your level, XP and badges
+dakken --skills   # print the level of each key and your key quests
 dakken --export csv > history.csv  # save the history as CSV (or json)
 dakken --check-update  # ask GitHub if there is a newer release (needs curl)
 dakken --keys     # print raw key events (to check your terminal)
@@ -270,7 +277,8 @@ for example `time 30 · punctuation`. Delete the file to clear the history.
 `keys.tsv` keeps the presses, errors and time for each key and each letter
 pair, for `--heatmap`, `weak-keys` and `weak-pairs`. `best-runs.tsv` keeps the
 key times of each personal-best test, for the pace caret.
-`badges.tsv` keeps each badge you got, with its date. XP and levels come
+`badges.tsv` keeps each badge you got, with its date. `quests.tsv` keeps
+the key quests. Saved races go in the `races` folder. XP and levels come
 from the history, so they need no file of their own.
 `mistakes.txt`, in the same folder, keeps the last 100 words you typed wrong.
 If it is empty, the `mistakes` list uses the English words.

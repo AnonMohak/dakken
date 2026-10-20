@@ -207,7 +207,7 @@ pub fn default_path() -> Option<PathBuf> {
     Some(crate::history::data_dir()?.join("keys.tsv"))
 }
 
-const ROWS: [&str; 3] = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+pub const ROWS: [&str; 3] = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 
 /// The text for `dakken --heatmap`: a keyboard colored by error rate, then
 /// the slowest keys and the keys with the most errors.

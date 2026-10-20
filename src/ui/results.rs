@@ -61,6 +61,7 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
         race_line(app, r),
         reward_line(app),
         badges_line(app, super::text_width(frame.area().width)),
+        quests_line(app),
         Line::from(label(&keys_text(app))),
     ];
     let text_height = lines.len() as u16;
@@ -277,6 +278,20 @@ fn reward_line(app: &App) -> Line<'static> {
         spans.push(Span::styled("weekly goal reached", accent));
     }
     Line::from(spans)
+}
+
+/// The key quests this test finished.
+fn quests_line(app: &App) -> Line<'static> {
+    let done = app.reward.as_ref().map_or(&[][..], |r| &r.quests[..]);
+    if done.is_empty() {
+        return Line::default();
+    }
+    let goals: Vec<String> = done.iter().map(|q| q.goal()).collect();
+    let s = if done.len() == 1 { "" } else { "s" };
+    Line::styled(
+        format!("quest{s} done: {}", goals.join(", ")),
+        Style::new().fg(app.theme.main).add_modifier(Modifier::BOLD),
+    )
 }
 
 /// The new badges, or how many there are when the names do not fit.

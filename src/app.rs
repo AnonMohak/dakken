@@ -22,6 +22,7 @@ use crate::keystats::KeyStats;
 use crate::layout::Layout;
 use crate::mistakes::{self, Mistakes};
 use crate::progress::{self, Level};
+use crate::quests::{Quest, Quests};
 use crate::race::{self, Race};
 use crate::ui::{self, theme::Theme};
 
@@ -134,6 +135,8 @@ pub struct Reward {
     pub goal_reached: bool,
     /// Boss words typed right, of the boss words reached, in a boss test.
     pub bosses: Option<(usize, usize)>,
+    /// Key quests this test finished.
+    pub quests: Vec<Quest>,
 }
 
 pub struct App {
@@ -177,6 +180,7 @@ pub struct App {
     /// The key times of each personal-best test, for the pace caret.
     pub best_runs: BestRuns,
     pub badges: Badges,
+    pub quests: Quests,
     /// What the last finished test gave. `None` for a failed test.
     pub reward: Option<Reward>,
     /// The last climb round, and if it was passed.
@@ -259,6 +263,7 @@ impl App {
             key_stats: KeyStats::in_memory(),
             best_runs: BestRuns::in_memory(),
             badges: Badges::in_memory(),
+            quests: Quests::in_memory(),
             reward: None,
             climb_result: None,
             previous_best: None,
@@ -392,6 +397,10 @@ impl App {
         let (new, saved) = self.badges.add(&earned);
         self.save_failed |= saved.is_err();
         let xp_after = progress::total_xp(self.history.records());
+        let now = self.history.records().last().map_or(0, |r| r.time);
+        let (done_quests, saved) =
+            (self.quests).update(self.session.presses(), &self.key_stats, now);
+        self.save_failed |= saved.is_err();
         Reward {
             xp: xp_after - xp_before,
             before: Level::from_xp(xp_before),
@@ -399,6 +408,7 @@ impl App {
             badges: new,
             goal_reached,
             bosses: self.boss_on().then(|| self.bosses()),
+            quests: done_quests,
         }
     }
 
@@ -441,9 +451,17 @@ impl App {
         card::score_card(day, wpm, accuracy, &words, streak)
     }
 
-    /// The letters the weak-keys list practises.
+    /// The letters the weak-keys list practises: the letters of the open
+    /// key quests first, then the weakest letters, 5 in all.
     pub fn weak_letters(&self) -> Vec<char> {
-        self.key_stats.weakest_letters(5)
+        let mut letters: Vec<char> = self.quests.open().map(|q| q.key).collect();
+        for c in self.key_stats.weakest_letters(5) {
+            if !letters.contains(&c) {
+                letters.push(c);
+            }
+        }
+        letters.truncate(5);
+        letters
     }
 
     /// The letter pairs the weak-pairs list practises.
@@ -1001,6 +1019,27 @@ mod tests {
         type_text(&mut a, "two words");
         assert!(matches!(a.screen, Screen::Results(_)));
         assert!(a.can_save_race());
+    }
+
+    #[test]
+    fn open_quests_lead_the_weak_keys() {
+        let mut a = app(&["hi"]);
+        let presses: Vec<_> = "zzzzzzzaaaaaaa"
+            .chars()
+            .enumerate()
+            .map(|(i, k)| crate::engine::stats::Press {
+                at: Duration::from_millis(i as u64 * 200),
+                correct: k != 'a' || i % 2 == 0,
+                key: Some(k),
+                word: 0,
+            })
+            .collect();
+        a.key_stats.add_test(&presses).unwrap();
+        // a has errors, so it is the weakest letter.
+        assert_eq!(a.weak_letters(), ['a', 'z']);
+        a.quests.fill(&a.key_stats, 0).unwrap();
+        let open: Vec<char> = a.quests.open().map(|q| q.key).collect();
+        assert_eq!(a.weak_letters()[..open.len()], open[..]);
     }
 
     #[test]

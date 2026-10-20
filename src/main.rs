@@ -10,6 +10,7 @@ mod keystats;
 mod layout;
 mod mistakes;
 mod progress;
+mod quests;
 mod race;
 mod ui;
 mod update;
@@ -34,6 +35,7 @@ use engine::{Mode, QuoteLength, STRICT_MODES, Strict};
 use history::History;
 use keystats::KeyStats;
 use mistakes::Mistakes;
+use quests::Quests;
 use ui::theme::Theme;
 
 /// A typing-speed test for the terminal.
@@ -127,6 +129,10 @@ struct Cli {
     #[arg(long, value_name = "FORMAT", value_parser = ["csv", "json"])]
     export: Option<String>,
 
+    /// Print the level of each key and your key quests, then quit.
+    #[arg(long)]
+    skills: bool,
+
     /// Print your level, XP and badges, then quit.
     #[arg(long)]
     badges: bool,
@@ -191,6 +197,15 @@ fn main() -> io::Result<()> {
             "\n{}",
             history::day_heatmap(&history, history::today(), color)
         );
+        return Ok(());
+    }
+    let mut quests = quests::default_path().map_or_else(Quests::in_memory, Quests::load);
+    if cli.skills {
+        use std::io::IsTerminal;
+        let color = io::stdout().is_terminal();
+        let now = history.records().last().map_or(0, |r| r.time);
+        let _ = quests.fill(&key_stats, now);
+        print!("{}", quests::skill_map(&key_stats, &quests, color));
         return Ok(());
     }
     // The saved settings, with the command-line flags on top.
@@ -289,6 +304,7 @@ fn main() -> io::Result<()> {
     );
     app.best_runs = best_runs::default_path().map_or_else(BestRuns::in_memory, BestRuns::load);
     app.badges = badges;
+    app.quests = quests;
     if cli.daily {
         app.start_daily(history::today());
     }
