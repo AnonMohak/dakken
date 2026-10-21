@@ -316,6 +316,12 @@ impl App {
         }
     }
 
+    /// The strict mode of the test on screen. Momo mode has none, whatever
+    /// the menu says.
+    pub fn strict_now(&self) -> Strict {
+        if self.momo { Strict::Off } else { self.strict }
+    }
+
     /// The mode of the test on screen: momo, or the chosen mode.
     pub fn mode_now(&self) -> Mode {
         if self.momo { Mode::Momo } else { self.mode }
@@ -458,7 +464,7 @@ impl App {
                 new_test(mode, self.options, self.size, self.practice_words(), boss)
             }
         };
-        self.session.set_strict(self.strict);
+        self.session.set_strict(self.strict_now());
         if self.climb_on() && self.climb.is_none() {
             self.climb = Some(challenge::Climb::start(self.history.records()));
         }
@@ -684,8 +690,8 @@ impl App {
         if !own_text && self.options.numbers {
             parts.push("numbers".to_string());
         }
-        if self.strict != Strict::Off {
-            parts.push(self.strict.name().to_string());
+        if self.strict_now() != Strict::Off {
+            parts.push(self.strict_now().name().to_string());
         }
         if self.challenge_now() != Challenge::Off {
             parts.push(self.challenge_now().name().to_string());
@@ -1260,17 +1266,38 @@ mod tests {
     }
 
     #[test]
-    fn momo_mode_has_no_challenge() {
-        for challenge in crate::challenge::CHALLENGES {
+    fn momo_mode_has_no_challenge_and_no_strict_mode() {
+        for (challenge, strict) in crate::challenge::CHALLENGES
+            .into_iter()
+            .zip(crate::engine::STRICT_MODES)
+        {
             let mut a = app(&["hi"]);
             a.challenge = challenge;
+            a.strict = strict;
             a.start_momo();
+            // A wrong key does nothing special: no fail, no stop.
+            a.on_key(
+                press(KeyCode::Char('#'), KeyModifiers::NONE),
+                Instant::now(),
+            );
+            assert!(
+                !a.session.is_failed() && a.session.typed()[0] == ['#'],
+                "{strict:?}"
+            );
+            a.on_key(
+                press(KeyCode::Backspace, KeyModifiers::NONE),
+                Instant::now(),
+            );
+            assert!(
+                a.session.typed()[0].is_empty(),
+                "backspace works: {strict:?}"
+            );
             assert_eq!(a.session.lives(), None, "{challenge:?}");
             assert!(!a.boss_on() && !a.climb_on(), "{challenge:?}");
             assert_eq!(a.label(), "momo", "{challenge:?}");
             assert_eq!(a.session.mode(), Mode::Momo);
-            // The menu setting stays for the other modes.
-            assert_eq!(a.challenge, challenge);
+            // The menu settings stay for the other modes.
+            assert_eq!((a.challenge, a.strict), (challenge, strict));
         }
     }
 
