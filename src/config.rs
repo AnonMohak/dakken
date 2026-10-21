@@ -28,6 +28,8 @@ pub struct Config {
     pub custom_theme: Option<Theme>,
     /// Words to type each week. 0 is no goal.
     pub weekly_goal: u32,
+    /// Ask GitHub once a day for a newer version, for the menu.
+    pub update_check: bool,
 }
 
 /// The shape of the text cursor.
@@ -72,6 +74,7 @@ impl Default for Config {
             layout: Layout::Qwerty,
             custom_theme: None,
             weekly_goal: 0,
+            update_check: true,
         }
     }
 }
@@ -123,6 +126,7 @@ impl Config {
                 "layout" => config.layout = Layout::parse(value).unwrap_or(config.layout),
                 "punctuation" => config.options.punctuation = value == "true",
                 "weekly_goal" => config.weekly_goal = value.parse().unwrap_or(config.weekly_goal),
+                "update_check" => config.update_check = value != "false",
                 "numbers" => config.options.numbers = value == "true",
                 "words" => {
                     config.options.list = WordList::parse(value).unwrap_or(config.options.list)
@@ -154,7 +158,8 @@ impl Config {
              challenge = \"{}\"\n\
              caret = \"{}\"\n\
              layout = \"{}\"\n\
-             weekly_goal = {}\n",
+             weekly_goal = {}\n\
+             update_check = {}\n",
             mode_label(self.mode),
             self.theme.name,
             self.options.punctuation,
@@ -166,7 +171,8 @@ impl Config {
             self.challenge.name(),
             self.caret.name(),
             self.layout.name(),
-            self.weekly_goal
+            self.weekly_goal,
+            self.update_check
         ) + &self.custom_colors_text()
     }
 
@@ -231,6 +237,7 @@ mod tests {
             layout: Layout::Colemak,
             custom_theme: None,
             weekly_goal: 3000,
+            update_check: false,
         };
         assert_eq!(Config::parse(&config.to_text()), config);
     }

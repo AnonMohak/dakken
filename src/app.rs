@@ -166,6 +166,12 @@ pub struct App {
     pub layout: Layout,
     /// Words to type each week. 0 is no goal.
     pub weekly_goal: u32,
+    /// Ask GitHub once a day for a newer version.
+    pub update_check: bool,
+    /// The tag of a newer release, for the notice in the menu.
+    pub update: Option<String>,
+    /// `u` in the menu: quit, then update dakken.
+    pub update_now: bool,
     /// The menu saves the settings here. `None` does not save them.
     pub config_path: Option<PathBuf>,
     /// Terminal width and height. Untimed tests get the words that fit on
@@ -230,6 +236,7 @@ impl App {
             caret: config.caret,
             layout: config.layout,
             weekly_goal: config.weekly_goal,
+            update_check: config.update_check,
             config_path,
             size,
             history,
@@ -260,6 +267,9 @@ impl App {
             caret: Caret::Block,
             layout: Layout::Qwerty,
             weekly_goal: 0,
+            update_check: false,
+            update: None,
+            update_now: false,
             config_path: None,
             size: (80, 24),
             session,
@@ -650,6 +660,7 @@ impl App {
                 caret: self.caret,
                 layout: self.layout,
                 weekly_goal: self.weekly_goal,
+                update_check: self.update_check,
             };
             let _ = config.save(path);
         }
@@ -827,6 +838,10 @@ impl App {
             Screen::Menu => match key.code {
                 KeyCode::Enter => self.start_chosen(),
                 KeyCode::Char('x') => self.start_momo(),
+                KeyCode::Char('u') if self.update.is_some() => {
+                    self.update_now = true;
+                    self.quit = true;
+                }
                 KeyCode::Char('o') => {
                     let selected = MODES.iter().position(|&m| m == self.mode).unwrap_or(0);
                     self.screen = Screen::Modes { selected };
@@ -1320,6 +1335,23 @@ mod tests {
             // The menu settings stay for the other modes.
             assert_eq!((a.challenge, a.strict), (challenge, strict));
         }
+    }
+
+    #[test]
+    fn u_in_the_menu_quits_to_update_only_with_a_newer_version() {
+        let mut a = app(&["hi"]);
+        a.open_menu();
+        a.on_key(
+            press(KeyCode::Char('u'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(!a.quit && !a.update_now);
+        a.update = Some("v9.0.0".to_string());
+        a.on_key(
+            press(KeyCode::Char('u'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(a.quit && a.update_now);
     }
 
     #[test]

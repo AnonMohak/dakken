@@ -152,8 +152,17 @@ Use the same tool you installed with:
 | Cargo | the same `cargo install` command again (add `--force` for `--git`) |
 | A file from Releases | download the new file and replace the old one |
 
-`dakken --check-update` tells you if there is a newer release. Your history,
-settings and badges stay in the data folder, so an update keeps them.
+dakken asks GitHub once a day for a newer release, in the background. When
+there is one, the menu says `update v0.5.1 available · u to update`. Press
+`u`: dakken closes and runs the update command of the tool that installed it
+(Scoop, winget, Homebrew or Cargo). On Windows, the update runs in a new
+window, because a running program cannot be replaced there; start dakken
+again when it is done. For a file from Releases, dakken shows the download
+link. Set `update_check = false` in `config.toml` to turn the check off (it
+sends one request to GitHub each day). `dakken --check-update` asks at once.
+
+Your history, settings and badges stay in the data folder, so an update
+keeps them.
 
 ## Use
 
@@ -273,6 +282,7 @@ challenge = "off"    # off, survival, boss or climb
 caret = "block"      # block, bar or underline
 layout = "qwerty"    # qwerty, dvorak or colemak
 weekly_goal = 0      # words to type each week (Monday to Sunday, UTC); 0 is no goal
+update_check = true  # ask GitHub once a day for a newer version
 ```
 
 With a weekly goal, the menu shows the words of this week under your level,

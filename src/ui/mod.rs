@@ -374,6 +374,13 @@ mod tests {
         a.weekly_goal = 500;
         assert!(render(&a, 60, 29).contains("week 0/500  ────"), "{out}");
         assert!(!out.contains("time 15"), "{out}");
+        assert!(!out.contains("u to update"), "{out}");
+        a.update = Some("v9.0.0".to_string());
+        let with_update = render(&a, 60, 29);
+        assert!(
+            with_update.contains("update v9.0.0 available · u to update"),
+            "{with_update}"
+        );
         assert!(
             out.contains("enter start · tab back · ctrl+c exit"),
             "{out}"

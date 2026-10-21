@@ -121,7 +121,9 @@ struct Cli {
     #[arg(long)]
     heatmap: bool,
 
-    /// Ask GitHub if there is a newer release, then quit. Needs curl.
+    /// Ask GitHub if there is a newer release, then quit. Needs curl. The
+    /// app also asks once a day and shows a newer version in the menu
+    /// (`update_check = false` in config.toml turns this off).
     #[arg(long)]
     check_update: bool,
 
@@ -317,10 +319,22 @@ fn main() -> io::Result<()> {
             }
         }
     }
-    run(app)
+    // Leftover from a self-update on Windows, which cannot delete a running
+    // program.
+    update::remove_old_exe();
+    let updates = app.update_check.then(update::check_in_background);
+    if let Some(tag) = run(app, updates)? {
+        print!("{}", update::update(&tag));
+    }
+    Ok(())
 }
 
-fn run(mut app: App) -> io::Result<()> {
+/// Run the app. Gives the newer release tag if the user pressed `u` to
+/// update.
+fn run(
+    mut app: App,
+    updates: Option<std::sync::mpsc::Receiver<String>>,
+) -> io::Result<Option<String>> {
     let mut terminal = ratatui::init();
     // ratatui's panic hook restores the terminal. Also give back the cursor shape.
     let restore_terminal = std::panic::take_hook();
@@ -355,13 +369,16 @@ fn run(mut app: App) -> io::Result<()> {
                 }
             }
             app.tick(Instant::now());
+            if let Some(tag) = updates.as_ref().and_then(|u| u.try_recv().ok()) {
+                app.update = Some(tag);
+            }
         }
         Ok(())
     })();
     execute!(io::stdout(), SetCursorStyle::DefaultUserShape)?;
     set_wezterm_active(false)?;
     ratatui::restore();
-    result
+    result.map(|()| app.update.filter(|_| app.update_now))
 }
 
 /// Tell WezTerm that dakken runs, with the `dakken_active` user var. A

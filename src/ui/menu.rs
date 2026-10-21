@@ -153,6 +153,9 @@ pub fn draw(frame: &mut Frame, app: &App) {
     }
     frame.render_widget(Paragraph::new(lines[logo_rows..].to_vec()), settings_area);
     keys_line(frame, t, height, "enter start · tab back · ctrl+c exit");
+    if let Some(tag) = &app.update {
+        update_line(frame, t, height, tag);
+    }
 }
 
 /// The list of modes, from `o` in the menu.
@@ -239,6 +242,25 @@ fn logo_lines(t: Theme, rank: usize) -> Vec<Line<'static>> {
             ])
         })
         .collect()
+}
+
+/// "update v0.5.1 available · u to update", on the row above the keys, when
+/// there is a free row for it.
+fn update_line(frame: &mut Frame, t: Theme, menu_height: u16, tag: &str) {
+    let screen = frame.area();
+    if screen.height < menu_height + HINT_ROWS {
+        return;
+    }
+    let notice = Line::styled(
+        format!("update {tag} available · u to update"),
+        Style::new().fg(t.main).add_modifier(Modifier::BOLD),
+    );
+    let area = Rect {
+        y: screen.bottom().saturating_sub(3),
+        height: 1,
+        ..screen
+    };
+    frame.render_widget(Paragraph::new(notice).centered(), area);
 }
 
 /// The keys at the bottom, like "• tab for menu" on the typing screen. A
