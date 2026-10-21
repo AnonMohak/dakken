@@ -70,3 +70,11 @@ jobs:
           sha256sum dakken-* > SHA256SUMS
           cat SHA256SUMS
           gh release upload "$GITHUB_REF_NAME" SHA256SUMS --repo "$GITHUB_REPOSITORY"
+
+  # A winget pull request for the new version (see winget.yml).
+  winget:
+    needs: checksums
+    uses: ./.github/workflows/winget.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
