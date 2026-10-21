@@ -115,6 +115,18 @@ release's `SHA256SUMS`, puts it in `%LOCALAPPDATA%\Programs\dakken`, and
 adds that folder to your user `PATH`. To read the script before you run it,
 open [install.ps1](install.ps1).
 
+**Install script (macOS and Linux, no sudo):**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/AnonMohak/dakken/master/install.sh | sh
+```
+
+It downloads the newest dakken for your system, checks it against
+`SHA256SUMS`, puts it in `~/.local/bin`, and, if that folder is not on your
+`PATH`, adds it in your shell's config file (`~/.zshrc`, `~/.bashrc`,
+`~/.bash_profile` on macOS, fish's `config.fish`, or `~/.profile`). Read
+it first in [install.sh](install.sh).
+
 **winget (Windows):**
 
 ```powershell
@@ -124,8 +136,11 @@ winget install AnonMohak.dakken
 **Scoop (Windows):**
 
 ```powershell
-scoop install https://raw.githubusercontent.com/AnonMohak/dakken/master/packaging/scoop/dakken.json
+scoop bucket add dakken https://github.com/AnonMohak/dakken
+scoop install dakken/dakken
 ```
+
+An install from the older manifest URL keeps working with `scoop update`.
 
 **Homebrew (macOS and Linux, on Intel or ARM):**
 
