@@ -56,3 +56,17 @@ jobs:
           case "${{ matrix.exe }}" in *.exe) name="$name.exe" ;; esac
           cp "target/${{ matrix.target }}/release/${{ matrix.exe }}" "$name"
           gh release upload "$GITHUB_REF_NAME" "$name" --repo "$GITHUB_REPOSITORY"
+
+  # SHA256SUMS lets a self-update check the file it downloads.
+  checksums:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern 'dakken-*' --dir files
+          cd files
+          sha256sum dakken-* > SHA256SUMS
+          cat SHA256SUMS
+          gh release upload "$GITHUB_REF_NAME" SHA256SUMS --repo "$GITHUB_REPOSITORY"

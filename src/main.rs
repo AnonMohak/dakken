@@ -12,6 +12,7 @@ mod mistakes;
 mod progress;
 mod quests;
 mod race;
+mod sha256;
 mod ui;
 mod update;
 

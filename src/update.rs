@@ -10,6 +10,7 @@ use std::sync::mpsc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const LATEST: &str = "https://api.github.com/repos/AnonMohak/dakken/releases/latest";
+const DOWNLOAD: &str = "https://github.com/AnonMohak/dakken/releases/download";
 const RELEASES: &str = "https://github.com/AnonMohak/dakken/releases/latest";
 const GIT: &str = "https://github.com/AnonMohak/dakken.git";
 /// The app asks GitHub at most once in this many seconds.
@@ -185,7 +186,11 @@ pub fn update(tag: &str) -> String {
     };
     let install = install_kind(&exe);
     let Some(args) = install.command() else {
-        return format!("Get dakken {tag} from {RELEASES}\n");
+        println!("Downloading dakken {tag}...");
+        return match self_update(&exe, tag) {
+            Ok(()) => format!("dakken is updated to {tag}. Start it again.\n"),
+            Err(e) => format!("error: {e}\nGet dakken {tag} from {RELEASES}\n"),
+        };
     };
     let line = args.join(" ");
     if cfg!(windows) {
@@ -230,6 +235,93 @@ fn update_after_exit(line: &str) -> std::io::Result<()> {
 
 #[cfg(not(windows))]
 fn update_after_exit(_line: &str) -> std::io::Result<()> {
+    Ok(())
+}
+
+/// The release file for this system, for example
+/// `dakken-v0.5.1-x86_64-pc-windows-msvc.exe`.
+fn asset_name(tag: &str) -> String {
+    let exe = if cfg!(windows) { ".exe" } else { "" };
+    format!("dakken-{tag}-{}{exe}", env!("DAKKEN_TARGET"))
+}
+
+/// The hash of `name` in a `SHA256SUMS` file (`<hash>  <name>` lines; a
+/// `*` before the name marks binary mode).
+fn expected_hash(sums: &str, name: &str) -> Option<String> {
+    sums.lines().find_map(|line| {
+        let (hash, file) = line.split_once(char::is_whitespace)?;
+        let file = file.trim().trim_start_matches('*');
+        (file == name).then(|| hash.to_lowercase())
+    })
+}
+
+/// Download `url` with curl into `path`, or into memory with no path.
+fn download(url: &str, path: Option<&Path>) -> Result<Vec<u8>, String> {
+    let mut curl = Command::new("curl");
+    curl.args([
+        "-sSfL",
+        "--max-time",
+        "300",
+        "-H",
+        "User-Agent: dakken",
+        url,
+    ]);
+    if let Some(path) = path {
+        curl.arg("-o").arg(path);
+    }
+    match curl.output() {
+        Ok(o) if o.status.success() => Ok(o.stdout),
+        Ok(o) => Err(format!(
+            "cannot download {url}: {}",
+            String::from_utf8_lossy(&o.stderr).trim()
+        )),
+        Err(e) => Err(format!("cannot run curl: {e}")),
+    }
+}
+
+/// Replace the program at `exe` with the release `tag` for this system.
+/// The download must match the release's `SHA256SUMS`. The running program
+/// is renamed to `dakken.old` first, because Windows cannot overwrite it;
+/// the next start deletes it.
+pub fn self_update(exe: &Path, tag: &str) -> Result<(), String> {
+    let name = asset_name(tag);
+    let sums = download(&format!("{DOWNLOAD}/{tag}/SHA256SUMS"), None)?;
+    let sums = String::from_utf8_lossy(&sums);
+    let want = expected_hash(&sums, &name).ok_or(format!("no checksum for {name}"))?;
+    let new = exe.with_file_name(if cfg!(windows) {
+        "dakken.new.exe"
+    } else {
+        "dakken.new"
+    });
+    download(&format!("{DOWNLOAD}/{tag}/{name}"), Some(&new))?;
+    let got = fs::read(&new).map(|bytes| crate::sha256::hex(&bytes));
+    if got.as_deref().ok() != Some(want.as_str()) {
+        let _ = fs::remove_file(&new);
+        return Err(format!(
+            "the download of {name} does not match its checksum"
+        ));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&new, fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
+    }
+    let old = old_path(exe);
+    let _ = fs::remove_file(&old);
+    let cannot = |e: std::io::Error| format!("cannot replace {}: {e}", exe.display());
+    fs::rename(exe, &old).map_err(|e| {
+        let _ = fs::remove_file(&new);
+        cannot(e)
+    })?;
+    if let Err(e) = fs::rename(&new, exe) {
+        // Put the old program back.
+        let _ = fs::rename(&old, exe);
+        let _ = fs::remove_file(&new);
+        return Err(cannot(e));
+    }
+    if !cfg!(windows) {
+        let _ = fs::remove_file(&old);
+    }
     Ok(())
 }
 
@@ -302,6 +394,50 @@ mod tests {
         assert_eq!(old, None);
         // No answer from GitHub: nothing.
         assert_eq!(newer_release(None, 0, || None), None);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn the_checksum_is_found_by_file_name() {
+        let sums = "AB12  dakken-v0.6.0-x86_64-pc-windows-msvc.exe\n\
+                    cd34 *dakken-v0.6.0-x86_64-unknown-linux-musl\n";
+        assert_eq!(
+            expected_hash(sums, "dakken-v0.6.0-x86_64-pc-windows-msvc.exe").as_deref(),
+            Some("ab12")
+        );
+        assert_eq!(
+            expected_hash(sums, "dakken-v0.6.0-x86_64-unknown-linux-musl").as_deref(),
+            Some("cd34")
+        );
+        assert_eq!(
+            expected_hash(sums, "dakken-v0.6.0-aarch64-apple-darwin"),
+            None
+        );
+        let name = asset_name("v0.6.0");
+        assert!(name.starts_with("dakken-v0.6.0-") && name.contains(env!("DAKKEN_TARGET")));
+    }
+
+    /// Downloads a real release into a temporary folder. Run it with
+    /// `cargo test -- --ignored self_update`.
+    #[test]
+    #[ignore]
+    fn self_update_replaces_a_copy_with_a_real_release() {
+        let dir = std::env::temp_dir().join(format!("dakken-self-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let exe = dir.join(if cfg!(windows) {
+            "dakken.exe"
+        } else {
+            "dakken"
+        });
+        fs::write(&exe, b"old program").unwrap();
+        self_update(&exe, "v0.5.0").unwrap();
+        let out = Command::new(&exe).arg("--version").output().unwrap();
+        assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "dakken 0.5.0");
+        assert_eq!(
+            fs::read(old_path(&exe)).ok().as_deref(),
+            cfg!(windows).then_some(&b"old program"[..])
+        );
         fs::remove_dir_all(&dir).unwrap();
     }
 
