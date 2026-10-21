@@ -10,8 +10,8 @@ A typing-speed test for the terminal.
   <img src="docs/demo.gif" width="800" alt="dakken: typing with a live wpm, the mode menu, and the results screen">
 </p>
 
-- Words mode (10, 25, 50, 100 words); 100 words is the default.
-- Time mode (15, 30, 60, 120 s).
+- Time mode (15, 30, 60, 120 s); 30 seconds is the default.
+- Words mode (10, 25, 50, 100 words).
 - Untimed mode: type the words that fill the screen, with no time limit.
 - The text fills 70% of the terminal, with an empty row between lines.
 - Quote mode: one quote from a public-domain book, poem or speech. Choose
@@ -22,9 +22,10 @@ A typing-speed test for the terminal.
   the right above the words. The screen shows one quote at a time; two rows
   under it, on the right and in gray, a mood symbol and who said it (not
   typed): ♥ love, ☯ peace, ☠ darkness, ☁ sorrow, ✿ change, ▲ resolve, ★
-  dreams. The results show the quotes you typed to the end. The screen says "momo
-  mode" and uses its own night sakura colors; your chosen theme comes back
-  when you choose another mode with `o`.
+  dreams. The results show the quotes you typed to the end. The screen says
+  "momo mode" and uses its own night sakura colors. Only `x` in the menu
+  starts momo mode: momo is not in the `o` list, and `Enter` in the menu
+  starts the mode from `o`, with your own theme.
 - Custom mode: type the text of your own file, with `--file`.
 - Zen mode: type anything with no target text. `Enter` ends the test.
 - Daily challenge: the same 30 words for everyone each day (UTC), with your
@@ -244,7 +245,7 @@ only, until you change a setting in the menu. The daily challenge (`-d`) is
 never saved as the mode.
 
 ```toml
-mode = "words 100"   # untimed, quote, quote short/medium/long, zen, time N or words N
+mode = "time 30"     # untimed, quote, quote short/medium/long, zen, time N or words N
 theme = "tokyo-night"  # tokyo-night, terminal, dracula, nord, github-light, ...
 punctuation = false
 numbers = false
