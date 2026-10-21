@@ -319,7 +319,10 @@ impl App {
         let mut quotes = words::momo_quotes();
         let mut next = 0;
         let mut words = std::collections::VecDeque::new();
-        Session::new(Mode::Momo, move || {
+        let ends = Rc::new(RefCell::new(std::collections::BTreeSet::new()));
+        let quote_ends = Rc::clone(&ends);
+        let mut total = 0;
+        let mut session = Session::new(Mode::Momo, move || {
             loop {
                 if let Some(word) = words.pop_front() {
                     return word;
@@ -330,9 +333,13 @@ impl App {
                 let quote = quotes[next].clone();
                 next = (next + 1) % quotes.len();
                 words.extend(quote.text.split_whitespace().map(String::from));
+                total += quote.text.split_whitespace().count();
+                quote_ends.borrow_mut().insert(total - 1);
                 used.borrow_mut().push(quote);
             }
-        })
+        });
+        session.set_quote_ends(ends);
+        session
     }
 
     /// The momo quotes typed to the end in this test.
@@ -1207,7 +1214,8 @@ mod tests {
         let first = a.momo_quotes.borrow()[0].clone();
         let n = first.text.split_whitespace().count();
         assert_eq!(a.momo_current(&a.session).map(|(r, _)| r), Some(0..n));
-        type_text(&mut a, &format!("{} ", first.text));
+        // No space after the quote: the next quote starts at once.
+        type_text(&mut a, &first.text);
         assert_eq!(a.momo_done(), std::slice::from_ref(&first));
         // The caret is in the next quote now.
         let (range, next) = a.momo_current(&a.session).expect("a next quote");

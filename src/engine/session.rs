@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::collections::BTreeSet;
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use super::stats::{self, CharCounts, Press, TestResult};
@@ -140,6 +143,9 @@ pub struct Session {
     /// the test. `None` is no survival.
     lives: Option<u8>,
     start_lives: u8,
+    /// The last word of each quote in momo mode. Such a word moves on to the
+    /// next word when it is full length, with no space.
+    quote_ends: Option<Rc<RefCell<BTreeSet<usize>>>>,
     /// Every key after the start, with its time since the start, for replay.
     log: Vec<(Duration, Key)>,
 }
@@ -178,6 +184,7 @@ impl Session {
             failed: false,
             lives: None,
             start_lives: 0,
+            quote_ends: None,
             log: Vec::new(),
         }
     }
@@ -197,7 +204,21 @@ impl Session {
         };
         s.strict = self.strict;
         s.lives = self.lives.map(|_| self.start_lives);
+        s.quote_ends = self.quote_ends.clone();
         s
+    }
+
+    /// Momo mode: the words at these indexes end a quote, so the next quote
+    /// starts as soon as they are full length. The set can grow as the test
+    /// adds words.
+    pub fn set_quote_ends(&mut self, ends: Rc<RefCell<BTreeSet<usize>>>) {
+        self.quote_ends = Some(ends);
+    }
+
+    fn is_quote_end(&self, word: usize) -> bool {
+        self.quote_ends
+            .as_ref()
+            .is_some_and(|ends| ends.borrow().contains(&word))
     }
 
     /// A zen test: one empty word. Each typed letter is added to the target
@@ -348,6 +369,13 @@ impl Session {
         {
             self.end = Some(now);
         }
+
+        // The end of a momo quote goes on to the next quote with no space.
+        let (target, typed) = (&self.words[self.current], &self.typed[self.current]);
+        if !self.is_finished() && typed.len() >= target.len() && self.is_quote_end(self.current) {
+            let correct = typed == target;
+            self.close_word(now, correct);
+        }
     }
 
     fn type_space(&mut self, now: Instant) {
@@ -379,6 +407,13 @@ impl Session {
             }
             _ => {}
         }
+        self.close_word(now, correct);
+    }
+
+    /// Move the caret to the next word. A wrong word takes a life in
+    /// survival. The last word ends a test with fixed words; time and momo
+    /// tests get more words.
+    fn close_word(&mut self, now: Instant, correct: bool) {
         self.current += 1;
         if !correct && let Some(lives) = self.lives.as_mut() {
             *lives = lives.saturating_sub(1);
@@ -866,6 +901,24 @@ mod tests {
         assert!(d.s.words().len() >= 2 + WORDS_AHEAD);
         d.s.tick(d.now + MOMO_TIME);
         assert!(d.s.is_finished());
+    }
+
+    #[test]
+    fn a_quote_end_moves_on_with_no_space() {
+        let mut d = Driver::words(&["hi", "yo", "next", "one"]);
+        d.s.set_quote_ends(Rc::new(RefCell::new(BTreeSet::from([1]))));
+        d.text("hi yo");
+        assert_eq!(d.s.current(), 2, "the next quote starts at once");
+        let presses = d.s.presses().len();
+        // A space out of habit does nothing on the empty next word.
+        d.key(Key::Space);
+        assert_eq!((d.s.current(), d.s.presses().len()), (2, presses));
+        // A wrong full-length end also moves on, and costs a life.
+        let mut d = Driver::words(&["ab", "cd"]);
+        d.s.set_lives(3);
+        d.s.set_quote_ends(Rc::new(RefCell::new(BTreeSet::from([0]))));
+        d.text("ax");
+        assert_eq!((d.s.current(), d.s.lives()), (1, Some(2)));
     }
 
     #[test]
