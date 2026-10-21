@@ -306,6 +306,16 @@ impl App {
         self.restart();
     }
 
+    /// The challenge of the test on screen. Momo mode is a mode on its own,
+    /// so it has no challenge, whatever the menu says.
+    pub fn challenge_now(&self) -> Challenge {
+        if self.momo {
+            Challenge::Off
+        } else {
+            self.challenge
+        }
+    }
+
     /// The mode of the test on screen: momo, or the chosen mode.
     pub fn mode_now(&self) -> Mode {
         if self.momo { Mode::Momo } else { self.mode }
@@ -452,7 +462,7 @@ impl App {
         if self.climb_on() && self.climb.is_none() {
             self.climb = Some(challenge::Climb::start(self.history.records()));
         }
-        if !self.fixed_text() && self.challenge == Challenge::Survival {
+        if !self.fixed_text() && self.challenge_now() == Challenge::Survival {
             self.session.set_lives(challenge::LIVES);
         }
     }
@@ -528,7 +538,7 @@ impl App {
     /// This test is a round of the climb challenge.
     pub fn climb_on(&self) -> bool {
         let own_text = matches!(self.mode_now(), Mode::Momo | Mode::Custom | Mode::Zen);
-        self.challenge == Challenge::Climb && !self.fixed_text() && !own_text
+        self.challenge_now() == Challenge::Climb && !self.fixed_text() && !own_text
     }
 
     /// Boss words are in this test: the boss challenge, with random words.
@@ -537,7 +547,7 @@ impl App {
             self.mode_now(),
             Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
         );
-        self.challenge == Challenge::Boss && !self.fixed_text() && !own_text
+        self.challenge_now() == Challenge::Boss && !self.fixed_text() && !own_text
     }
 
     /// The boss words typed right, and the boss words reached.
@@ -677,8 +687,8 @@ impl App {
         if self.strict != Strict::Off {
             parts.push(self.strict.name().to_string());
         }
-        if self.challenge != Challenge::Off {
-            parts.push(self.challenge.name().to_string());
+        if self.challenge_now() != Challenge::Off {
+            parts.push(self.challenge_now().name().to_string());
         }
         // The defaults add nothing, so old history labels stay the same.
         if !own_text && self.options.list != WordList::English {
@@ -1247,6 +1257,21 @@ mod tests {
         a.open_menu();
         a.on_key(press(KeyCode::Char('x'), KeyModifiers::NONE), now);
         assert!(a.momo && a.session.mode() == Mode::Momo);
+    }
+
+    #[test]
+    fn momo_mode_has_no_challenge() {
+        for challenge in crate::challenge::CHALLENGES {
+            let mut a = app(&["hi"]);
+            a.challenge = challenge;
+            a.start_momo();
+            assert_eq!(a.session.lives(), None, "{challenge:?}");
+            assert!(!a.boss_on() && !a.climb_on(), "{challenge:?}");
+            assert_eq!(a.label(), "momo", "{challenge:?}");
+            assert_eq!(a.session.mode(), Mode::Momo);
+            // The menu setting stays for the other modes.
+            assert_eq!(a.challenge, challenge);
+        }
     }
 
     #[test]

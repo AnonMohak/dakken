@@ -27,7 +27,8 @@ A typing-speed test for the terminal.
   dreams. The results show the quotes you typed to the end. The screen says
   "momo mode" and uses its own night sakura colors. Only `x` in the menu
   starts momo mode: momo is not in the `o` list, and `Enter` in the menu
-  starts the mode from `o`, with your own theme.
+  starts the mode from `o`, with your own theme. Momo mode is a mode on its
+  own: challenges (`g`) are always off in it.
 - Custom mode: type the text of your own file, with `--file`.
 - Zen mode: type anything with no target text. `Enter` ends the test.
 - Daily challenge: the same 30 words for everyone each day (UTC), with your
