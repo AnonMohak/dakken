@@ -26,11 +26,11 @@ const LOGO: [&str; 7] = [
 /// Space between the key column and the text column.
 const GAP: usize = 6;
 /// Space kept free on the left and the right of the menu.
-const MARGIN: u16 = 4;
+pub(super) const MARGIN: u16 = 4;
 /// Rows kept free under the menu for the keys line.
-const HINT_ROWS: u16 = 4;
+pub(super) const HINT_ROWS: u16 = 4;
 /// Cells in the XP bar under the logo.
-const XP_BAR: usize = 16;
+pub(super) const XP_BAR: usize = 16;
 
 /// The menu: the logo, then one row for each setting with its key.
 pub fn draw(frame: &mut Frame, app: &App) {
@@ -102,7 +102,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
             ])
         })
         .collect();
-    // Momo mode is apart from the settings: its key starts it at once.
+    // Momo mode and the profile are apart from the settings: their keys
+    // open them at once.
     let mut settings = settings;
     settings.push(Line::default());
     settings.push(Line::from(vec![
@@ -111,6 +112,10 @@ pub fn draw(frame: &mut Frame, app: &App) {
             "momo mode",
             Style::new().fg(t.main).add_modifier(Modifier::BOLD),
         ),
+    ]));
+    settings.push(Line::from(vec![
+        Span::styled(format!("f{}", " ".repeat(GAP)), sub),
+        Span::styled("profile", Style::new().fg(t.text)),
     ]));
     let width = settings.iter().map(Line::width).max().unwrap_or(0) as u16;
     // The logo and the level go on top when there is room for them.
@@ -219,7 +224,7 @@ fn week_line(t: Theme, words: f64, goal: u32) -> Line<'static> {
 /// The logo rows, padded to one width so they stay in shape when centered:
 /// the speed lines plain, the keycap bold, both in the theme color. Each
 /// rank above the first makes the speed lines one cell longer.
-fn logo_lines(t: Theme, rank: usize) -> Vec<Line<'static>> {
+pub(super) fn logo_lines(t: Theme, rank: usize) -> Vec<Line<'static>> {
     let width = LOGO.iter().map(|l| l.chars().count()).max().unwrap_or(0);
     LOGO.iter()
         .map(|row| {
@@ -265,7 +270,7 @@ fn update_line(frame: &mut Frame, t: Theme, menu_height: u16, tag: &str) {
 
 /// The keys at the bottom, like "• tab for menu" on the typing screen. A
 /// short terminal puts them on the last row, under the menu.
-fn keys_line(frame: &mut Frame, t: Theme, menu_height: u16, keys: &str) {
+pub(super) fn keys_line(frame: &mut Frame, t: Theme, menu_height: u16, keys: &str) {
     let screen = frame.area();
     if screen.height <= menu_height {
         return;

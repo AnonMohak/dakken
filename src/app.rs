@@ -117,6 +117,22 @@ pub enum Screen {
         selected: usize,
     },
     Replay(Box<Replay>),
+    /// A new rank or a new badge on the full screen, before the results.
+    /// `page` is an index into `Reward::celebrations`.
+    Celebration {
+        page: usize,
+    },
+    /// Everything about the user, opened with `f` in the menu.
+    Profile {
+        scroll: usize,
+    },
+}
+
+/// One full-screen page of a reward.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Celebration {
+    Rank(Level),
+    Badge(&'static str),
 }
 
 /// The last test played again at the speed it was typed.
@@ -140,6 +156,17 @@ pub struct Reward {
     pub bosses: Option<(usize, usize)>,
     /// Key quests this test finished.
     pub quests: Vec<Quest>,
+}
+
+impl Reward {
+    /// The full-screen pages: a new rank first, then each new badge.
+    pub fn celebrations(&self) -> Vec<Celebration> {
+        let rank_up = self.after.rank_index() > self.before.rank_index();
+        let rank = rank_up.then_some(Celebration::Rank(self.after));
+        rank.into_iter()
+            .chain(self.badges.iter().map(|&b| Celebration::Badge(b)))
+            .collect()
+    }
 }
 
 pub struct App {
@@ -561,7 +588,10 @@ impl App {
     /// and its results, else the chosen theme. The menu always has the
     /// chosen theme.
     pub fn theme(&self) -> Theme {
-        let menu = matches!(self.screen, Screen::Menu | Screen::Modes { .. });
+        let menu = matches!(
+            self.screen,
+            Screen::Menu | Screen::Modes { .. } | Screen::Profile { .. }
+        );
         if self.momo && !menu {
             ui::theme::MOMO
         } else {
@@ -784,7 +814,15 @@ impl App {
             }
             self.copied = false;
             self.race_saved = None;
-            self.screen = Screen::Results(result);
+            let celebrate = self
+                .reward
+                .as_ref()
+                .is_some_and(|r| !r.celebrations().is_empty());
+            self.screen = if celebrate {
+                Screen::Celebration { page: 0 }
+            } else {
+                Screen::Results(result)
+            };
         }
     }
 
@@ -831,6 +869,28 @@ impl App {
                 KeyCode::Tab | KeyCode::Esc => self.open_menu(),
                 _ => {}
             },
+            Screen::Celebration { page } => {
+                if matches!(key.code, KeyCode::Tab | KeyCode::Esc) {
+                    let pages = self.reward.as_ref().map_or(0, |r| r.celebrations().len());
+                    self.screen = if page + 1 < pages {
+                        Screen::Celebration { page: page + 1 }
+                    } else {
+                        Screen::Results(self.session.result())
+                    };
+                }
+            }
+            Screen::Profile { scroll } => match key.code {
+                KeyCode::Up | KeyCode::Char('k') => {
+                    let scroll = scroll.saturating_sub(1);
+                    self.screen = Screen::Profile { scroll };
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    let scroll = (scroll + 1).min(ui::profile_max_scroll(self));
+                    self.screen = Screen::Profile { scroll };
+                }
+                KeyCode::Tab | KeyCode::Esc => self.screen = Screen::Menu,
+                _ => {}
+            },
             Screen::Modes { selected } => match key.code {
                 KeyCode::Up | KeyCode::Char('k') => {
                     let selected = (selected + MODES.len() - 1) % MODES.len();
@@ -855,6 +915,7 @@ impl App {
             Screen::Menu => match key.code {
                 KeyCode::Enter => self.start_chosen(),
                 KeyCode::Char('x') => self.start_momo(),
+                KeyCode::Char('f') => self.screen = Screen::Profile { scroll: 0 },
                 KeyCode::Char('u') if self.update.is_some() => {
                     self.update_now = true;
                     self.quit = true;
@@ -916,6 +977,17 @@ impl App {
 
     fn open_menu(&mut self) {
         self.screen = Screen::Menu;
+    }
+
+    /// Press tab through the celebration pages, to the results.
+    #[cfg(test)]
+    pub fn skip_celebration(&mut self) {
+        while let Screen::Celebration { .. } = self.screen {
+            self.on_key(
+                KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE),
+                Instant::now(),
+            );
+        }
     }
 }
 
@@ -1050,9 +1122,80 @@ mod tests {
     }
 
     #[test]
+    fn a_new_badge_shows_on_the_full_screen_before_the_results() {
+        let mut a = app(&["hi"]);
+        type_text(&mut a, "hi");
+        assert!(matches!(a.screen, Screen::Celebration { page: 0 }));
+        // Other keys do nothing, so a late key does not skip the page.
+        type_text(&mut a, "x");
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Celebration { page: 0 }));
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Results(_)));
+        // With no new badge, the results come at once.
+        let mut b = app(&["hi"]);
+        let all: Vec<&str> = badges::BADGES.iter().map(|b| b.name).collect();
+        let _ = b.badges.add(&all);
+        type_text(&mut b, "hi");
+        assert!(matches!(b.screen, Screen::Results(_)));
+    }
+
+    #[test]
+    fn a_new_rank_comes_before_the_new_badges() {
+        let reward = Reward {
+            xp: 0,
+            before: Level::from_xp(0),
+            after: Level::from_xp(100_000),
+            badges: vec!["first press", "clean"],
+            goal_reached: false,
+            bosses: None,
+            quests: Vec::new(),
+        };
+        assert_eq!(
+            reward.celebrations(),
+            [
+                Celebration::Rank(Level::from_xp(100_000)),
+                Celebration::Badge("first press"),
+                Celebration::Badge("clean"),
+            ]
+        );
+        // A new level in the same rank is not a page.
+        let level_up = Reward {
+            after: Level::from_xp(600),
+            badges: Vec::new(),
+            ..reward
+        };
+        assert!(level_up.celebrations().is_empty());
+    }
+
+    #[test]
+    fn f_in_the_menu_opens_the_profile() {
+        let mut a = app(&["hi"]);
+        a.size = (80, 10);
+        a.open_menu();
+        a.on_key(
+            press(KeyCode::Char('f'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(matches!(a.screen, Screen::Profile { scroll: 0 }));
+        a.on_key(press(KeyCode::Up, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Profile { scroll: 0 }));
+        for _ in 0..500 {
+            a.on_key(press(KeyCode::Down, KeyModifiers::NONE), Instant::now());
+        }
+        // The scroll stops at the end of the profile.
+        let end = ui::profile_max_scroll(&a);
+        assert!(end > 0);
+        assert!(matches!(a.screen, Screen::Profile { scroll } if scroll == end));
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Menu));
+    }
+
+    #[test]
     fn finishing_the_test_shows_results() {
         let mut a = app(&["hi"]);
         type_text(&mut a, "hi");
+        a.skip_celebration();
         assert!(matches!(a.screen, Screen::Results(_)));
     }
 
@@ -1183,6 +1326,7 @@ mod tests {
         assert_eq!(a.session.words().len(), 2);
         assert_eq!(a.session.lives(), None, "challenges do not apply");
         type_text(&mut a, "two words");
+        a.skip_celebration();
         assert!(matches!(a.screen, Screen::Results(_)));
         assert!(a.can_save_race());
     }
@@ -1280,6 +1424,7 @@ mod tests {
         a.start_momo();
         a.session.handle(Key::Char('x'), now);
         a.tick(now + crate::engine::session::MOMO_TIME);
+        a.skip_celebration();
         assert!(matches!(a.screen, Screen::Results(_)));
         // On the results, enter restarts momo and x saves a race, as for
         // other tests.
@@ -1402,6 +1547,7 @@ mod tests {
             .map(|w| w.iter().collect())
             .collect();
         type_text(&mut a, &text.join(" "));
+        a.skip_celebration();
         assert!(matches!(a.screen, Screen::Results(_)));
         a.on_key(
             press(KeyCode::Char('y'), KeyModifiers::NONE),
@@ -1545,6 +1691,7 @@ mod tests {
             Instant::now(),
         );
         type_text(&mut a, "two");
+        a.skip_celebration();
         assert!(matches!(a.screen, Screen::Results(_)));
     }
 
@@ -1687,6 +1834,7 @@ mod tests {
             .collect();
         assert_eq!(words, ["Hello,", "world", "again"]);
         type_text(&mut a, "Hello, world again");
+        a.skip_celebration();
         assert!(matches!(a.screen, Screen::Results(_)));
         a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
         assert_eq!(a.session.words().len(), 3, "Enter restarts the same text");
@@ -1701,6 +1849,7 @@ mod tests {
         type_text(&mut a, "free text");
         assert!(matches!(a.screen, Screen::Typing));
         a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        a.skip_celebration();
         assert!(matches!(a.screen, Screen::Results(_)));
         assert_eq!(a.history.records()[0].label, "zen");
     }
@@ -1770,6 +1919,7 @@ mod tests {
         a.on_key(press(KeyCode::Char('h'), KeyModifiers::NONE), start);
         let later = start + Duration::from_millis(500);
         a.on_key(press(KeyCode::Char('i'), KeyModifiers::NONE), later);
+        a.skip_celebration();
         a.on_key(press(KeyCode::Char('r'), KeyModifiers::NONE), later);
         let Screen::Replay(replay) = &a.screen else {
             panic!("r starts the replay");
@@ -1789,6 +1939,7 @@ mod tests {
         let mut a = app(&["aoeu"]);
         a.layout = Layout::Dvorak;
         type_text(&mut a, "asdf");
+        a.skip_celebration();
         assert!(
             matches!(a.screen, Screen::Results(_)),
             "asdf on dvorak is aoeu"

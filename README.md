@@ -97,7 +97,10 @@ A typing-speed test for the terminal.
   menu shows your level, your rank (named after keycaps: `blank` from level
   1, `homing` from 5, `sculpted` from 10, `doubleshot` from 20, `artisan`
   from 35 and `legend` from 50) and an XP bar, and the logo gets longer
-  speed lines at each rank. The results show the XP and each new badge.
+  speed lines at each rank. A new rank or a new badge fills the screen
+  before the results (`Tab` goes on), and the results show the XP.
+  `f` in the menu opens your profile: level, XP, test stats, best speeds,
+  all badges, weak keys and key quests.
   `--badges` lists all 19 badges, each with a small ASCII symbol such as
   `100` for century; 4 stay hidden until you get them.
 - One `.exe` with no runtime. Made and tested on Windows 11 with WezTerm.
@@ -257,6 +260,7 @@ In the menu, each setting shows its key on the left:
 | `m` | Go to the next strict mode |
 | `g` | Go to the next challenge |
 | `x` | Start momo mode |
+| `f` | Open your profile (`↑`/`↓` or `j`/`k` scroll, `Tab` goes back) |
 | `Enter` | Start a new test |
 | `Tab` or `Esc` | Go back to the test or the results |
 

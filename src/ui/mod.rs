@@ -1,5 +1,7 @@
 mod ascii;
+mod celebration;
 mod menu;
+mod profile;
 mod results;
 pub mod theme;
 mod typing;
@@ -45,10 +47,17 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
         Screen::Results(result) => results::draw(frame, app, result),
         Screen::Menu => menu::draw(frame, app),
         Screen::Modes { selected } => menu::draw_modes(frame, app, *selected),
+        Screen::Celebration { page } => celebration::draw(frame, app, *page),
+        Screen::Profile { scroll } => profile::draw(frame, app, *scroll),
     }
     if app.ascii {
         ascii::replace_symbols(frame.buffer_mut());
     }
+}
+
+/// The most rows that the profile can scroll in the terminal now.
+pub fn profile_max_scroll(app: &App) -> usize {
+    profile::max_scroll(app, app.size.1)
 }
 
 /// A `width` x `height` box in the middle of `area`.
@@ -208,6 +217,7 @@ mod tests {
             );
         }
         a.tick(start + std::time::Duration::from_secs(4));
+        a.skip_celebration();
         assert!(render(&a, 80, 30).contains("── raw"));
         // A short terminal keeps the stats and drops the graph.
         let out = render(&a, 80, 12);
@@ -341,7 +351,13 @@ mod tests {
         a.tick(start + std::time::Duration::from_secs(10));
         let results = render(&a, 80, 30);
         assert!(results.is_ascii(), "{results}");
-        for screen in [Screen::Menu, Screen::Modes { selected: 0 }] {
+        a.skip_celebration();
+        for screen in [
+            Screen::Menu,
+            Screen::Modes { selected: 0 },
+            Screen::Celebration { page: 0 },
+            Screen::Profile { scroll: 0 },
+        ] {
             a.screen = screen;
             a.update = Some("v9.0.0".into());
             let out = render(&a, 80, 30);
@@ -354,6 +370,81 @@ mod tests {
         let mut b = app(&["für"]);
         b.ascii = true;
         assert!(render(&b, 60, 20).contains("für"));
+    }
+
+    #[test]
+    fn a_new_badge_fills_the_screen() {
+        let mut a = app(&["hi"]);
+        a.session
+            .handle(crate::engine::Key::Char('h'), Instant::now());
+        a.session
+            .handle(crate::engine::Key::Char('i'), Instant::now());
+        a.tick(Instant::now());
+        let out = render(&a, 60, 20);
+        for text in [
+            "new badge",
+            "[>]",
+            "F I R S T   P R E S S",
+            "finish your first test",
+            "1 of 19 badges",
+            "tab continue",
+        ] {
+            assert!(
+                out.contains(text),
+                "missing {text}:
+{out}"
+            );
+        }
+        // The results are not on this screen.
+        assert!(!out.contains("wpm"), "{out}");
+        // A new rank has the logo with the rank's speed lines.
+        a.reward.as_mut().unwrap().after = crate::progress::Level::from_xp(20_000);
+        let out = render(&a, 60, 24);
+        for text in ["new rank", "H O M I N G", "level 9", "1 / 2"] {
+            assert!(
+                out.contains(text),
+                "missing {text}:
+{out}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_profile_shows_everything_about_the_user() {
+        let mut a = app(&["hi"]);
+        a.session
+            .handle(crate::engine::Key::Char('h'), Instant::now());
+        a.session
+            .handle(crate::engine::Key::Char('i'), Instant::now());
+        a.tick(Instant::now());
+        a.screen = Screen::Profile { scroll: 0 };
+        let out = render(&a, 100, 80);
+        for text in [
+            "level 1 · rank blank",
+            "next rank homing at level 5",
+            "1 test · ",
+            "best wpm",
+            "words 1",
+            "badges 1 of 19",
+            "[>] first press",
+            "[?] ???",
+            "weak keys",
+            "key quests  0 done",
+            "↑↓ scroll · tab back",
+        ] {
+            assert!(
+                out.contains(text),
+                "missing {text}:
+{out}"
+            );
+        }
+        // A short terminal shows the end of the profile after a scroll.
+        a.screen = Screen::Profile { scroll: 1000 };
+        let out = render(&a, 100, 20);
+        assert!(
+            out.contains("key quests") && !out.contains("rank blank"),
+            "{out}"
+        );
     }
 
     #[test]
@@ -370,6 +461,7 @@ mod tests {
         a.session
             .handle(crate::engine::Key::Char('i'), Instant::now());
         a.tick(Instant::now());
+        a.skip_celebration();
         let out = render(&a, 60, 20);
         for label in [
             "wpm",
