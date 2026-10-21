@@ -43,13 +43,11 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     }
     if let Some(lives) = s.lives() {
         let lost = crate::challenge::LIVES.saturating_sub(lives) as usize;
-        // Color shows the lost lives also where the two hearts look alike.
+        // Like the letters: lost lives first, in the typed-text color, then
+        // the lives left in gray, like letters not typed yet.
         status.push(vec![
-            Span::styled(
-                "♥".repeat(lives as usize),
-                Style::new().fg(t.main).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("♡".repeat(lost), Style::new().fg(t.sub)),
+            Span::styled("♥".repeat(lost), Style::new().fg(t.text)),
+            Span::styled("♥".repeat(lives as usize), Style::new().fg(t.sub)),
         ]);
     }
     if app.live && s.is_started() {

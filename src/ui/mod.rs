@@ -222,7 +222,7 @@ mod tests {
     }
 
     #[test]
-    fn lost_lives_show_as_gray_hearts() {
+    fn lost_lives_take_the_typed_color_and_lives_left_stay_gray() {
         let mut a = app(&["hello", "world", "again"]);
         a.session.set_lives(3);
         a.session
@@ -234,16 +234,16 @@ mod tests {
         let hearts: Vec<_> = (0..buf.area.height)
             .flat_map(|y| (0..buf.area.width).map(move |x| (x, y)))
             .map(|p| &buf[p])
-            .filter(|c| c.symbol() == "♥" || c.symbol() == "♡")
+            .filter(|c| c.symbol() == "♥")
             .map(|c| (c.symbol().to_string(), c.fg))
             .collect();
         let t = a.theme();
         assert_eq!(
             hearts,
             [
-                ("♥".to_string(), t.main),
-                ("♥".to_string(), t.main),
-                ("♡".to_string(), t.sub)
+                ("♥".to_string(), t.text),
+                ("♥".to_string(), t.sub),
+                ("♥".to_string(), t.sub)
             ]
         );
     }

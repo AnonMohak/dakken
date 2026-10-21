@@ -110,8 +110,10 @@ fn typeable(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// The mood symbol of a theme: ♥ love, ☯ peace, ☠ darkness, ☁ sorrow,
-/// ✿ change, ▲ resolve, and ★ dreams for the rest.
+/// The mood symbol of a theme: ♥ love, ≈ peace, † darkness, ▼ sorrow,
+/// ↑ change, ▲ resolve, and ¤ dreams for the rest. Each symbol is in
+/// Cascadia Mono, Consolas and JetBrains Mono, so no terminal draws it from
+/// a color emoji font.
 pub fn mood(theme: &str) -> char {
     let theme = theme.to_lowercase();
     let has = |words: &[&str]| words.iter().any(|w| theme.contains(w));
@@ -130,7 +132,7 @@ pub fn mood(theme: &str) -> char {
         "nature",
         "humility",
     ]) {
-        '☯'
+        '≈'
     } else if has(&[
         "power",
         "violence",
@@ -146,7 +148,7 @@ pub fn mood(theme: &str) -> char {
         "human nature",
         "trauma",
     ]) {
-        '☠'
+        '†'
     } else if has(&[
         "grief",
         "loneliness",
@@ -156,7 +158,7 @@ pub fn mood(theme: &str) -> char {
         "duty",
         "apart",
     ]) {
-        '☁'
+        '▼'
     } else if has(&[
         "change",
         "transformation",
@@ -164,7 +166,7 @@ pub fn mood(theme: &str) -> char {
         "accountability",
         "humanity",
     ]) {
-        '✿'
+        '↑'
     } else if has(&[
         "courage",
         "bravery",
@@ -198,7 +200,7 @@ pub fn mood(theme: &str) -> char {
     ]) {
         '♥'
     } else {
-        '★'
+        '¤'
     }
 }
 
@@ -412,7 +414,7 @@ mod tests {
         assert_eq!(q[0].text, "I'm gonna be King of the Pirates!");
         assert_eq!(
             (q[0].speaker, q[0].series, q[0].mood),
-            ("Monkey D. Luffy", "One Piece", '★')
+            ("Monkey D. Luffy", "One Piece", '¤')
         );
         // A paraphrase is typed as it is written.
         assert_eq!(q[3].speaker, "Gol D. Roger");
@@ -428,7 +430,7 @@ mod tests {
             "{speech:?}"
         );
         assert!(!speech.text.contains("Marineford") && !speech.text.contains("Core idea"));
-        assert_eq!(speech.mood, '☠');
+        assert_eq!(speech.mood, '†');
         assert_eq!(q[149].series, "Vinland Saga");
         for quote in &q {
             assert!(quote.text.is_ascii() && !quote.text.is_empty(), "{quote:?}");
@@ -439,12 +441,12 @@ mod tests {
     fn moods_come_from_themes() {
         assert_eq!(mood("Love and humility"), '♥');
         assert_eq!(mood("Found family"), '♥');
-        assert_eq!(mood("Strength without violence"), '☯');
-        assert_eq!(mood("Power and ideals"), '☠');
-        assert_eq!(mood("Memory and legacy"), '☁');
-        assert_eq!(mood("Redemption"), '✿');
+        assert_eq!(mood("Strength without violence"), '≈');
+        assert_eq!(mood("Power and ideals"), '†');
+        assert_eq!(mood("Memory and legacy"), '▼');
+        assert_eq!(mood("Redemption"), '↑');
         assert_eq!(mood("Pride and resolve"), '▲');
-        assert_eq!(mood("Dreams and freedom"), '★');
+        assert_eq!(mood("Dreams and freedom"), '¤');
     }
 
     #[test]

@@ -22,7 +22,7 @@ A typing-speed test for the terminal.
   starts as soon as you type the last letter, with no space), with the timer on
   the right above the words. The screen shows one quote at a time; two rows
   under it, on the right and in gray, a mood symbol and who said it (not
-  typed): ♥ love, ☯ peace, ☠ darkness, ☁ sorrow, ✿ change, ▲ resolve, ★
+  typed): ♥ love, ≈ peace, † darkness, ▼ sorrow, ↑ change, ▲ resolve, ¤
   dreams. The results show the quotes you typed to the end. The screen says
   "momo mode" and uses its own night sakura colors. Only `x` in the menu
   starts momo mode: momo is not in the `o` list, and `Enter` in the menu
@@ -77,7 +77,8 @@ A typing-speed test for the terminal.
   so you can race it (off by default). A best from before v0.4.0 moves at the
   best speed until you set a new one.
 - Challenges (`g` in the menu, or `-g NAME`): `survival` gives you 3 lives
-  (♥♥♥ above the words; a lost life turns gray ♡). Each wrong word takes one, and the test ends with
+  (three gray ♥ above the words; like a typed letter, a lost life takes the
+  color of typed text). Each wrong word takes one, and the test ends with
   the last life. `boss` makes every 25th word a boss word: a long word in
   bold, with one of your slow letter pairs when it can. Each boss word you
   type right gives 50 bonus XP. `climb` is rounds of 25 words: reach the
