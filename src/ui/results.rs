@@ -326,13 +326,13 @@ fn badges_line(app: &App, width: u16) -> Line<'static> {
 fn source_text(app: &App) -> String {
     if app.mode == Mode::Momo {
         let done = app.momo_done();
-        let speakers: Vec<&str> = done
+        let speakers: Vec<String> = done
             .iter()
-            .map(|q| q.source.split_once(", ").map_or(q.source, |(who, _)| who))
+            .map(|q| format!("{} {}", q.mood, q.speaker))
             .collect();
         return match done.len() {
             0 => "no quote to the end".to_string(),
-            1 => format!("1 quote — {}", done[0].source),
+            1 => format!("1 quote — {}, {}", speakers[0], done[0].series),
             n => format!("{n} quotes — {}", speakers.join(", ")),
         };
     }

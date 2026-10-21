@@ -176,7 +176,7 @@ pub struct App {
     /// Where the quote of a quote test comes from.
     pub source: Option<&'static str>,
     /// The quotes of the momo test, in order, as the test takes them.
-    pub momo_quotes: Rc<RefCell<Vec<words::Quote>>>,
+    pub momo_quotes: Rc<RefCell<Vec<words::MomoQuote>>>,
     /// The text for custom mode, from `--file`.
     pub custom: Option<CustomText>,
     pub screen: Screen,
@@ -312,16 +312,16 @@ impl App {
                 if next == 0 {
                     quotes.shuffle(&mut rand::rng());
                 }
-                let quote = quotes[next];
+                let quote = quotes[next].clone();
                 next = (next + 1) % quotes.len();
-                used.borrow_mut().push(quote);
                 words.extend(quote.text.split_whitespace().map(String::from));
+                used.borrow_mut().push(quote);
             }
         })
     }
 
     /// The momo quotes typed to the end in this test.
-    pub fn momo_done(&self) -> Vec<words::Quote> {
+    pub fn momo_done(&self) -> Vec<words::MomoQuote> {
         let mut left = self.session.checked_words().len();
         let mut done = Vec::new();
         for quote in self.momo_quotes.borrow().iter() {
@@ -330,9 +330,23 @@ impl App {
                 break;
             }
             left -= n;
-            done.push(*quote);
+            done.push(quote.clone());
         }
         done
+    }
+
+    /// The momo quote at the caret of `s`, and the range of its words.
+    pub fn momo_current(&self, s: &Session) -> Option<(std::ops::Range<usize>, words::MomoQuote)> {
+        let current = s.current().min(s.words().len().saturating_sub(1));
+        let mut start = 0;
+        for quote in self.momo_quotes.borrow().iter() {
+            let end = start + quote.text.split_whitespace().count();
+            if current < end {
+                return Some((start..end.min(s.words().len()), quote.clone()));
+            }
+            start = end;
+        }
+        None
     }
 
     /// Race the ghost of a saved test: the same words, with its pace caret.
@@ -1141,11 +1155,11 @@ mod tests {
             Some(crate::engine::session::MOMO_TIME)
         );
         // The words are whole quotes, one after the other.
-        let first = a.momo_quotes.borrow()[0];
+        let first = a.momo_quotes.borrow()[0].clone();
         let text: Vec<String> = (a.session.words().iter())
             .map(|w| w.iter().collect())
             .collect();
-        assert!(text.join(" ").starts_with(first.text), "{text:?}");
+        assert!(text.join(" ").starts_with(&first.text), "{text:?}");
         assert!(a.momo_quotes.borrow().len() >= 2);
         assert_eq!(a.label(), "momo");
         assert_eq!(parse_mode("momo"), Some(Mode::Momo));
@@ -1173,9 +1187,15 @@ mod tests {
         assert_eq!(a.mode, Mode::Momo);
         assert!(matches!(a.screen, Screen::Typing));
         assert!(a.momo_done().is_empty());
-        let first = a.momo_quotes.borrow()[0];
+        let first = a.momo_quotes.borrow()[0].clone();
+        let n = first.text.split_whitespace().count();
+        assert_eq!(a.momo_current(&a.session).map(|(r, _)| r), Some(0..n));
         type_text(&mut a, &format!("{} ", first.text));
-        assert_eq!(a.momo_done(), [first]);
+        assert_eq!(a.momo_done(), std::slice::from_ref(&first));
+        // The caret is in the next quote now.
+        let (range, next) = a.momo_current(&a.session).expect("a next quote");
+        assert_eq!(range.start, n);
+        assert_eq!(next, a.momo_quotes.borrow()[1]);
     }
 
     #[test]

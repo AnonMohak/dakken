@@ -94,7 +94,17 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
         .zip(s.typed())
         .map(|(w, t)| w.len().max(t.len()))
         .collect();
-    let lines = wrap(&widths, width);
+    // Momo mode shows one quote at a time, and who said it under it.
+    let momo = (s.mode() == Mode::Momo)
+        .then(|| app.momo_current(s))
+        .flatten();
+    let lines: Vec<Range<usize>> = match &momo {
+        Some((quote, _)) => wrap(&widths[quote.clone()], width)
+            .into_iter()
+            .map(|l| l.start + quote.start..l.end + quote.start)
+            .collect(),
+        None => wrap(&widths, width),
+    };
     let current = s.current().min(s.words().len() - 1);
     let current_line = lines.iter().position(|l| l.contains(&current)).unwrap_or(0);
     // Scroll only when the text is longer than the area. Then the current
@@ -152,6 +162,27 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     }
 
     let screen = frame.area();
+    // Two rows under the last line of the quote, on the right, in gray:
+    // the mood and who said it. It is not typed.
+    if let Some((_, quote)) = &momo {
+        let last = lines.len().saturating_sub(1);
+        let offset = last.checked_sub(first).filter(|&o| o < visible);
+        if let Some(offset) = offset {
+            let y = area.y + 2 * offset as u16 + 2;
+            if y < screen.bottom().saturating_sub(2) {
+                let who = Line::styled(
+                    format!("{} {}", quote.mood, quote.speaker),
+                    Style::new().fg(t.sub),
+                );
+                let who_area = Rect {
+                    y,
+                    height: 1,
+                    ..area
+                };
+                frame.render_widget(Paragraph::new(who).right_aligned(), who_area);
+            }
+        }
+    }
     // Zen starts with an empty screen, so it also says how to end.
     let hint_text = if replay {
         "• replay · any key to stop"

@@ -263,6 +263,47 @@ mod tests {
     }
 
     #[test]
+    fn momo_mode_shows_one_quote_and_who_said_it_under_it() {
+        let mut a = app(&["hi"]);
+        a.start_momo();
+        let (first, second) = {
+            let quotes = a.momo_quotes.borrow();
+            (quotes[0].clone(), quotes[1].clone())
+        };
+        let out = render(&a, 200, 40);
+        let start: String = first
+            .text
+            .split_whitespace()
+            .take(3)
+            .collect::<Vec<_>>()
+            .join(" ");
+        let next: String = second
+            .text
+            .split_whitespace()
+            .take(3)
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(out.contains(&start), "{out}");
+        assert!(!out.contains(&next), "only one quote shows:\n{out}");
+        let who = format!("{} {}", first.mood, first.speaker);
+        let rows: Vec<&str> = out.lines().collect();
+        let who_row = rows.iter().position(|l| l.contains(&who)).expect(&out);
+        let last_text = rows
+            .iter()
+            .rposition(|l| {
+                l.trim_start().starts_with(|c: char| c.is_ascii_graphic())
+                    && !l.contains(&who)
+                    && !l.contains("momo mode")
+                    && !l.contains("tab for menu")
+            })
+            .unwrap();
+        assert_eq!(who_row, last_text + 2, "{out}");
+        // It is on the right side.
+        let row = rows[who_row];
+        assert!(row.find(&who) > Some(row.len() / 3), "{out}");
+    }
+
+    #[test]
     fn small_terminal_shows_a_message() {
         let out = render(&app(&["hello"]), 20, 5);
         assert!(out.contains("too small"), "{out}");

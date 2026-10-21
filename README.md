@@ -16,10 +16,13 @@ A typing-speed test for the terminal.
 - The text fills 70% of the terminal, with an empty row between lines.
 - Quote mode: one quote from a public-domain book, poem or speech. Choose
   short (up to 15 words), medium (16 to 30) or long (more than 30) quotes.
-- Momo mode: press `x` in the menu to start it at once. Famous quotes from
-  One Piece, Hunter x Hunter and Vinland Saga come one after the other for
-  60 seconds, with the timer on the right above the words. The results show
-  the quotes you typed to the end and who said them. The screen says "momo
+- Momo mode: press `x` in the menu to start it at once. 150 quotes,
+  paraphrases and longer speeches from One Piece, Hunter x Hunter and
+  Vinland Saga come one after the other for 60 seconds, with the timer on
+  the right above the words. The screen shows one quote at a time; two rows
+  under it, on the right and in gray, a mood symbol and who said it (not
+  typed): ♥ love, ☯ peace, ☠ darkness, ☁ sorrow, ✿ change, ▲ resolve, ★
+  dreams. The results show the quotes you typed to the end. The screen says "momo
   mode" and uses its own night sakura colors; your chosen theme comes back
   when you choose another mode with `o`.
 - Custom mode: type the text of your own file, with `--file`.
@@ -338,8 +341,8 @@ The code has three parts:
 
 The word lists (English, code, Spanish and German) were written for this
 project. The quotes of quote mode are from public-domain books, poems and
-speeches. The momo mode quotes (`assets/quotes/momo.txt`) are short quotes
-from One Piece (Eiichiro Oda), Hunter x Hunter (Yoshihiro Togashi) and
+speeches. The momo mode collection (`assets/quotes/momo.md`) has quotes,
+paraphrases and longer speeches about One Piece (Eiichiro Oda), Hunter x Hunter (Yoshihiro Togashi) and
 Vinland Saga (Makoto Yukimura). They are not public domain and belong to
 their owners; the MIT license does not cover them.
 
