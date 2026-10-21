@@ -182,6 +182,9 @@ fn best_line(app: &App, r: &TestResult) -> Line<'static> {
 /// `x` for a test that can be a race.
 fn keys_text(app: &App) -> String {
     let mut keys = vec!["enter restart", "r replay"];
+    if app.momo {
+        keys = vec!["x momo again", "enter chosen mode", "r replay"];
+    }
     if app.can_save_race() {
         keys.push("x save race");
     }
@@ -324,7 +327,7 @@ fn badges_line(app: &App, width: u16) -> Line<'static> {
 /// Where the quote came from. In momo mode: the quotes typed to the end
 /// and who said them.
 fn source_text(app: &App) -> String {
-    if app.mode == Mode::Momo {
+    if app.momo {
         let done = app.momo_done();
         let speakers: Vec<&str> = done
             .iter()
@@ -341,7 +344,7 @@ fn source_text(app: &App) -> String {
 
 /// The mode and options, with the word list. Quotes have no word list.
 fn results_label(app: &App) -> String {
-    match app.mode {
+    match app.mode_now() {
         Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen => app.label(),
         _ if app.options.list == WordList::English => format!("{} · english", app.label()),
         _ => app.label(),
