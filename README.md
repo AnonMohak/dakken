@@ -140,10 +140,25 @@ cargo install --git https://github.com/AnonMohak/dakken.git
 
 Or from a clone: `cargo install --path .`
 
+## Update
+
+Use the same tool you installed with:
+
+| Installed with | Update |
+|---|---|
+| winget | `winget upgrade AnonMohak.dakken` |
+| Scoop | `scoop update dakken` |
+| Homebrew | `brew update`, then `brew upgrade dakken` |
+| Cargo | the same `cargo install` command again (add `--force` for `--git`) |
+| A file from Releases | download the new file and replace the old one |
+
+`dakken --check-update` tells you if there is a newer release. Your history,
+settings and badges stay in the data folder, so an update keeps them.
+
 ## Use
 
 ```sh
-dakken            # 100-word test (or the mode you chose in the menu)
+dakken            # 30-second test (or the mode you chose in the menu)
 dakken -t 60      # 60-second test
 dakken -w 25      # 25-word test
 dakken -q         # quote test
