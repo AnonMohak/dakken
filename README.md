@@ -25,7 +25,8 @@ A typing-speed test for the terminal.
   under it, on the right and in gray, a mood symbol and who said it (not
   typed): ♥ love, ≈ peace, † darkness, ▼ sorrow, ↑ change, ▲ resolve, ¤
   dreams. The results show the quotes you typed to the end. The screen says
-  "momo mode" and uses its own night sakura colors. Only `x` in the menu
+  "momo mode" and uses its own night sakura colors (the menu keeps your
+  theme). Only `x` in the menu
   starts momo mode: momo is not in the `o` list, and `Enter` in the menu
   starts the mode from `o`, with your own theme. Momo mode is a mode on its
   own: challenges (`g`) and strict modes (`m`) are always off in it.

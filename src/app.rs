@@ -531,10 +531,12 @@ impl App {
         self.reward.is_some() && self.mode_now() != Mode::Zen && self.race_saved.is_none()
     }
 
-    /// The theme on the screen: the momo theme in momo mode, else the
+    /// The theme on the screen: the momo theme on the momo test, its replay
+    /// and its results, else the chosen theme. The menu always has the
     /// chosen theme.
     pub fn theme(&self) -> Theme {
-        if self.momo {
+        let menu = matches!(self.screen, Screen::Menu | Screen::Modes { .. });
+        if self.momo && !menu {
             ui::theme::MOMO
         } else {
             self.theme
@@ -1263,6 +1265,25 @@ mod tests {
         a.open_menu();
         a.on_key(press(KeyCode::Char('x'), KeyModifiers::NONE), now);
         assert!(a.momo && a.session.mode() == Mode::Momo);
+    }
+
+    #[test]
+    fn the_menu_keeps_the_chosen_theme_in_momo_mode() {
+        let mut a = app(&["hi"]);
+        a.start_momo();
+        assert_eq!(a.theme().name, "momo");
+        a.open_menu();
+        assert_eq!(a.theme().name, Theme::default().name);
+        a.on_key(
+            press(KeyCode::Char('o'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert_eq!(a.theme().name, Theme::default().name);
+        // Back to the momo test: the momo theme again.
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Typing));
+        assert_eq!(a.theme().name, "momo");
     }
 
     #[test]
