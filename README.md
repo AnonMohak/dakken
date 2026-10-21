@@ -10,7 +10,8 @@ A typing-speed test for the terminal.
   <img src="docs/demo.gif" width="800" alt="dakken: typing with a live wpm, the mode menu, and the results screen">
 </p>
 
-- Time mode (15, 30, 60, 120 s); 30 seconds is the default.
+- Time mode (15, 30, 60, 120 s); 30 seconds is the default. The seconds
+  left show on the right above the words.
 - Words mode (10, 25, 50, 100 words).
 - Untimed mode: type the words that fill the screen, with no time limit.
 - The text fills 70% of the terminal, with an empty row between lines.
@@ -77,8 +78,8 @@ A typing-speed test for the terminal.
   so you can race it (off by default). A best from before v0.4.0 moves at the
   best speed until you set a new one.
 - Challenges (`g` in the menu, or `-g NAME`): `survival` gives you 3 lives
-  (three gray ♥ above the words; like a typed letter, a lost life takes the
-  color of typed text). Each wrong word takes one, and the test ends with
+  (`♥ ♥ ♥` above the words; a lost life takes its heart away). Each wrong
+  word takes one, and the test ends with
   the last life. `boss` makes every 25th word a boss word: a long word in
   bold, with one of your slow letter pairs when it can. Each boss word you
   type right gives 50 bonus XP. `climb` is rounds of 25 words: reach the

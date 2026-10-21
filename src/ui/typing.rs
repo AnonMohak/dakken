@@ -20,8 +20,9 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     let visible = word_lines(area.height);
     let t = app.theme();
 
-    // Above the words: the time left in time mode, the climb round, the
-    // lives in survival, and the live stats when they are on.
+    // Above the words, on the left: the momo title, the climb round, the
+    // lives in survival, and the live stats when they are on. The timer is
+    // on the right.
     let mut status: Vec<Vec<Span>> = Vec::new();
     let sub = |text: String| vec![Span::styled(text, Style::new().fg(t.sub))];
     if s.mode() == Mode::Momo {
@@ -30,25 +31,19 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
             Style::new().fg(t.main).add_modifier(Modifier::BOLD),
         )]);
     }
-    // Momo mode has its timer on the right, from before the start.
-    if let (Mode::Time(_), true) = (s.mode(), s.is_started()) {
-        let left = s.remaining(now).unwrap_or_default();
-        status.push(sub(format!("{}", left.as_secs_f64().ceil() as u64)));
-    }
     if let (true, Some(climb)) = (app.climb_on() && !replay, app.climb) {
         status.push(sub(format!(
             "round {} · {:.0} wpm",
             climb.round, climb.target
         )));
     }
-    if let Some(lives) = s.lives() {
-        let lost = crate::challenge::LIVES.saturating_sub(lives) as usize;
-        // Like the letters: lost lives first, in the typed-text color, then
-        // the lives left in gray, like letters not typed yet.
-        status.push(vec![
-            Span::styled("♥".repeat(lost), Style::new().fg(t.text)),
-            Span::styled("♥".repeat(lives as usize), Style::new().fg(t.sub)),
-        ]);
+    // One heart for each life left, with a gap between them. A lost life
+    // takes its heart away.
+    if let Some(lives) = s.lives().filter(|&l| l > 0) {
+        status.push(vec![Span::styled(
+            vec!["♥"; lives as usize].join(" "),
+            Style::new().fg(t.main).add_modifier(Modifier::BOLD),
+        )]);
     }
     if app.live && s.is_started() {
         status.push(sub(format!("{:.0} wpm", s.live_wpm(now))));
@@ -72,7 +67,8 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
             frame.render_widget(Paragraph::new(timer), timer_area);
         }
     }
-    if let (Mode::Momo, Some(left), true) = (s.mode(), s.remaining(now), area.y >= 2) {
+    // Time and momo tests show the seconds left, from before the start.
+    if let (Some(left), true) = (s.remaining(now), area.y >= 2) {
         let seconds = Line::styled(
             format!("{}", left.as_secs_f64().ceil() as u64),
             Style::new().fg(t.main).add_modifier(Modifier::BOLD),

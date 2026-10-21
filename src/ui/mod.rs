@@ -211,6 +211,16 @@ mod tests {
     }
 
     #[test]
+    fn the_time_mode_timer_is_on_the_right_from_the_start() {
+        let mode = Mode::Time(std::time::Duration::from_secs(30));
+        let a = App::with_session(mode, Session::from_words(mode, &["hello", "world"]));
+        let out = render(&a, 60, 20);
+        let row = out.lines().find(|l| l.contains("30")).expect(&out);
+        let words = out.lines().find(|l| l.contains("hello")).unwrap();
+        assert!(row.find("30") > words.find("world"), "{out}");
+    }
+
+    #[test]
     fn live_stats_show_only_when_on() {
         let mut a = app(&["hello", "world"]);
         a.session
@@ -222,7 +232,7 @@ mod tests {
     }
 
     #[test]
-    fn lost_lives_take_the_typed_color_and_lives_left_stay_gray() {
+    fn a_lost_life_takes_its_heart_away() {
         let mut a = app(&["hello", "world", "again"]);
         a.session.set_lives(3);
         a.session
@@ -240,12 +250,9 @@ mod tests {
         let t = a.theme();
         assert_eq!(
             hearts,
-            [
-                ("♥".to_string(), t.text),
-                ("♥".to_string(), t.sub),
-                ("♥".to_string(), t.sub)
-            ]
+            [("♥".to_string(), t.main), ("♥".to_string(), t.main)]
         );
+        assert!(render(&a, 60, 20).contains("♥ ♥"), "a gap between hearts");
     }
 
     #[test]
