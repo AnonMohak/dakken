@@ -6,10 +6,6 @@
 
 A typing-speed test for the terminal.
 
-<p align="center">
-  <img src="docs/demo.gif" width="800" alt="dakken: typing with a live wpm, the mode menu, and the results screen">
-</p>
-
 - Time mode (15, 30, 60, 120 s); 30 seconds is the default. The seconds
   left show on the right above the words.
 - Words mode (10, 25, 50, 100 words).
