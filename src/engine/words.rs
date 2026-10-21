@@ -1,4 +1,4 @@
-use rand::{Rng, RngExt, SeedableRng, rngs::StdRng};
+use rand::{Rng, RngExt};
 
 const ENGLISH: &str = include_str!("../../assets/words/english.txt");
 const ENGLISH_1K: &str = include_str!("../../assets/words/english_1k.txt");
@@ -298,12 +298,43 @@ pub const DAILY_WORDS: usize = 30;
 
 /// The daily challenge for `day` (days since 1970-01-01 UTC): words from
 /// english-1k, the same for everyone on the same day.
+///
+/// The website and the leaderboard server make the same words, so this is a
+/// fixed algorithm and not `rand` (whose output can change between
+/// versions). Do not change it. The steps:
+/// 1. Start SplitMix64 with the state `day`.
+/// 2. For each word, take the next number modulo the length of the list
+///    (1000) as the index.
+/// 3. If the index is the same as the last word's, take the next number.
 pub fn daily_words(day: i64) -> Vec<String> {
-    let mut words = WordGen::new(
-        WordList::English1k.words(),
-        StdRng::seed_from_u64(day as u64),
-    );
-    (0..DAILY_WORDS).map(|_| words.next_word()).collect()
+    let list = WordList::English1k.words();
+    let mut rng = SplitMix64(day as u64);
+    let mut last = None;
+    (0..DAILY_WORDS)
+        .map(|_| {
+            loop {
+                let i = (rng.next() % list.len() as u64) as usize;
+                if Some(i) != last {
+                    last = Some(i);
+                    return list[i].to_string();
+                }
+            }
+        })
+        .collect()
+}
+
+/// SplitMix64 (Steele, Lea and Flood, 2014): a small generator that is easy
+/// to write the same way in other languages.
+struct SplitMix64(u64);
+
+impl SplitMix64 {
+    fn next(&mut self) -> u64 {
+        self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut z = self.0;
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        z ^ (z >> 31)
+    }
 }
 
 /// Picks random words from a list and never gives the same word two times in a row.
@@ -406,6 +437,7 @@ fn capitalize(word: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::{SeedableRng, rngs::StdRng};
 
     #[test]
     fn momo_collection_has_150_typeable_quotes_with_moods() {
@@ -455,6 +487,29 @@ mod tests {
         assert_eq!(today.len(), DAILY_WORDS);
         assert_eq!(today, daily_words(20_380));
         assert_ne!(today, daily_words(20_381));
+    }
+
+    #[test]
+    fn splitmix64_matches_the_reference() {
+        // The first outputs of SplitMix64 from state 0, as in the paper's
+        // reference code.
+        let mut rng = SplitMix64(0);
+        assert_eq!(rng.next(), 0xe220_a839_7b1d_cdaf);
+        assert_eq!(rng.next(), 0x6e78_9e6a_a1b9_65f4);
+        assert_eq!(rng.next(), 0x06c4_5d18_8009_454f);
+    }
+
+    #[test]
+    fn daily_words_match_the_fixed_vectors() {
+        // The website and the leaderboard server test against the same lists.
+        assert_eq!(
+            daily_words(0).join(" "),
+            "job purpose positive film rich long violence window care dream above reduce pressure explain special us week two much guy throw system at pay arm team power fat find another"
+        );
+        assert_eq!(
+            daily_words(20_747).join(" "),
+            "next pretty discover science office performance idea party establish mother low action send weight egg best anything pretty beyond sister toward wind power explain offer street avoid machine collection everyone"
+        );
     }
 
     #[test]
