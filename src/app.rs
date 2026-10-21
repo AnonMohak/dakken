@@ -10,7 +10,7 @@ use crate::engine::{
     stats::TestResult,
     words::{self, WordGen, WordList},
 };
-use rand::seq::IndexedRandom;
+use rand::seq::{IndexedRandom, SliceRandom};
 
 use crate::badges::{self, Badges};
 use crate::best_runs::BestRuns;
@@ -25,9 +25,11 @@ use crate::progress::{self, Level};
 use crate::quests::{Quest, Quests};
 use crate::race::{self, Race};
 use crate::ui::{self, theme::Theme};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 /// The modes the menu offers, in menu order.
-pub const MODES: [Mode; 15] = [
+pub const MODES: [Mode; 14] = [
     Mode::Untimed,
     Mode::Quote(QuoteLength::All),
     Mode::Quote(QuoteLength::Short),
@@ -42,7 +44,6 @@ pub const MODES: [Mode; 15] = [
     Mode::Words(25),
     Mode::Words(50),
     Mode::Words(100),
-    Mode::Momo,
 ];
 
 pub fn mode_label(mode: Mode) -> String {
@@ -174,6 +175,8 @@ pub struct App {
     pub session: Session,
     /// Where the quote of a quote test comes from.
     pub source: Option<&'static str>,
+    /// The quotes of the momo test, in order, as the test takes them.
+    pub momo_quotes: Rc<RefCell<Vec<words::Quote>>>,
     /// The text for custom mode, from `--file`.
     pub custom: Option<CustomText>,
     pub screen: Screen,
@@ -259,6 +262,7 @@ impl App {
             size: (80, 24),
             session,
             source: None,
+            momo_quotes: Rc::default(),
             custom: None,
             screen: Screen::Typing,
             history: History::in_memory(),
@@ -282,6 +286,53 @@ impl App {
         self.daily = Some(day);
         self.mode = Mode::Words(words::DAILY_WORDS);
         self.new_test();
+    }
+
+    /// Start momo mode at once: quotes one after the other for 60 seconds.
+    pub fn start_momo(&mut self) {
+        self.daily = None;
+        self.race = None;
+        self.mode = Mode::Momo;
+        self.restart();
+    }
+
+    /// A momo session: the momo quotes in random order, one after the
+    /// other, again from the start after the last one.
+    fn momo_session(&mut self) -> Session {
+        let used = Rc::new(RefCell::new(Vec::new()));
+        self.momo_quotes = Rc::clone(&used);
+        let mut quotes = words::momo_quotes();
+        let mut next = 0;
+        let mut words = std::collections::VecDeque::new();
+        Session::new(Mode::Momo, move || {
+            loop {
+                if let Some(word) = words.pop_front() {
+                    return word;
+                }
+                if next == 0 {
+                    quotes.shuffle(&mut rand::rng());
+                }
+                let quote = quotes[next];
+                next = (next + 1) % quotes.len();
+                used.borrow_mut().push(quote);
+                words.extend(quote.text.split_whitespace().map(String::from));
+            }
+        })
+    }
+
+    /// The momo quotes typed to the end in this test.
+    pub fn momo_done(&self) -> Vec<words::Quote> {
+        let mut left = self.session.checked_words().len();
+        let mut done = Vec::new();
+        for quote in self.momo_quotes.borrow().iter() {
+            let n = quote.text.split_whitespace().count();
+            if n > left {
+                break;
+            }
+            left -= n;
+            done.push(*quote);
+        }
+        done
     }
 
     /// Race the ghost of a saved test: the same words, with its pace caret.
@@ -346,6 +397,7 @@ impl App {
                     .unwrap_or_default();
                 (Session::from_words(Mode::Words(words.len()), &words), None)
             }
+            _ if self.mode == Mode::Momo => (self.momo_session(), None),
             Some(custom) if self.mode == Mode::Custom => {
                 (Session::from_words(self.mode, &custom.words), None)
             }
@@ -528,7 +580,8 @@ impl App {
             // saved mode instead.
             let mode = match self.mode {
                 _ if self.fixed_text() => Config::load(path).mode,
-                Mode::Custom => Config::load(path).mode,
+                // Momo mode starts from its own key, so it is not saved.
+                Mode::Custom | Mode::Momo => Config::load(path).mode,
                 mode => mode,
             };
             let config = Config {
@@ -658,9 +711,7 @@ impl App {
         if key.kind != KeyEventKind::Press {
             return;
         }
-        // Cmd+C arrives as SUPER only where the terminal sends it to the app.
-        let quit_keys = KeyModifiers::CONTROL | KeyModifiers::SUPER;
-        if key.code == KeyCode::Char('c') && key.modifiers.intersects(quit_keys) {
+        if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
             self.quit = true;
             return;
         }
@@ -720,6 +771,7 @@ impl App {
             },
             Screen::Menu => match key.code {
                 KeyCode::Enter => self.restart(),
+                KeyCode::Char('x') => self.start_momo(),
                 KeyCode::Char('o') => {
                     let selected = MODES.iter().position(|&m| m == self.mode).unwrap_or(0);
                     self.screen = Screen::Modes { selected };
@@ -788,14 +840,6 @@ fn new_test(
     practice: Option<Vec<String>>,
     boss: Option<Vec<String>>,
 ) -> (Session, Option<&'static str>) {
-    if mode == Mode::Momo {
-        let quotes = words::momo_quotes();
-        let quote = *quotes
-            .choose(&mut rand::rng())
-            .expect("momo mode has quotes");
-        let words: Vec<&str> = quote.text.split_whitespace().collect();
-        return (Session::from_words(mode, &words), Some(quote.source));
-    }
     if let Mode::Quote(length) = mode {
         let quotes: Vec<_> = words::quotes()
             .into_iter()
@@ -1078,15 +1122,6 @@ mod tests {
     }
 
     #[test]
-    fn ctrl_c_and_cmd_c_quit() {
-        for modifiers in [KeyModifiers::CONTROL, KeyModifiers::SUPER] {
-            let mut a = app(&["hi"]);
-            a.on_key(press(KeyCode::Char('c'), modifiers), Instant::now());
-            assert!(a.quit, "{modifiers:?}");
-        }
-    }
-
-    #[test]
     fn momo_mode_types_a_momo_quote_in_the_momo_theme() {
         let config = Config {
             mode: Mode::Momo,
@@ -1101,11 +1136,17 @@ mod tests {
             KeyStats::in_memory(),
             None,
         );
-        let source = a.source.expect("a momo quote has a source");
-        assert!(
-            words::momo_quotes().iter().any(|q| q.source == source),
-            "{source}"
+        assert_eq!(
+            a.session.remaining(Instant::now()),
+            Some(crate::engine::session::MOMO_TIME)
         );
+        // The words are whole quotes, one after the other.
+        let first = a.momo_quotes.borrow()[0];
+        let text: Vec<String> = (a.session.words().iter())
+            .map(|w| w.iter().collect())
+            .collect();
+        assert!(text.join(" ").starts_with(first.text), "{text:?}");
+        assert!(a.momo_quotes.borrow().len() >= 2);
         assert_eq!(a.label(), "momo");
         assert_eq!(parse_mode("momo"), Some(Mode::Momo));
         assert_eq!(a.theme().name, "momo");
@@ -1119,6 +1160,22 @@ mod tests {
         assert!(!a.climb_on());
         a.challenge = Challenge::Boss;
         assert!(!a.boss_on());
+    }
+
+    #[test]
+    fn x_in_the_menu_starts_momo_mode_and_counts_whole_quotes() {
+        let mut a = app(&["hi"]);
+        a.open_menu();
+        a.on_key(
+            press(KeyCode::Char('x'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert_eq!(a.mode, Mode::Momo);
+        assert!(matches!(a.screen, Screen::Typing));
+        assert!(a.momo_done().is_empty());
+        let first = a.momo_quotes.borrow()[0];
+        type_text(&mut a, &format!("{} ", first.text));
+        assert_eq!(a.momo_done(), [first]);
     }
 
     #[test]

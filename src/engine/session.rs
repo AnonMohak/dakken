@@ -5,6 +5,9 @@ use super::stats::{self, CharCounts, Press, TestResult};
 /// Most letters you can type past the end of a word.
 pub const MAX_EXTRA: usize = 10;
 
+/// Momo mode lasts this long.
+pub const MOMO_TIME: Duration = Duration::from_secs(60);
+
 /// Time mode keeps at least this many words ready after the current one.
 const WORDS_AHEAD: usize = 50;
 
@@ -14,7 +17,8 @@ pub enum Mode {
     Untimed,
     /// Type one quote with no time limit.
     Quote(QuoteLength),
-    /// Momo mode: one quote from One Piece, Hunter x Hunter or Vinland Saga.
+    /// Momo mode: quotes from One Piece, Hunter x Hunter and Vinland Saga,
+    /// one after the other, for `MOMO_TIME`.
     Momo,
     /// Type the text of a file with no time limit.
     Custom,
@@ -147,12 +151,12 @@ impl Session {
         let count = match mode {
             Mode::Zen => return Self::zen(),
             Mode::Words(n) => n,
-            Mode::Untimed | Mode::Quote(_) | Mode::Momo | Mode::Custom => 25,
-            Mode::Time(_) => WORDS_AHEAD * 2,
+            Mode::Untimed | Mode::Quote(_) | Mode::Custom => 25,
+            Mode::Time(_) | Mode::Momo => WORDS_AHEAD * 2,
         };
         let words: Vec<String> = (0..count).map(|_| next_word()).collect();
         let mut s = Self::from_words(mode, &words);
-        if matches!(mode, Mode::Time(_)) {
+        if matches!(mode, Mode::Time(_) | Mode::Momo) {
             s.source = Some(Box::new(next_word));
         }
         s
@@ -269,22 +273,23 @@ impl Session {
         }
     }
 
-    /// Time left in time mode. `None` in the other modes.
-    pub fn remaining(&self, now: Instant) -> Option<Duration> {
+    /// The length of a time or momo test. `None` in the other modes.
+    fn time_limit(&self) -> Option<Duration> {
         match self.mode {
-            Mode::Time(limit) => Some(limit.saturating_sub(self.elapsed(now))),
-            Mode::Untimed
-            | Mode::Quote(_)
-            | Mode::Momo
-            | Mode::Custom
-            | Mode::Zen
-            | Mode::Words(_) => None,
+            Mode::Time(limit) => Some(limit),
+            Mode::Momo => Some(MOMO_TIME),
+            Mode::Untimed | Mode::Quote(_) | Mode::Custom | Mode::Zen | Mode::Words(_) => None,
         }
     }
 
-    /// Ends a time-mode test when its time is over. Call this on each frame.
+    /// Time left in time and momo mode. `None` in the other modes.
+    pub fn remaining(&self, now: Instant) -> Option<Duration> {
+        Some(self.time_limit()?.saturating_sub(self.elapsed(now)))
+    }
+
+    /// Ends a time or momo test when its time is over. Call this on each frame.
     pub fn tick(&mut self, now: Instant) {
-        if let (Mode::Time(limit), Some(start), None) = (self.mode, self.start, self.end)
+        if let (Some(limit), Some(start), None) = (self.time_limit(), self.start, self.end)
             && now >= start + limit
         {
             self.end = Some(start + limit);
@@ -846,6 +851,21 @@ mod tests {
         assert_eq!(d.s.lives(), Some(0));
         assert!(d.s.is_finished() && !d.s.is_failed());
         assert_eq!(d.s.replay().lives(), Some(2));
+    }
+
+    #[test]
+    fn momo_mode_ends_after_its_time_and_adds_words() {
+        let mut n = 0;
+        let s = Session::new(Mode::Momo, move || {
+            n += 1;
+            format!("w{n}")
+        });
+        let mut d = Driver::new(s);
+        assert_eq!(d.s.remaining(d.now), Some(MOMO_TIME));
+        d.text("w1 w2 ");
+        assert!(d.s.words().len() >= 2 + WORDS_AHEAD);
+        d.s.tick(d.now + MOMO_TIME);
+        assert!(d.s.is_finished());
     }
 
     #[test]

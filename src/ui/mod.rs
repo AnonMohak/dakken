@@ -249,13 +249,17 @@ mod tests {
     }
 
     #[test]
-    fn momo_mode_shows_its_title_above_the_words() {
+    fn momo_mode_shows_its_title_and_the_timer_above_the_words() {
         let mode = Mode::Momo;
         let a = App::with_session(mode, Session::from_words(mode, &["I'm", "gonna"]));
         let out = render(&a, 60, 20);
         let title = out.lines().position(|l| l.contains("momo mode"));
         let words = out.lines().position(|l| l.contains("I'm gonna"));
         assert!(title.is_some_and(|t| words.is_some_and(|w| t < w)), "{out}");
+        // The timer is on the right of the title row.
+        let row = out.lines().nth(title.unwrap()).unwrap();
+        assert!(row.trim_end().ends_with("60"), "{out}");
+        assert!(row.find("60") > row.find("momo mode"), "{out}");
     }
 
     #[test]
@@ -281,7 +285,7 @@ mod tests {
             "characters",
             "personal best",
             "xp",
-            "new badge: first press",
+            "new badge: [>] first press",
         ] {
             assert!(out.contains(label), "missing {label}:\n{out}");
         }
@@ -309,6 +313,10 @@ mod tests {
                 "{out}"
             );
         }
+        assert!(
+            row("momo mode").trim_start().starts_with("x      "),
+            "{out}"
+        );
         // Keys and text are each in one column.
         let start = |text: &str| row(text).find(|c: char| c != ' ');
         assert_eq!(start("mode words 1"), start("strict off"), "{out}");

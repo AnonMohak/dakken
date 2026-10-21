@@ -102,6 +102,16 @@ pub fn draw(frame: &mut Frame, app: &App) {
             ])
         })
         .collect();
+    // Momo mode is apart from the settings: its key starts it at once.
+    let mut settings = settings;
+    settings.push(Line::default());
+    settings.push(Line::from(vec![
+        Span::styled(format!("x{}", " ".repeat(GAP)), sub),
+        Span::styled(
+            "momo mode",
+            Style::new().fg(t.main).add_modifier(Modifier::BOLD),
+        ),
+    ]));
     let width = settings.iter().map(Line::width).max().unwrap_or(0) as u16;
     // The logo and the level go on top when there is room for them.
     let level = Level::from_xp(progress::total_xp(app.history.records()));

@@ -13,43 +13,91 @@ use crate::progress::{self, Level, options, words};
 
 pub struct Badge {
     pub name: &'static str,
+    /// Three ASCII characters before the name, for example "100".
+    pub symbol: &'static str,
     pub goal: &'static str,
     /// A hidden badge shows "???" until you get it.
     pub hidden: bool,
 }
 
-const fn badge(name: &'static str, goal: &'static str, hidden: bool) -> Badge {
-    Badge { name, goal, hidden }
+const fn badge(
+    name: &'static str,
+    symbol: &'static str,
+    goal: &'static str,
+    hidden: bool,
+) -> Badge {
+    Badge {
+        name,
+        symbol,
+        goal,
+        hidden,
+    }
+}
+
+/// The symbol and the name, for example "100 century".
+pub fn with_symbol(name: &str) -> String {
+    match BADGES.iter().find(|b| b.name == name) {
+        Some(b) => format!("{} {}", b.symbol, b.name),
+        None => name.to_string(),
+    }
 }
 
 pub const BADGES: [Badge; 15] = [
-    badge("first press", "finish your first test", false),
-    badge("regular", "finish 100 tests", false),
-    badge("clean", "100% accuracy on 50 words or more", false),
-    badge("century", "reach 100 wpm on 25 words or more", false),
-    badge("steady", "85% consistency on 50 words or more", false),
-    badge("iron", "pass 100 words in master mode", false),
-    badge("polyglot", "finish a test in spanish and in german", false),
+    badge("first press", "[>]", "finish your first test", false),
+    badge("regular", "[#]", "finish 100 tests", false),
+    badge("clean", "<*>", "100% accuracy on 50 words or more", false),
+    badge("century", "100", "reach 100 wpm on 25 words or more", false),
+    badge(
+        "steady",
+        "~~~",
+        "85% consistency on 50 words or more",
+        false,
+    ),
+    badge("iron", "|=|", "pass 100 words in master mode", false),
+    badge(
+        "polyglot",
+        "abc",
+        "finish a test in spanish and in german",
+        false,
+    ),
     badge(
         "compiler",
+        "{;}",
         "100% accuracy on 25 words of the code list",
         false,
     ),
-    badge("switch hitter", "finish a test on dvorak or colemak", false),
-    badge("marathon", "finish a 120 s time test", false),
+    badge(
+        "switch hitter",
+        "<->",
+        "finish a test on dvorak or colemak",
+        false,
+    ),
+    badge("marathon", ">>>", "finish a 120 s time test", false),
     badge(
         "week of keys",
+        "[7]",
         "do the daily challenge 7 days in a row",
         false,
     ),
-    badge("goal getter", "reach your weekly goal of words", false),
+    badge(
+        "goal getter",
+        "[+]",
+        "reach your weekly goal of words",
+        false,
+    ),
     badge(
         "nemesis",
+        "/!\\",
         "beat your best for a mode by 10 wpm on 25 words or more",
         true,
     ),
-    badge("exorcist", "empty the mistakes list by practising it", true),
-    badge("zen master", "type 5 minutes in one zen test", true),
+    badge(
+        "exorcist",
+        "x_x",
+        "empty the mistakes list by practising it",
+        true,
+    ),
+    badge("zen master", "(o)", "type 5 minutes in one zen test", true),
 ];
 
 /// The badges the history earns, in `BADGES` order. `cleared_mistakes` is
@@ -225,20 +273,23 @@ pub fn report(history: &History, badges: &Badges, color: bool) -> String {
         .filter(|b| badges.time(b.name).is_some())
         .count();
     out += &format!("\nbadges: {got} of {}\n", BADGES.len());
-    let width = BADGES.iter().map(|b| b.name.len()).max().unwrap_or(0);
+    let width = BADGES.iter().map(|b| b.name.len()).max().unwrap_or(0) + 4;
     for b in &BADGES {
         let line = match badges.time(b.name) {
             Some(time) => paint(
                 TEAL,
                 &format!(
                     "■ {:<width$}  {}  ({})",
-                    b.name,
+                    with_symbol(b.name),
                     b.goal,
                     &history::format_time(time)[..10]
                 ),
             ),
-            None if b.hidden => paint(GRAY, &format!("□ {:<width$}  hidden", "???")),
-            None => paint(GRAY, &format!("□ {:<width$}  {}", b.name, b.goal)),
+            None if b.hidden => paint(GRAY, &format!("□ {:<width$}  hidden", "[?] ???")),
+            None => paint(
+                GRAY,
+                &format!("□ {:<width$}  {}", with_symbol(b.name), b.goal),
+            ),
         };
         out += &format!("  {line}\n");
     }
@@ -337,9 +388,16 @@ mod tests {
         let out = report(&h, &b, false);
         assert!(out.starts_with("level 2 · rank blank\n"), "{out}");
         assert!(out.contains("badges: 2 of 15"), "{out}");
-        assert!(out.contains("■ century "), "{out}");
-        assert!(out.contains("□ clean "), "{out}");
-        assert!(out.contains("□ ???"), "{out}");
+        assert!(out.contains("■ 100 century "), "{out}");
+        assert!(out.contains("□ <*> clean "), "{out}");
+        assert!(out.contains("□ [?] ???"), "{out}");
+        let symbols: std::collections::HashSet<&str> = BADGES.iter().map(|b| b.symbol).collect();
+        assert_eq!(symbols.len(), BADGES.len(), "each badge has its own symbol");
+        assert!(
+            BADGES
+                .iter()
+                .all(|b| b.symbol.len() == 3 && b.symbol.is_ascii())
+        );
         assert!(!out.contains("nemesis"), "{out}");
     }
 }

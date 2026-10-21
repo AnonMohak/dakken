@@ -53,9 +53,7 @@ pub fn draw(frame: &mut Frame, app: &App, r: &TestResult) {
         ]),
         speed_line(r, t),
         Line::from(label(&results_label(app))),
-        Line::from(label(
-            &app.source.map_or(String::new(), |s| format!("— {s}")),
-        )),
+        Line::from(label(&source_text(app))),
         best_line(app, r),
         climb_line(app),
         race_line(app, r),
@@ -302,7 +300,13 @@ fn badges_line(app: &App, width: u16) -> Line<'static> {
     let s = if badges.len() == 1 { "" } else { "s" };
     let text = match badges {
         [] => String::new(),
-        _ => format!("new badge{s}: {}", badges.join(", ")),
+        _ => {
+            let names: Vec<String> = badges
+                .iter()
+                .map(|b| crate::badges::with_symbol(b))
+                .collect();
+            format!("new badge{s}: {}", names.join(", "))
+        }
     };
     let text = if text.chars().count() > width as usize {
         format!("{} new badges · dakken --badges", badges.len())
@@ -315,6 +319,24 @@ fn badges_line(app: &App, width: u16) -> Line<'static> {
             .fg(app.theme().main)
             .add_modifier(Modifier::BOLD),
     )
+}
+
+/// Where the quote came from. In momo mode: the quotes typed to the end
+/// and who said them.
+fn source_text(app: &App) -> String {
+    if app.mode == Mode::Momo {
+        let done = app.momo_done();
+        let speakers: Vec<&str> = done
+            .iter()
+            .map(|q| q.source.split_once(", ").map_or(q.source, |(who, _)| who))
+            .collect();
+        return match done.len() {
+            0 => "no quote to the end".to_string(),
+            1 => format!("1 quote — {}", done[0].source),
+            n => format!("{n} quotes — {}", speakers.join(", ")),
+        };
+    }
+    app.source.map_or(String::new(), |s| format!("— {s}"))
 }
 
 /// The mode and options, with the word list. Quotes have no word list.

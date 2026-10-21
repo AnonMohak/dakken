@@ -16,10 +16,12 @@ A typing-speed test for the terminal.
 - The text fills 70% of the terminal, with an empty row between lines.
 - Quote mode: one quote from a public-domain book, poem or speech. Choose
   short (up to 15 words), medium (16 to 30) or long (more than 30) quotes.
-- Momo mode: one famous quote from One Piece, Hunter x Hunter or Vinland
-  Saga, with the speaker and the series on the results. The screen says
-  "momo mode" above the words and uses its own night sakura colors. Your
-  chosen theme comes back when you leave momo mode.
+- Momo mode: press `x` in the menu to start it at once. Famous quotes from
+  One Piece, Hunter x Hunter and Vinland Saga come one after the other for
+  60 seconds, with the timer on the right above the words. The results show
+  the quotes you typed to the end and who said them. The screen says "momo
+  mode" and uses its own night sakura colors; your chosen theme comes back
+  when you choose another mode with `o`.
 - Custom mode: type the text of your own file, with `--file`.
 - Zen mode: type anything with no target text. `Enter` ends the test.
 - Daily challenge: the same 30 words for everyone each day (UTC), with your
@@ -91,7 +93,8 @@ A typing-speed test for the terminal.
   1, `homing` from 5, `sculpted` from 10, `doubleshot` from 20, `artisan`
   from 35 and `legend` from 50) and an XP bar, and the logo gets longer
   speed lines at each rank. The results show the XP and each new badge.
-  `--badges` lists all 15 badges; 3 stay hidden until you get them.
+  `--badges` lists all 15 badges, each with a small ASCII symbol such as
+  `100` for century; 3 stay hidden until you get them.
 - One `.exe` with no runtime. Made and tested on Windows 11 with WezTerm.
 
 ## Install
@@ -172,7 +175,7 @@ While you type:
 | `Tab` or `Esc` | Open the menu |
 | `Enter` (in zen mode) | End the test |
 | `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
-| `Ctrl+C`, or `Cmd+C` on a Mac | Quit (on every screen). Most Mac terminals keep `Cmd+C` for copy, so `Ctrl+C` always works. |
+| `Ctrl+C` | Quit (on every screen) |
 
 On the results:
 
@@ -197,6 +200,7 @@ In the menu, each setting shows its key on the left:
 | `c` | Show or hide the pace caret |
 | `m` | Go to the next strict mode |
 | `g` | Go to the next challenge |
+| `x` | Start momo mode |
 | `Enter` | Start a new test |
 | `Tab` or `Esc` | Go back to the test or the results |
 

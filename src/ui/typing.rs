@@ -30,6 +30,7 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
             Style::new().fg(t.main).add_modifier(Modifier::BOLD),
         )]);
     }
+    // Momo mode has its timer on the right, from before the start.
     if let (Mode::Time(_), true) = (s.mode(), s.is_started()) {
         let left = s.remaining(now).unwrap_or_default();
         status.push(sub(format!("{}", left.as_secs_f64().ceil() as u64)));
@@ -72,6 +73,18 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
             };
             frame.render_widget(Paragraph::new(timer), timer_area);
         }
+    }
+    if let (Mode::Momo, Some(left), true) = (s.mode(), s.remaining(now), area.y >= 2) {
+        let seconds = Line::styled(
+            format!("{}", left.as_secs_f64().ceil() as u64),
+            Style::new().fg(t.main).add_modifier(Modifier::BOLD),
+        );
+        let timer_area = Rect {
+            y: area.y - 2,
+            height: 1,
+            ..area
+        };
+        frame.render_widget(Paragraph::new(seconds).right_aligned(), timer_area);
     }
 
     let width = area.width as usize;
