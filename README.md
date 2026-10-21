@@ -104,6 +104,17 @@ A typing-speed test for the terminal.
 
 ## Install
 
+**Install script (Windows, no admin rights):**
+
+```powershell
+irm https://raw.githubusercontent.com/AnonMohak/dakken/master/install.ps1 | iex
+```
+
+It downloads the newest `dakken.exe` from Releases, checks it against the
+release's `SHA256SUMS`, puts it in `%LOCALAPPDATA%\Programs\dakken`, and
+adds that folder to your user `PATH`. To read the script before you run it,
+open [install.ps1](install.ps1).
+
 **winget (Windows):**
 
 ```powershell
