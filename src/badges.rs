@@ -42,7 +42,7 @@ pub fn with_symbol(name: &str) -> String {
     }
 }
 
-pub const BADGES: [Badge; 15] = [
+pub const BADGES: [Badge; 19] = [
     badge("first press", "[>]", "finish your first test", false),
     badge("regular", "[#]", "finish 100 tests", false),
     badge("clean", "<*>", "100% accuracy on 50 words or more", false),
@@ -85,6 +85,9 @@ pub const BADGES: [Badge; 15] = [
         "reach your weekly goal of words",
         false,
     ),
+    badge("summit", "/^\\", "pass round 10 of one climb", false),
+    badge("ghostbuster", "~o~", "win a race against a ghost", false),
+    badge("quester", "[x]", "finish 10 key quests", false),
     badge(
         "nemesis",
         "/!\\",
@@ -98,12 +101,33 @@ pub const BADGES: [Badge; 15] = [
         true,
     ),
     badge("zen master", "(o)", "type 5 minutes in one zen test", true),
+    badge(
+        "night owl",
+        "OvO",
+        "finish a test between 00:00 and 04:00 local time",
+        true,
+    ),
 ];
 
-/// The badges the history earns, in `BADGES` order. `cleared_mistakes` is
-/// true when the last test emptied the mistakes list. A `weekly_goal` of 0
-/// is no goal.
-pub fn earned(records: &[Record], cleared_mistakes: bool, weekly_goal: u32) -> Vec<&'static str> {
+/// What the test just finished did, for the badges that the history
+/// cannot show.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Moment {
+    /// The test emptied the mistakes list.
+    pub cleared_mistakes: bool,
+    /// The test won a race against a ghost.
+    pub beat_ghost: bool,
+    /// The climb round the test passed, or 0.
+    pub climb_round: u32,
+    /// Key quests done, after this test.
+    pub quests_done: usize,
+    /// The local hour at the end of the test.
+    pub local_hour: Option<u32>,
+}
+
+/// The badges the history and the last test (`now`) earn, in `BADGES`
+/// order. A `weekly_goal` of 0 is no goal.
+pub fn earned(records: &[Record], now: &Moment, weekly_goal: u32) -> Vec<&'static str> {
     let any = |f: &dyn Fn(&Record) -> bool| records.iter().any(f);
     let has = |r: &Record, option: &str| options(r).any(|o| o == option);
     BADGES
@@ -127,7 +151,11 @@ pub fn earned(records: &[Record], cleared_mistakes: bool, weekly_goal: u32) -> V
                         .any(|&w| w >= f64::from(weekly_goal))
             }
             "nemesis" => beat_best_by(records, 10.0),
-            "exorcist" => cleared_mistakes,
+            "exorcist" => now.cleared_mistakes,
+            "summit" => now.climb_round >= 10,
+            "ghostbuster" => now.beat_ghost,
+            "quester" => now.quests_done >= 10,
+            "night owl" => now.local_hour.is_some_and(|h| h < 4),
             "zen master" => any(&|r| r.label == "zen" && r.seconds >= 300.0),
             _ => false,
         })
@@ -315,7 +343,7 @@ mod tests {
 
     #[test]
     fn badges_come_from_the_history() {
-        assert!(earned(&[], false, 0).is_empty());
+        assert!(earned(&[], &Moment::default(), 0).is_empty());
         let mut clean = record("words 50", 60.0);
         clean.accuracy = 100.0;
         let records = vec![
@@ -324,16 +352,54 @@ mod tests {
             record("time 30 · spanish", 40.0),
         ];
         assert_eq!(
-            earned(&records, false, 0),
+            earned(&records, &Moment::default(), 0),
             ["first press", "clean", "century", "iron"]
         );
         let mut more = records.clone();
         more.push(record("time 30 · punctuation · german · dvorak", 40.0));
-        let names = earned(&more, true, 0);
+        let names = earned(
+            &more,
+            &Moment {
+                cleared_mistakes: true,
+                ..Moment::default()
+            },
+            0,
+        );
         assert!(names.contains(&"polyglot"), "{names:?}");
         assert!(names.contains(&"switch hitter"), "{names:?}");
         assert!(names.contains(&"exorcist"), "{names:?}");
         assert!(!names.contains(&"nemesis"), "{names:?}");
+    }
+
+    #[test]
+    fn badges_from_the_last_test() {
+        let records = [record("time 30", 50.0)];
+        let got = |now: Moment| earned(&records, &now, 0);
+        assert!(!got(Moment::default()).contains(&"night owl"));
+        let night = |hour| Moment {
+            local_hour: Some(hour),
+            ..Moment::default()
+        };
+        assert!(got(night(0)).contains(&"night owl"));
+        assert!(got(night(3)).contains(&"night owl"));
+        assert!(!got(night(4)).contains(&"night owl"));
+        let summit = |round| Moment {
+            climb_round: round,
+            ..Moment::default()
+        };
+        assert!(!got(summit(9)).contains(&"summit"));
+        assert!(got(summit(10)).contains(&"summit"));
+        let ghost = Moment {
+            beat_ghost: true,
+            ..Moment::default()
+        };
+        assert!(got(ghost).contains(&"ghostbuster"));
+        let quests = |n| Moment {
+            quests_done: n,
+            ..Moment::default()
+        };
+        assert!(!got(quests(9)).contains(&"quester"));
+        assert!(got(quests(10)).contains(&"quester"));
     }
 
     #[test]
@@ -357,9 +423,9 @@ mod tests {
             .map(daily)
             .collect();
         assert_eq!(longest_daily_run(&records), 7);
-        assert!(earned(&records, false, 300).contains(&"goal getter"));
-        assert!(!earned(&records, false, 400).contains(&"goal getter"));
-        assert!(earned(&records, false, 0).contains(&"week of keys"));
+        assert!(earned(&records, &Moment::default(), 300).contains(&"goal getter"));
+        assert!(!earned(&records, &Moment::default(), 400).contains(&"goal getter"));
+        assert!(earned(&records, &Moment::default(), 0).contains(&"week of keys"));
     }
 
     #[test]
@@ -384,10 +450,12 @@ mod tests {
         let mut h = History::in_memory();
         h.add(record("time 60", 120.0)).unwrap();
         let mut b = Badges::in_memory();
-        b.add(&earned(h.records(), false, 0)).1.unwrap();
+        b.add(&earned(h.records(), &Moment::default(), 0))
+            .1
+            .unwrap();
         let out = report(&h, &b, false);
         assert!(out.starts_with("level 2 · rank blank\n"), "{out}");
-        assert!(out.contains("badges: 2 of 15"), "{out}");
+        assert!(out.contains("badges: 2 of 19"), "{out}");
         assert!(out.contains("■ 100 century "), "{out}");
         assert!(out.contains("□ <*> clean "), "{out}");
         assert!(out.contains("□ [?] ???"), "{out}");

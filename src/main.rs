@@ -8,6 +8,7 @@ mod engine;
 mod history;
 mod keystats;
 mod layout;
+mod localtime;
 mod mistakes;
 mod progress;
 mod quests;
@@ -184,7 +185,11 @@ fn main() -> io::Result<()> {
         // Tests from before badges existed can earn them too.
         let goal = config::default_path().map_or(0, |p| Config::load(&p).weekly_goal);
         let _ = badges
-            .add(&badges::earned(history.records(), false, goal))
+            .add(&badges::earned(
+                history.records(),
+                &badges::Moment::default(),
+                goal,
+            ))
             .1;
         use std::io::IsTerminal;
         let color = io::stdout().is_terminal();

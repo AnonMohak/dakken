@@ -512,8 +512,24 @@ impl App {
         );
         let practising = !own_text && self.options.list == WordList::Mistakes;
         let cleared = practising && had_mistakes && self.mistakes.words().is_empty();
+        let now = self.history.records().last().map_or(0, |r| r.time);
+        let (done_quests, saved) =
+            (self.quests).update(self.session.presses(), &self.key_stats, now);
+        self.save_failed |= saved.is_err();
+        let result = self.session.result();
+        let climb_round = match (self.climb_on(), self.climb) {
+            (true, Some(c)) if c.passed(result.wpm, result.accuracy) => c.round,
+            _ => 0,
+        };
+        let moment = badges::Moment {
+            cleared_mistakes: cleared,
+            beat_ghost: self.race.as_ref().is_some_and(|r| result.wpm > r.wpm),
+            climb_round,
+            quests_done: self.quests.done_count(),
+            local_hour: crate::localtime::hour(),
+        };
         let records = self.history.records();
-        let earned = badges::earned(records, cleared, self.weekly_goal);
+        let earned = badges::earned(records, &moment, self.weekly_goal);
         let goal = f64::from(self.weekly_goal);
         let week = progress::this_week(records, history::today());
         let last = records.last().map_or(0.0, progress::words);
@@ -521,10 +537,6 @@ impl App {
         let (new, saved) = self.badges.add(&earned);
         self.save_failed |= saved.is_err();
         let xp_after = progress::total_xp(self.history.records());
-        let now = self.history.records().last().map_or(0, |r| r.time);
-        let (done_quests, saved) =
-            (self.quests).update(self.session.presses(), &self.key_stats, now);
-        self.save_failed |= saved.is_err();
         Reward {
             xp: xp_after - xp_before,
             before: Level::from_xp(xp_before),
@@ -1352,6 +1364,26 @@ mod tests {
             Instant::now(),
         );
         assert!(a.quit && a.update_now);
+    }
+
+    #[test]
+    fn winning_a_race_gives_ghostbuster() {
+        let mut a = app(&["hi"]);
+        a.start_race(Race {
+            label: "words 2".to_string(),
+            wpm: 1.0,
+            accuracy: 100.0,
+            words: vec!["two".into(), "words".into()],
+            times: vec![100, 200],
+        });
+        // Typing at once is faster than 1 wpm.
+        type_text(&mut a, "two words");
+        let reward = a.reward.clone().expect("a reward");
+        assert!(
+            reward.badges.contains(&"ghostbuster"),
+            "{:?}",
+            reward.badges
+        );
     }
 
     #[test]

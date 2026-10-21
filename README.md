@@ -98,8 +98,8 @@ A typing-speed test for the terminal.
   1, `homing` from 5, `sculpted` from 10, `doubleshot` from 20, `artisan`
   from 35 and `legend` from 50) and an XP bar, and the logo gets longer
   speed lines at each rank. The results show the XP and each new badge.
-  `--badges` lists all 15 badges, each with a small ASCII symbol such as
-  `100` for century; 3 stay hidden until you get them.
+  `--badges` lists all 19 badges, each with a small ASCII symbol such as
+  `100` for century; 4 stay hidden until you get them.
 - One `.exe` with no runtime. Made and tested on Windows 11 with WezTerm.
 
 ## Install
