@@ -66,6 +66,7 @@ pub fn parse_mode(label: &str) -> Option<Mode> {
         None if label == "quote" => Some(Mode::Quote(QuoteLength::All)),
         Some(("quote", length)) => Some(Mode::Quote(QuoteLength::parse(length)?)),
         None if label == "zen" => Some(Mode::Zen),
+        None if label == "momo" => Some(Mode::Momo),
         Some(("time", n)) => Some(Mode::Time(Duration::from_secs(n.parse().ok()?))),
         Some(("words", n)) => Some(Mode::Words(n.parse().ok()?)),
         _ => None,
@@ -174,9 +175,6 @@ pub struct App {
     pub session: Session,
     /// Where the quote of a quote test comes from.
     pub source: Option<&'static str>,
-    /// Momo mode is on. Only `x` starts it; `self.mode` stays the chosen
-    /// mode, which `Enter` starts.
-    pub momo: bool,
     /// The quotes of the momo test, in order, as the test takes them.
     pub momo_quotes: Rc<RefCell<Vec<words::Quote>>>,
     /// The text for custom mode, from `--file`.
@@ -264,7 +262,6 @@ impl App {
             size: (80, 24),
             session,
             source: None,
-            momo: false,
             momo_quotes: Rc::default(),
             custom: None,
             screen: Screen::Typing,
@@ -286,7 +283,6 @@ impl App {
 
     /// Start the daily challenge for `day`: the same words for everyone.
     pub fn start_daily(&mut self, day: i64) {
-        self.momo = false;
         self.daily = Some(day);
         self.mode = Mode::Words(words::DAILY_WORDS);
         self.new_test();
@@ -296,19 +292,8 @@ impl App {
     pub fn start_momo(&mut self) {
         self.daily = None;
         self.race = None;
-        self.momo = true;
+        self.mode = Mode::Momo;
         self.restart();
-    }
-
-    /// Leave momo mode and start a test of the chosen mode.
-    fn start_chosen(&mut self) {
-        self.momo = false;
-        self.restart();
-    }
-
-    /// The mode of the test on screen: momo, or the chosen mode.
-    pub fn mode_now(&self) -> Mode {
-        if self.momo { Mode::Momo } else { self.mode }
     }
 
     /// A momo session: the momo quotes in random order, one after the
@@ -352,7 +337,6 @@ impl App {
 
     /// Race the ghost of a saved test: the same words, with its pace caret.
     pub fn start_race(&mut self, race: Race) {
-        self.momo = false;
         self.race = Some(race);
         self.new_test();
     }
@@ -413,7 +397,7 @@ impl App {
                     .unwrap_or_default();
                 (Session::from_words(Mode::Words(words.len()), &words), None)
             }
-            _ if self.momo => (self.momo_session(), None),
+            _ if self.mode == Mode::Momo => (self.momo_session(), None),
             Some(custom) if self.mode == Mode::Custom => {
                 (Session::from_words(self.mode, &custom.words), None)
             }
@@ -441,7 +425,7 @@ impl App {
     fn update_mistakes(&mut self) -> std::io::Result<()> {
         // Quote, custom and zen tests have their own text, not a word list.
         let own_text = matches!(
-            self.mode_now(),
+            self.mode,
             Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
         );
         let list = (!own_text).then_some(self.options.list);
@@ -460,7 +444,7 @@ impl App {
     /// The XP and new badges of the test just added to the history.
     fn give_reward(&mut self, xp_before: u64, had_mistakes: bool) -> Reward {
         let own_text = matches!(
-            self.mode_now(),
+            self.mode,
             Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
         );
         let practising = !own_text && self.options.list == WordList::Mistakes;
@@ -491,14 +475,13 @@ impl App {
 
     /// A finished test with a target text can be saved as a race.
     pub fn can_save_race(&self) -> bool {
-        let own_key = matches!(self.mode_now(), Mode::Zen | Mode::Momo);
-        self.reward.is_some() && !own_key && self.race_saved.is_none()
+        self.reward.is_some() && self.mode != Mode::Zen && self.race_saved.is_none()
     }
 
     /// The theme on the screen: the momo theme in momo mode, else the
     /// chosen theme.
     pub fn theme(&self) -> Theme {
-        if self.momo {
+        if self.mode == Mode::Momo && !self.fixed_text() {
             ui::theme::MOMO
         } else {
             self.theme
@@ -507,14 +490,14 @@ impl App {
 
     /// This test is a round of the climb challenge.
     pub fn climb_on(&self) -> bool {
-        let own_text = matches!(self.mode_now(), Mode::Momo | Mode::Custom | Mode::Zen);
+        let own_text = matches!(self.mode, Mode::Momo | Mode::Custom | Mode::Zen);
         self.challenge == Challenge::Climb && !self.fixed_text() && !own_text
     }
 
     /// Boss words are in this test: the boss challenge, with random words.
     pub fn boss_on(&self) -> bool {
         let own_text = matches!(
-            self.mode_now(),
+            self.mode,
             Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
         );
         self.challenge == Challenge::Boss && !self.fixed_text() && !own_text
@@ -597,7 +580,8 @@ impl App {
             // saved mode instead.
             let mode = match self.mode {
                 _ if self.fixed_text() => Config::load(path).mode,
-                Mode::Custom => Config::load(path).mode,
+                // Momo mode starts from its own key, so it is not saved.
+                Mode::Custom | Mode::Momo => Config::load(path).mode,
                 mode => mode,
             };
             let config = Config {
@@ -639,13 +623,13 @@ impl App {
         if self.climb_on() {
             return "climb".to_string();
         }
-        let mut parts = vec![mode_label(self.mode_now())];
+        let mut parts = vec![mode_label(self.mode)];
         if let (Mode::Custom, Some(custom)) = (self.mode, &self.custom) {
             parts.push(custom.name.clone());
         }
         // These modes have their own text, so word options do not apply.
         let own_text = matches!(
-            self.mode_now(),
+            self.mode,
             Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
         );
         if !own_text && self.options.punctuation {
@@ -747,8 +731,7 @@ impl App {
             },
             Screen::Replay(_) => self.screen = Screen::Results(self.session.result()),
             Screen::Results(ref result) => match key.code {
-                KeyCode::Enter => self.start_chosen(),
-                KeyCode::Char('x') if self.momo => self.start_momo(),
+                KeyCode::Enter => self.restart(),
                 KeyCode::Char('r') if !self.session.log().is_empty() => {
                     self.screen = Screen::Replay(Box::new(Replay {
                         session: self.session.replay(),
@@ -778,7 +761,6 @@ impl App {
                 KeyCode::Enter => {
                     self.daily = None;
                     self.race = None;
-                    self.momo = false;
                     self.mode = MODES[selected];
                     self.save_config();
                     self.new_test();
@@ -788,7 +770,7 @@ impl App {
                 _ => {}
             },
             Screen::Menu => match key.code {
-                KeyCode::Enter => self.start_chosen(),
+                KeyCode::Enter => self.restart(),
                 KeyCode::Char('x') => self.start_momo(),
                 KeyCode::Char('o') => {
                     let selected = MODES.iter().position(|&m| m == self.mode).unwrap_or(0);
@@ -1140,9 +1122,13 @@ mod tests {
     }
 
     #[test]
-    fn momo_mode_types_momo_quotes_in_the_momo_theme() {
+    fn momo_mode_types_a_momo_quote_in_the_momo_theme() {
+        let config = Config {
+            mode: Mode::Momo,
+            ..Config::default()
+        };
         let mut a = App::new(
-            Config::default(),
+            config,
             None,
             (80, 24),
             History::in_memory(),
@@ -1150,7 +1136,6 @@ mod tests {
             KeyStats::in_memory(),
             None,
         );
-        a.start_momo();
         assert_eq!(
             a.session.remaining(Instant::now()),
             Some(crate::engine::session::MOMO_TIME)
@@ -1163,20 +1148,18 @@ mod tests {
         assert!(text.join(" ").starts_with(first.text), "{text:?}");
         assert!(a.momo_quotes.borrow().len() >= 2);
         assert_eq!(a.label(), "momo");
-        // Momo mode is never the saved mode.
-        assert_eq!(parse_mode("momo"), None);
+        assert_eq!(parse_mode("momo"), Some(Mode::Momo));
         assert_eq!(a.theme().name, "momo");
-        // The chosen theme stays saved, and comes back after momo mode.
+        // The chosen theme stays saved, and comes back in other modes.
         assert_eq!(a.theme.name, Theme::default().name);
+        a.mode = Mode::Words(10);
+        assert_eq!(a.theme().name, Theme::default().name);
         // Boss words and climb do not apply to momo quotes.
+        a.mode = Mode::Momo;
         a.challenge = Challenge::Climb;
         assert!(!a.climb_on());
         a.challenge = Challenge::Boss;
         assert!(!a.boss_on());
-        a.challenge = Challenge::Off;
-        a.start_chosen();
-        assert_eq!(a.theme().name, Theme::default().name);
-        assert_eq!(a.label(), "words 100");
     }
 
     #[test]
@@ -1187,38 +1170,12 @@ mod tests {
             press(KeyCode::Char('x'), KeyModifiers::NONE),
             Instant::now(),
         );
-        assert!(a.momo);
-        assert_eq!(a.session.mode(), Mode::Momo);
-        assert_eq!(a.mode, Mode::Words(1), "the chosen mode stays");
+        assert_eq!(a.mode, Mode::Momo);
         assert!(matches!(a.screen, Screen::Typing));
         assert!(a.momo_done().is_empty());
         let first = a.momo_quotes.borrow()[0];
         type_text(&mut a, &format!("{} ", first.text));
         assert_eq!(a.momo_done(), [first]);
-    }
-
-    #[test]
-    fn enter_after_momo_starts_the_chosen_mode_and_x_starts_momo_again() {
-        let mut a = app(&["hi"]);
-        let now = Instant::now();
-        a.start_momo();
-        a.session.handle(Key::Char('x'), now);
-        a.tick(now + crate::engine::session::MOMO_TIME);
-        assert!(matches!(a.screen, Screen::Results(_)));
-        assert!(!a.can_save_race(), "x is for momo here");
-        a.on_key(press(KeyCode::Char('x'), KeyModifiers::NONE), now);
-        assert!(a.momo && matches!(a.screen, Screen::Typing));
-        // Enter in the menu starts the chosen mode, not momo.
-        a.open_menu();
-        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), now);
-        assert!(!a.momo);
-        assert_eq!(a.session.mode(), Mode::Words(1));
-        // Enter on the results of a momo test does the same.
-        a.start_momo();
-        a.session.handle(Key::Char('x'), now);
-        a.tick(now + crate::engine::session::MOMO_TIME);
-        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), now);
-        assert!(!a.momo && matches!(a.screen, Screen::Typing));
     }
 
     #[test]

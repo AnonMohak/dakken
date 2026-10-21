@@ -20,9 +20,8 @@ A typing-speed test for the terminal.
   One Piece, Hunter x Hunter and Vinland Saga come one after the other for
   60 seconds, with the timer on the right above the words. The results show
   the quotes you typed to the end and who said them. The screen says "momo
-  mode" and uses its own night sakura colors. Only `x` starts momo mode:
-  `Enter` always starts your chosen mode, with your own theme. On the momo
-  results, `x` plays momo again.
+  mode" and uses its own night sakura colors; your chosen theme comes back
+  when you choose another mode with `o`.
 - Custom mode: type the text of your own file, with `--file`.
 - Zen mode: type anything with no target text. `Enter` ends the test.
 - Daily challenge: the same 30 words for everyone each day (UTC), with your
