@@ -1,3 +1,4 @@
+mod ascii;
 mod menu;
 mod results;
 pub mod theme;
@@ -44,6 +45,9 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
         Screen::Results(result) => results::draw(frame, app, result),
         Screen::Menu => menu::draw(frame, app),
         Screen::Modes { selected } => menu::draw_modes(frame, app, *selected),
+    }
+    if app.ascii {
+        ascii::replace_symbols(frame.buffer_mut());
     }
 }
 
@@ -308,6 +312,48 @@ mod tests {
         // It is on the right side.
         let row = rows[who_row];
         assert!(row.find(&who) > Some(row.len() / 3), "{out}");
+    }
+
+    #[test]
+    fn ascii_symbols_leave_only_ascii_on_every_screen() {
+        let mut a = app(&["hello", "world", "again"]);
+        a.ascii = true;
+        a.session.set_lives(3);
+        a.session
+            .handle(crate::engine::Key::Char('x'), Instant::now());
+        a.session.handle(crate::engine::Key::Space, Instant::now());
+        let typing = render(&a, 80, 24);
+        assert!(typing.is_ascii(), "{typing}");
+        assert!(typing.contains("<3 <3"), "{typing}");
+        // The results, with a graph and the reward lines.
+        let start = Instant::now();
+        for (i, c) in "hello world again".chars().enumerate() {
+            let key = if c == ' ' {
+                crate::engine::Key::Space
+            } else {
+                crate::engine::Key::Char(c)
+            };
+            a.session.handle(
+                key,
+                start + std::time::Duration::from_millis(300 * i as u64),
+            );
+        }
+        a.tick(start + std::time::Duration::from_secs(10));
+        let results = render(&a, 80, 30);
+        assert!(results.is_ascii(), "{results}");
+        for screen in [Screen::Menu, Screen::Modes { selected: 0 }] {
+            a.screen = screen;
+            a.update = Some("v9.0.0".into());
+            let out = render(&a, 80, 30);
+            assert!(out.is_ascii(), "{out}");
+        }
+        a.start_momo();
+        let momo = render(&a, 100, 30);
+        assert!(momo.is_ascii(), "{momo}");
+        // Letters of the words stay as they are.
+        let mut b = app(&["für"]);
+        b.ascii = true;
+        assert!(render(&b, 60, 20).contains("für"));
     }
 
     #[test]

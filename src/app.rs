@@ -168,6 +168,8 @@ pub struct App {
     pub weekly_goal: u32,
     /// Ask GitHub once a day for a newer version.
     pub update_check: bool,
+    /// Draw the screens with ASCII only (`symbols = "ascii"`).
+    pub ascii: bool,
     /// The tag of a newer release, for the notice in the menu.
     pub update: Option<String>,
     /// `u` in the menu: quit, then update dakken.
@@ -237,6 +239,7 @@ impl App {
             layout: config.layout,
             weekly_goal: config.weekly_goal,
             update_check: config.update_check,
+            ascii: config.ascii,
             config_path,
             size,
             history,
@@ -268,6 +271,7 @@ impl App {
             layout: Layout::Qwerty,
             weekly_goal: 0,
             update_check: false,
+            ascii: false,
             update: None,
             update_now: false,
             config_path: None,
@@ -673,6 +677,7 @@ impl App {
                 layout: self.layout,
                 weekly_goal: self.weekly_goal,
                 update_check: self.update_check,
+                ascii: self.ascii,
             };
             let _ = config.save(path);
         }

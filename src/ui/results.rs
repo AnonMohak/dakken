@@ -328,7 +328,7 @@ fn source_text(app: &App) -> String {
         let done = app.momo_done();
         let speakers: Vec<String> = done
             .iter()
-            .map(|q| format!("{} {}", q.mood, q.speaker))
+            .map(|q| format!("{} {}", super::ascii::mood(q.mood, app.ascii), q.speaker))
             .collect();
         return match done.len() {
             0 => "no quote to the end".to_string(),

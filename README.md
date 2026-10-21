@@ -295,6 +295,7 @@ caret = "block"      # block, bar or underline
 layout = "qwerty"    # qwerty, dvorak or colemak
 weekly_goal = 0      # words to type each week (Monday to Sunday, UTC); 0 is no goal
 update_check = true  # ask GitHub once a day for a newer version
+symbols = "unicode"  # or "ascii": the app screens use only ASCII characters
 ```
 
 With a weekly goal, the menu shows the words of this week under your level,

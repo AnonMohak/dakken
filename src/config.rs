@@ -30,6 +30,9 @@ pub struct Config {
     pub weekly_goal: u32,
     /// Ask GitHub once a day for a newer version, for the menu.
     pub update_check: bool,
+    /// Draw the app screens with ASCII only, for terminals whose font lacks
+    /// the symbols.
+    pub ascii: bool,
 }
 
 /// The shape of the text cursor.
@@ -75,6 +78,7 @@ impl Default for Config {
             custom_theme: None,
             weekly_goal: 0,
             update_check: true,
+            ascii: false,
         }
     }
 }
@@ -127,6 +131,7 @@ impl Config {
                 "punctuation" => config.options.punctuation = value == "true",
                 "weekly_goal" => config.weekly_goal = value.parse().unwrap_or(config.weekly_goal),
                 "update_check" => config.update_check = value != "false",
+                "symbols" => config.ascii = value == "ascii",
                 "numbers" => config.options.numbers = value == "true",
                 "words" => {
                     config.options.list = WordList::parse(value).unwrap_or(config.options.list)
@@ -159,7 +164,8 @@ impl Config {
              caret = \"{}\"\n\
              layout = \"{}\"\n\
              weekly_goal = {}\n\
-             update_check = {}\n",
+             update_check = {}\n\
+             symbols = \"{}\"\n",
             mode_label(self.mode),
             self.theme.name,
             self.options.punctuation,
@@ -172,7 +178,8 @@ impl Config {
             self.caret.name(),
             self.layout.name(),
             self.weekly_goal,
-            self.update_check
+            self.update_check,
+            if self.ascii { "ascii" } else { "unicode" }
         ) + &self.custom_colors_text()
     }
 
@@ -238,6 +245,7 @@ mod tests {
             custom_theme: None,
             weekly_goal: 3000,
             update_check: false,
+            ascii: true,
         };
         assert_eq!(Config::parse(&config.to_text()), config);
     }

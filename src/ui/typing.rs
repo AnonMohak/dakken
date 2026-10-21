@@ -41,7 +41,7 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     // takes its heart away.
     if let Some(lives) = s.lives().filter(|&l| l > 0) {
         status.push(vec![Span::styled(
-            vec!["♥"; lives as usize].join(" "),
+            vec![if app.ascii { "<3" } else { "♥" }; lives as usize].join(" "),
             Style::new().fg(t.main).add_modifier(Modifier::BOLD),
         )]);
     }
@@ -165,7 +165,11 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
             let y = area.y + 2 * offset as u16 + 2;
             if y < screen.bottom().saturating_sub(2) {
                 let who = Line::styled(
-                    format!("{} {}", quote.mood, quote.speaker),
+                    format!(
+                        "{} {}",
+                        super::ascii::mood(quote.mood, app.ascii),
+                        quote.speaker
+                    ),
                     Style::new().fg(t.sub),
                 );
                 let who_area = Rect {
