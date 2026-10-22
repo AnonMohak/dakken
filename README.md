@@ -295,17 +295,31 @@ In the menu, each setting shows its key on the left:
 | `p` | Turn punctuation on or off |
 | `n` | Turn numbers on or off |
 | `l` | Go to the next word list |
-| `t` | Go to the next color theme |
-| `s` | Show or hide the live WPM and accuracy |
-| `c` | Show or hide the pace caret |
 | `m` | Go to the next strict mode |
 | `g` | Go to the next challenge |
 | `x` | Start momo mode |
 | `d` | Start the daily challenge (the menu shows if you did it today) |
 | `q` | Quit |
 | `f` | Open your profile (`↑`/`↓` or `j`/`k` scroll, `Tab` goes back) |
+| `e` | Open the settings |
+| `t`, `s`, `c` | Shortcuts: next theme, live WPM on or off, pace caret on or off |
 | `Enter` | Start a new test |
 | `Tab` or `Esc` | Go back to the test or the results |
+
+On the settings screen (`e`), choose a row with `↑`/`↓` and change it with
+`←`/`→` or `Enter`. The changes are saved at once:
+
+| Setting | Values |
+|---|---|
+| theme | all the themes, and `custom` if you made one |
+| live stats | live WPM and accuracy during the test, on or off |
+| pace caret | on or off |
+| caret | block, bar or underline |
+| layout | qwerty, dvorak or colemak |
+| weekly goal | off, 1000, 2500, 5000, 10000, 25000 or 50000 words |
+| symbols | unicode or ascii |
+| underline errors | underline the wrong letters too, for people who do not see the red |
+| update check | on or off |
 
 On the mode screen (`o`):
 
@@ -358,6 +372,7 @@ layout = "qwerty"    # qwerty, dvorak or colemak
 weekly_goal = 0      # words to type each week (Monday to Sunday, UTC); 0 is no goal
 update_check = true  # ask GitHub once a day for a newer version
 symbols = "unicode"  # or "ascii": the app screens use only ASCII characters (always in the Linux text console)
+underline_errors = false  # underline wrong letters, not only color them
 ```
 
 With a weekly goal, the menu shows the words of this week under your level,

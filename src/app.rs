@@ -29,6 +29,62 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 /// The modes the menu offers, in menu order.
+/// The rows of the settings screen, opened with `e` in the menu.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Setting {
+    Theme,
+    Live,
+    Pace,
+    Caret,
+    Layout,
+    WeeklyGoal,
+    Symbols,
+    UnderlineErrors,
+    UpdateCheck,
+}
+
+pub const SETTINGS: [Setting; 9] = [
+    Setting::Theme,
+    Setting::Live,
+    Setting::Pace,
+    Setting::Caret,
+    Setting::Layout,
+    Setting::WeeklyGoal,
+    Setting::Symbols,
+    Setting::UnderlineErrors,
+    Setting::UpdateCheck,
+];
+
+/// The weekly goals that the settings screen offers, in words. 0 is no goal.
+const WEEKLY_GOALS: [u32; 7] = [0, 1000, 2500, 5000, 10_000, 25_000, 50_000];
+
+impl Setting {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Theme => "theme",
+            Self::Live => "live stats",
+            Self::Pace => "pace caret",
+            Self::Caret => "caret",
+            Self::Layout => "layout",
+            Self::WeeklyGoal => "weekly goal",
+            Self::Symbols => "symbols",
+            Self::UnderlineErrors => "underline errors",
+            Self::UpdateCheck => "update check",
+        }
+    }
+}
+
+/// The value after `now` in `all`, or before it with `forward` false.
+fn cycle<T: Copy + PartialEq>(all: &[T], now: T, forward: bool) -> T {
+    let i = all.iter().position(|&v| v == now).unwrap_or(0);
+    let n = all.len();
+    all[if forward {
+        (i + 1) % n
+    } else {
+        (i + n - 1) % n
+    }]
+}
+
 pub const MODES: [Mode; 14] = [
     Mode::Untimed,
     Mode::Quote(QuoteLength::All),
@@ -126,6 +182,10 @@ pub enum Screen {
     Profile {
         scroll: usize,
     },
+    /// The settings that are not test options, opened with `e` in the menu.
+    Settings {
+        selected: usize,
+    },
 }
 
 /// One full-screen page of a reward.
@@ -197,6 +257,8 @@ pub struct App {
     pub update_check: bool,
     /// Draw the screens with ASCII only (`symbols = "ascii"`).
     pub ascii: bool,
+    /// Underline wrong letters, so errors do not show by color only.
+    pub underline_errors: bool,
     /// The Linux text console, whose font has few symbols: the screens use
     /// ASCII there, but the saved `symbols` setting does not change.
     pub plain_console: bool,
@@ -276,6 +338,7 @@ impl App {
             weekly_goal: config.weekly_goal,
             update_check: config.update_check,
             ascii: config.ascii,
+            underline_errors: config.underline_errors,
             plain_console: std::env::var_os("TERM").is_some_and(|t| t == "linux"),
             truecolor: ui::color256::truecolor(),
             config_path,
@@ -310,6 +373,7 @@ impl App {
             weekly_goal: 0,
             update_check: false,
             ascii: false,
+            underline_errors: false,
             plain_console: false,
             truecolor: true,
             update: None,
@@ -774,6 +838,7 @@ impl App {
                 weekly_goal: self.weekly_goal,
                 update_check: self.update_check,
                 ascii: self.ascii,
+                underline_errors: self.underline_errors,
             };
             let _ = config.save(path);
         }
@@ -964,6 +1029,24 @@ impl App {
                 KeyCode::Tab | KeyCode::Esc => self.screen = Screen::Menu,
                 _ => {}
             },
+            Screen::Settings { selected } => match key.code {
+                KeyCode::Up | KeyCode::Char('k') => {
+                    let selected = (selected + SETTINGS.len() - 1) % SETTINGS.len();
+                    self.screen = Screen::Settings { selected };
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    let selected = (selected + 1) % SETTINGS.len();
+                    self.screen = Screen::Settings { selected };
+                }
+                KeyCode::Right | KeyCode::Char('l') | KeyCode::Enter | KeyCode::Char(' ') => {
+                    self.change_setting(SETTINGS[selected], true);
+                }
+                KeyCode::Left | KeyCode::Char('h') => {
+                    self.change_setting(SETTINGS[selected], false)
+                }
+                KeyCode::Tab | KeyCode::Esc => self.screen = Screen::Menu,
+                _ => {}
+            },
             Screen::Modes { selected } => match key.code {
                 KeyCode::Up | KeyCode::Char('k') => {
                     let selected = (selected + MODES.len() - 1) % MODES.len();
@@ -994,6 +1077,7 @@ impl App {
                     self.screen = Screen::Typing;
                 }
                 KeyCode::Char('f') => self.screen = Screen::Profile { scroll: 0 },
+                KeyCode::Char('e') => self.screen = Screen::Settings { selected: 0 },
                 KeyCode::Char('u') if self.update.is_some() => {
                     self.update_now = true;
                     self.quit = true;
@@ -1051,6 +1135,55 @@ impl App {
                 _ => {}
             },
         }
+    }
+
+    /// The value of a setting, as the settings screen shows it.
+    pub fn setting_value(&self, setting: Setting) -> String {
+        let on_off = |on: bool| if on { "on" } else { "off" }.to_string();
+        match setting {
+            Setting::Theme => self.theme.name.to_string(),
+            Setting::Live => on_off(self.live),
+            Setting::Pace => on_off(self.pace),
+            Setting::Caret => self.caret.name().to_string(),
+            Setting::Layout => self.layout.name().to_string(),
+            Setting::WeeklyGoal if self.weekly_goal == 0 => "off".to_string(),
+            Setting::WeeklyGoal => format!("{} words", self.weekly_goal),
+            Setting::Symbols => if self.ascii { "ascii" } else { "unicode" }.to_string(),
+            Setting::UnderlineErrors => on_off(self.underline_errors),
+            Setting::UpdateCheck => on_off(self.update_check),
+        }
+    }
+
+    /// Change a setting to its next value (or the one before), and save it.
+    fn change_setting(&mut self, setting: Setting, forward: bool) {
+        match setting {
+            Setting::Theme => {
+                let all: Vec<Theme> = (ui::theme::THEMES.iter().copied())
+                    .chain(self.custom_theme)
+                    .collect();
+                self.theme = cycle(&all, self.theme, forward);
+            }
+            Setting::Live => self.live = !self.live,
+            Setting::Pace => self.pace = !self.pace,
+            Setting::Caret => self.caret = cycle(&Caret::ALL, self.caret, forward),
+            Setting::Layout => self.layout = cycle(&Layout::ALL, self.layout, forward),
+            Setting::WeeklyGoal => {
+                // A goal from the config file that is not in the list goes
+                // to the next one up.
+                let goal = (WEEKLY_GOALS.iter().copied())
+                    .find(|&g| g >= self.weekly_goal)
+                    .unwrap_or(0);
+                self.weekly_goal = if goal == self.weekly_goal {
+                    cycle(&WEEKLY_GOALS, goal, forward)
+                } else {
+                    goal
+                };
+            }
+            Setting::Symbols => self.ascii = !self.ascii,
+            Setting::UnderlineErrors => self.underline_errors = !self.underline_errors,
+            Setting::UpdateCheck => self.update_check = !self.update_check,
+        }
+        self.save_config();
     }
 
     fn open_menu(&mut self) {
@@ -1237,6 +1370,41 @@ mod tests {
         a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
         assert_eq!(a.daily, None);
         assert_ne!(a.label(), "daily");
+    }
+
+    #[test]
+    fn the_settings_screen_changes_and_cycles_settings() {
+        let mut a = app(&["hi"]);
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        a.on_key(
+            press(KeyCode::Char('e'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(matches!(a.screen, Screen::Settings { selected: 0 }));
+        let row = |s| SETTINGS.iter().position(|&x| x == s).unwrap();
+        a.screen = Screen::Settings {
+            selected: row(Setting::Caret),
+        };
+        a.on_key(press(KeyCode::Right, KeyModifiers::NONE), Instant::now());
+        assert_eq!(a.caret, Caret::Bar);
+        a.on_key(press(KeyCode::Left, KeyModifiers::NONE), Instant::now());
+        a.on_key(press(KeyCode::Left, KeyModifiers::NONE), Instant::now());
+        assert_eq!(a.caret, Caret::Underline);
+        a.screen = Screen::Settings {
+            selected: row(Setting::WeeklyGoal),
+        };
+        a.weekly_goal = 3000;
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        assert_eq!(a.weekly_goal, 5000, "a goal not in the list goes up");
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        assert_eq!(a.setting_value(Setting::WeeklyGoal), "10000 words");
+        a.screen = Screen::Settings {
+            selected: row(Setting::UnderlineErrors),
+        };
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        assert!(a.underline_errors);
+        a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Menu));
     }
 
     #[test]

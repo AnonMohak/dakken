@@ -40,6 +40,8 @@ fn ascii_for(symbol: &str) -> Option<&'static str> {
         '‘' | '’' => "'",
         '↑' => "^",
         '↓' => "v",
+        '←' => "<",
+        '→' => ">",
         '♥' => "<",
         // The graph: a Braille cell with dots is a point, an empty one is
         // a space.

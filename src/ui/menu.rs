@@ -73,12 +73,6 @@ pub fn draw(frame: &mut Frame, app: &App) {
         list => list.name().to_string(),
     };
     setting('l', "words", &list, t.text);
-    // The chosen theme, also in momo mode, where the momo theme is on.
-    setting('t', "theme", app.theme.name, t.text);
-    let (state, color) = on_off(app.live);
-    setting('s', "live stats", state, color);
-    let (state, color) = on_off(app.pace);
-    setting('c', "pace caret", state, color);
     let strict_color = if app.strict == Strict::Off {
         t.text
     } else {
@@ -127,6 +121,13 @@ pub fn draw(frame: &mut Frame, app: &App) {
     settings.push(Line::from(vec![
         Span::styled(format!("f{}", " ".repeat(GAP)), sub),
         Span::styled("profile", Style::new().fg(t.text)),
+    ]));
+    // The display settings are on their own screen. The chosen theme shows
+    // here, also in momo mode, where the momo theme is on.
+    settings.push(Line::from(vec![
+        Span::styled(format!("e{}", " ".repeat(GAP)), sub),
+        Span::styled("settings ", Style::new().fg(t.text)),
+        Span::styled(format!("theme {}", app.theme.name), sub),
     ]));
     let width = settings.iter().map(Line::width).max().unwrap_or(0) as u16;
     // The logo and the level go on top when there is room for them.

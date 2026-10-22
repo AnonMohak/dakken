@@ -144,7 +144,8 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
             let pace_letter = pace.filter(|&(w, _)| w == i).map(|(_, l)| l);
             let word = (&s.words()[i][..], &s.typed()[i][..]);
             let boss = app.boss_on() && crate::challenge::is_boss(i);
-            word_spans(t, word, (i < s.current(), boss), pace_letter, &mut spans);
+            let marks = (i < s.current(), boss, app.underline_errors);
+            word_spans(t, word, marks, pace_letter, &mut spans);
             x += widths[i];
         }
         let line_area = Rect {
@@ -203,11 +204,12 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
 
 /// Colors each letter of one word: wrong, extra and missed letters are red.
 /// The `pace` letter gets a gray background. A boss word is bold, and its
-/// letters to type are in the theme color.
+/// letters to type are in the theme color. With `underline`, the red letters
+/// are also underlined, for people who do not see the red.
 fn word_spans(
     theme: Theme,
     (target, typed): (&[char], &[char]),
-    (done, boss): (bool, bool),
+    (done, boss, underline): (bool, bool, bool),
     pace: Option<usize>,
     out: &mut Vec<Span<'static>>,
 ) {
@@ -223,6 +225,12 @@ fn word_spans(
             (None, None) => unreachable!(),
         };
         let style = Style::new().fg(color);
+        let error = color == theme.error || color == theme.error_extra;
+        let style = if underline && error {
+            style.add_modifier(Modifier::UNDERLINED)
+        } else {
+            style
+        };
         let style = if boss {
             style.add_modifier(Modifier::BOLD)
         } else {

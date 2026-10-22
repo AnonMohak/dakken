@@ -4,6 +4,7 @@ pub mod color256;
 mod menu;
 mod profile;
 mod results;
+mod settings;
 pub mod theme;
 mod typing;
 
@@ -50,6 +51,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
         Screen::Modes { selected } => menu::draw_modes(frame, app, *selected),
         Screen::Celebration { page } => celebration::draw(frame, app, *page),
         Screen::Profile { scroll } => profile::draw(frame, app, *scroll),
+        Screen::Settings { selected } => settings::draw(frame, app, *selected),
     }
     if app.ascii || app.plain_console {
         ascii::replace_symbols(frame.buffer_mut());
@@ -361,6 +363,7 @@ mod tests {
             Screen::Modes { selected: 0 },
             Screen::Celebration { page: 0 },
             Screen::Profile { scroll: 0 },
+            Screen::Settings { selected: 0 },
         ] {
             a.screen = screen;
             a.update = Some("v9.0.0".into());
@@ -492,11 +495,11 @@ mod tests {
             ("p", "punctuation off"),
             ("n", "numbers off"),
             ("l", "words english"),
-            ("t", "theme tokyo-night"),
-            ("s", "live stats off"),
-            ("c", "pace caret off"),
             ("m", "strict off"),
             ("g", "challenge off"),
+            ("d", "daily challenge"),
+            ("f", "profile"),
+            ("e", "settings theme tokyo-night"),
         ] {
             assert!(
                 row(text).trim_start().starts_with(&format!("{key}      ")),

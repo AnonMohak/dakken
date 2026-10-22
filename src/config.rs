@@ -33,6 +33,8 @@ pub struct Config {
     /// Draw the app screens with ASCII only, for terminals whose font lacks
     /// the symbols.
     pub ascii: bool,
+    /// Underline wrong letters, so errors do not show by color only.
+    pub underline_errors: bool,
 }
 
 /// The shape of the text cursor.
@@ -79,6 +81,7 @@ impl Default for Config {
             weekly_goal: 0,
             update_check: true,
             ascii: false,
+            underline_errors: false,
         }
     }
 }
@@ -132,6 +135,7 @@ impl Config {
                 "weekly_goal" => config.weekly_goal = value.parse().unwrap_or(config.weekly_goal),
                 "update_check" => config.update_check = value != "false",
                 "symbols" => config.ascii = value == "ascii",
+                "underline_errors" => config.underline_errors = value == "true",
                 "numbers" => config.options.numbers = value == "true",
                 "words" => {
                     config.options.list = WordList::parse(value).unwrap_or(config.options.list)
@@ -165,7 +169,8 @@ impl Config {
              layout = \"{}\"\n\
              weekly_goal = {}\n\
              update_check = {}\n\
-             symbols = \"{}\"\n",
+             symbols = \"{}\"\n\
+             underline_errors = {}\n",
             mode_label(self.mode),
             self.theme.name,
             self.options.punctuation,
@@ -179,7 +184,8 @@ impl Config {
             self.layout.name(),
             self.weekly_goal,
             self.update_check,
-            if self.ascii { "ascii" } else { "unicode" }
+            if self.ascii { "ascii" } else { "unicode" },
+            self.underline_errors
         ) + &self.custom_colors_text()
     }
 
@@ -246,6 +252,7 @@ mod tests {
             weekly_goal: 3000,
             update_check: false,
             ascii: true,
+            underline_errors: true,
         };
         assert_eq!(Config::parse(&config.to_text()), config);
     }

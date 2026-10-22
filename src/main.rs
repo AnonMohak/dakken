@@ -347,12 +347,8 @@ fn run(
         let _ = set_wezterm_active(false);
         restore_terminal(info);
     }));
-    let caret = match app.caret {
-        Caret::Block => SetCursorStyle::SteadyBlock,
-        Caret::Bar => SetCursorStyle::SteadyBar,
-        Caret::Underline => SetCursorStyle::SteadyUnderScore,
-    };
-    execute!(io::stdout(), caret)?;
+    let mut caret = app.caret;
+    execute!(io::stdout(), cursor_style(caret))?;
     set_wezterm_active(true)?;
     // The system clipboard command runs on its own thread, so a slow start
     // (PowerShell on Windows) does not stop the screen.
@@ -365,6 +361,11 @@ fn run(
                 match event::read()? {
                     Event::Key(key) => {
                         app.on_key(key, Instant::now());
+                        // The settings screen can change the caret.
+                        if app.caret != caret {
+                            caret = app.caret;
+                            execute!(io::stdout(), cursor_style(caret))?;
+                        }
                         if let Some(text) = app.copy.take() {
                             let mut out = io::stdout();
                             write!(out, "{}", card::osc52(&text))?;
@@ -391,6 +392,14 @@ fn run(
     set_wezterm_active(false)?;
     ratatui::restore();
     result.map(|()| app.update.filter(|_| app.update_now))
+}
+
+fn cursor_style(caret: Caret) -> SetCursorStyle {
+    match caret {
+        Caret::Block => SetCursorStyle::SteadyBlock,
+        Caret::Bar => SetCursorStyle::SteadyBar,
+        Caret::Underline => SetCursorStyle::SteadyUnderScore,
+    }
 }
 
 /// Color in the printed reports: only in a terminal, and not with the
