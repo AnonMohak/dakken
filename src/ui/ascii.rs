@@ -41,6 +41,11 @@ fn ascii_for(symbol: &str) -> Option<&'static str> {
         '↑' => "^",
         '↓' => "v",
         '←' => "<",
+        // The bars and shades of the stats pages.
+        '█' | '▉' | '▊' | '▋' | '▌' | '▍' | '▎' | '▏' | '■' => "#",
+        '▓' => "%",
+        '▒' => ":",
+        '░' | '□' => ".",
         '→' => ">",
         '♥' => "<",
         // The graph: a Braille cell with dots is a point, an empty one is

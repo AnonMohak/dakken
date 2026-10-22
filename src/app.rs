@@ -190,6 +190,12 @@ pub enum Screen {
     Help {
         scroll: usize,
     },
+    /// A page of stats after the profile (`→` on the profile): the
+    /// reports of `--stats`, `--history`, `--heatmap` and `--skills`.
+    Stats {
+        page: usize,
+        scroll: usize,
+    },
 }
 
 /// One full-screen page of a reward.
@@ -713,7 +719,12 @@ impl App {
     pub fn theme(&self) -> Theme {
         let menu = matches!(
             self.screen,
-            Screen::Menu | Screen::Modes { .. } | Screen::Profile { .. }
+            Screen::Menu
+                | Screen::Modes { .. }
+                | Screen::Profile { .. }
+                | Screen::Stats { .. }
+                | Screen::Settings { .. }
+                | Screen::Help { .. }
         );
         if self.momo && !menu {
             ui::theme::MOMO
@@ -1029,6 +1040,36 @@ impl App {
                 KeyCode::Down | KeyCode::Char('j') => {
                     let scroll = (scroll + 1).min(ui::profile_max_scroll(self));
                     self.screen = Screen::Profile { scroll };
+                }
+                KeyCode::Right | KeyCode::Char('l') => {
+                    self.screen = Screen::Stats { page: 0, scroll: 0 };
+                }
+                KeyCode::Tab | KeyCode::Esc => self.screen = Screen::Menu,
+                _ => {}
+            },
+            Screen::Stats { page, scroll } => match key.code {
+                KeyCode::Up | KeyCode::Char('k') => {
+                    let scroll = scroll.saturating_sub(1);
+                    self.screen = Screen::Stats { page, scroll };
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    let scroll = (scroll + 1).min(ui::stats_max_scroll(self, page));
+                    self.screen = Screen::Stats { page, scroll };
+                }
+                KeyCode::Left | KeyCode::Char('h') if page == 0 => {
+                    self.screen = Screen::Profile { scroll: 0 };
+                }
+                KeyCode::Left | KeyCode::Char('h') => {
+                    self.screen = Screen::Stats {
+                        page: page - 1,
+                        scroll: 0,
+                    };
+                }
+                KeyCode::Right | KeyCode::Char('l') if page + 1 < ui::STATS_PAGES => {
+                    self.screen = Screen::Stats {
+                        page: page + 1,
+                        scroll: 0,
+                    };
                 }
                 KeyCode::Tab | KeyCode::Esc => self.screen = Screen::Menu,
                 _ => {}
@@ -1444,6 +1485,24 @@ mod tests {
             Instant::now(),
         );
         assert!(a.session.is_finished(), "? is a letter of the test");
+    }
+
+    #[test]
+    fn arrows_go_from_the_profile_through_the_stats_pages() {
+        let mut a = app(&["hi"]);
+        a.screen = Screen::Profile { scroll: 0 };
+        let right = press(KeyCode::Right, KeyModifiers::NONE);
+        let left = press(KeyCode::Left, KeyModifiers::NONE);
+        a.on_key(right, Instant::now());
+        assert!(matches!(a.screen, Screen::Stats { page: 0, .. }));
+        for _ in 0..10 {
+            a.on_key(right, Instant::now());
+        }
+        assert!(matches!(a.screen, Screen::Stats { page, .. } if page == ui::STATS_PAGES - 1));
+        for _ in 0..ui::STATS_PAGES {
+            a.on_key(left, Instant::now());
+        }
+        assert!(matches!(a.screen, Screen::Profile { scroll: 0 }));
     }
 
     #[test]

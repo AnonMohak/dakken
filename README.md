@@ -300,7 +300,7 @@ In the menu, each setting shows its key on the left:
 | `x` | Start momo mode |
 | `d` | Start the daily challenge (the menu shows if you did it today) |
 | `q` | Quit |
-| `f` | Open your profile (`↑`/`↓` or `j`/`k` scroll, `Tab` goes back) |
+| `f` | Open your profile (`↑`/`↓` or `j`/`k` scroll, `←`/`→` go to the pages stats, history, keys and skills, `Tab` goes back) |
 | `e` | Open the settings |
 | `?` | Show all the keys |
 | `t`, `s`, `c` | Shortcuts: next theme, live WPM on or off, pace caret on or off |

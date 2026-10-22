@@ -6,19 +6,94 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-use super::column;
 use super::menu::{HINT_ROWS, MARGIN, XP_BAR, keys_line, logo_lines};
 use crate::app::App;
 use crate::badges::BADGES;
 use crate::history;
 use crate::progress::{self, Level, RANKS};
+use crate::{keystats, quests};
+
+use super::{ansi, column};
+
+/// The pages after the profile, with `→`.
+const STATS_NAMES: [&str; 4] = ["stats", "history", "keys", "skills"];
+pub const STATS_PAGES: usize = STATS_NAMES.len();
 
 /// Everything about the user: level, test stats, badges, keys. `scroll`
 /// rows are hidden at the top when the terminal is too short.
 pub fn draw(frame: &mut Frame, app: &App, scroll: usize) {
+    draw_lines(frame, app, lines(app), scroll);
+}
+
+/// A stats page: one of the reports that the command line prints.
+pub fn draw_stats(frame: &mut Frame, app: &App, page: usize, scroll: usize) {
+    draw_lines(frame, app, stats_lines(app, page), scroll);
+}
+
+/// The most rows that `scroll` can hide on a stats page.
+pub fn stats_max_scroll(app: &App, page: usize, height: u16) -> usize {
+    stats_lines(app, page)
+        .len()
+        .saturating_sub(visible_rows(height))
+}
+
+/// The page names at the top, the one on screen in the theme color.
+/// `page` 0 is the profile.
+fn tabs_line(app: &App, page: usize) -> Line<'static> {
+    let t = app.theme();
+    let mut spans = Vec::new();
+    for (i, name) in ["profile"].iter().chain(&STATS_NAMES).enumerate() {
+        if i > 0 {
+            spans.push(Span::styled("  ", Style::new().fg(t.sub)));
+        }
+        let style = if i == page {
+            Style::new().fg(t.main).add_modifier(Modifier::BOLD)
+        } else {
+            Style::new().fg(t.sub)
+        };
+        spans.push(Span::styled(name.to_string(), style));
+    }
+    Line::from(spans)
+}
+
+/// The report of a stats page, in its colors, with the page names on top.
+/// The report titles are bold; the other rows are text.
+fn stats_lines(app: &App, page: usize) -> Vec<Line<'static>> {
+    let t = app.theme();
+    let today = history::today();
+    let records = app.history.records();
+    let text = match STATS_NAMES.get(page) {
+        Some(&"stats") => {
+            history::stats_report(&app.history)
+                + &progress::weekly_report(records, app.weekly_goal, today)
+        }
+        Some(&"history") => history::report(&app.history),
+        Some(&"keys") => {
+            keystats::heatmap(&app.key_stats, true)
+                + "\n"
+                + &history::day_heatmap(&app.history, today, true)
+        }
+        _ => quests::skill_map(&app.key_stats, &app.quests, true),
+    };
+    let head = Style::new().fg(t.main).add_modifier(Modifier::BOLD);
+    let mut out = vec![tabs_line(app, page + 1), Line::default()];
+    out.extend(text.lines().map(|row| {
+        let plain = ansi::plain(row);
+        let style = if plain.starts_with(' ') || plain.is_empty() {
+            Style::new().fg(t.text)
+        } else {
+            head
+        };
+        ansi::line(row, style)
+    }));
+    out
+}
+
+/// Draw `lines` in the middle, with `scroll` rows hidden at the top when
+/// the terminal is too short.
+fn draw_lines(frame: &mut Frame, app: &App, lines: Vec<Line<'static>>, scroll: usize) {
     let t = app.theme();
     let screen = frame.area();
-    let lines = lines(app);
     let rows = visible_rows(screen.height);
     let scroll = scroll.min(lines.len().saturating_sub(rows));
     let shown: Vec<Line> = lines.into_iter().skip(scroll).take(rows).collect();
@@ -32,7 +107,7 @@ pub fn draw(frame: &mut Frame, app: &App, scroll: usize) {
         ..area
     };
     frame.render_widget(Paragraph::new(shown), area);
-    keys_line(frame, t, height, "↑↓ scroll · tab back");
+    keys_line(frame, t, height, "←→ pages · ↑↓ scroll · tab back");
 }
 
 /// The most rows that `scroll` can hide on a terminal `height` rows high.
@@ -51,13 +126,14 @@ fn lines(app: &App) -> Vec<Line<'static>> {
     let head = Style::new().fg(t.main).add_modifier(Modifier::BOLD);
     let text = Style::new().fg(t.text);
     let sub = Style::new().fg(t.sub);
-    let mut out: Vec<Line> = Vec::new();
+    let mut out: Vec<Line> = vec![tabs_line(app, 0), Line::default()];
 
     // The level, the XP and the next rank.
     let xp = progress::total_xp(records);
     let level = Level::from_xp(xp);
     let logo = logo_lines(t, level.rank_index());
-    let logo_rows = logo.len();
+    // The rows of the logo, under the page names.
+    let logo_rows = out.len()..out.len() + logo.len();
     out.extend(logo);
     out.push(Line::default());
     out.push(Line::styled(
@@ -202,9 +278,13 @@ fn lines(app: &App) -> Vec<Line<'static>> {
         out.push(Line::styled(format!("    {}{now}", q.goal()), sub));
     }
     // The logo goes in the middle, over the rest.
-    let rest = out[logo_rows..].iter().map(Line::width).max().unwrap_or(0);
-    let pad = rest.saturating_sub(out[0].width()) / 2;
-    for line in &mut out[..logo_rows] {
+    let rest = out[logo_rows.end..]
+        .iter()
+        .map(Line::width)
+        .max()
+        .unwrap_or(0);
+    let pad = rest.saturating_sub(out[logo_rows.start].width()) / 2;
+    for line in &mut out[logo_rows] {
         line.spans.insert(0, Span::raw(" ".repeat(pad)));
     }
     out

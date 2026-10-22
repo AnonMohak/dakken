@@ -1,3 +1,4 @@
+mod ansi;
 mod ascii;
 mod celebration;
 pub mod color256;
@@ -54,6 +55,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
         Screen::Profile { scroll } => profile::draw(frame, app, *scroll),
         Screen::Settings { selected } => settings::draw(frame, app, *selected),
         Screen::Help { scroll } => help::draw(frame, app, *scroll),
+        Screen::Stats { page, scroll } => profile::draw_stats(frame, app, *page, *scroll),
     }
     if app.ascii || app.plain_console {
         ascii::replace_symbols(frame.buffer_mut());
@@ -61,6 +63,13 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     if !app.truecolor {
         color256::reduce(frame.buffer_mut());
     }
+}
+
+pub use profile::STATS_PAGES;
+
+/// The most rows that a stats page can scroll in the terminal now.
+pub fn stats_max_scroll(app: &App, page: usize) -> usize {
+    profile::stats_max_scroll(app, page, app.size.1)
 }
 
 /// The most rows that the help can scroll in the terminal now.
@@ -384,6 +393,10 @@ mod tests {
             Screen::Profile { scroll: 0 },
             Screen::Settings { selected: 0 },
             Screen::Help { scroll: 0 },
+            Screen::Stats { page: 0, scroll: 0 },
+            Screen::Stats { page: 1, scroll: 0 },
+            Screen::Stats { page: 2, scroll: 0 },
+            Screen::Stats { page: 3, scroll: 0 },
         ] {
             a.screen = screen;
             a.update = Some("v9.0.0".into());
