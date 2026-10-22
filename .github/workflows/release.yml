@@ -75,6 +75,30 @@ jobs:
           cat SHA256SUMS
           gh release upload "$GITHUB_REF_NAME" SHA256SUMS --repo "$GITHUB_REPOSITORY"
 
+  # The Homebrew formula and the Scoop manifests for the new version,
+  # committed to master (see .github/scripts/packaging.sh).
+  packaging:
+    needs: checksums
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --dir "$RUNNER_TEMP"
+          sh .github/scripts/packaging.sh "$GITHUB_REF_NAME" "$RUNNER_TEMP/SHA256SUMS"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula bucket packaging/scoop
+          if git diff --cached --quiet; then
+            echo "The manifests are already for $GITHUB_REF_NAME."
+            exit 0
+          fi
+          git commit -m "build: Homebrew and Scoop manifests for $GITHUB_REF_NAME"
+          git push origin master
+
   # A winget pull request for the new version (see winget.yml).
   winget:
     needs: checksums

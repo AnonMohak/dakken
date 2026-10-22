@@ -478,8 +478,11 @@ cargo clippy --all-targets -- -D warnings
 cargo fmt --check
 ```
 
-`packaging/` has the Scoop manifest and winget manifests, and `Formula/` has
-the Homebrew formula. Update their version and SHA256 hashes for each release.
+`packaging/` has the Scoop manifest and winget manifests, `bucket/` has the
+Scoop bucket, and `Formula/` has the Homebrew formula. After each release,
+the release workflow writes the new version and SHA256 hashes into the
+formula and the Scoop manifests (`.github/scripts/packaging.sh`) and commits
+them to `master`, and opens the winget pull request.
 
 CI runs fmt, clippy and the tests on Windows, Linux (x86-64 and ARM64) and
 macOS, and builds the Intel macOS binary. To publish a release, push a tag such
