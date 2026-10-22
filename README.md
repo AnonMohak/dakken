@@ -302,6 +302,7 @@ In the menu, each setting shows its key on the left:
 | `q` | Quit |
 | `f` | Open your profile (`↑`/`↓` or `j`/`k` scroll, `Tab` goes back) |
 | `e` | Open the settings |
+| `?` | Show all the keys |
 | `t`, `s`, `c` | Shortcuts: next theme, live WPM on or off, pace caret on or off |
 | `Enter` | Start a new test |
 | `Tab` or `Esc` | Go back to the test or the results |

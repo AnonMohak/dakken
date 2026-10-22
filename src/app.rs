@@ -186,6 +186,10 @@ pub enum Screen {
     Settings {
         selected: usize,
     },
+    /// All the keys, opened with `?` in the menu.
+    Help {
+        scroll: usize,
+    },
 }
 
 /// One full-screen page of a reward.
@@ -1029,6 +1033,18 @@ impl App {
                 KeyCode::Tab | KeyCode::Esc => self.screen = Screen::Menu,
                 _ => {}
             },
+            Screen::Help { scroll } => match key.code {
+                KeyCode::Up | KeyCode::Char('k') => {
+                    let scroll = scroll.saturating_sub(1);
+                    self.screen = Screen::Help { scroll };
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    let scroll = (scroll + 1).min(ui::help_max_scroll(self));
+                    self.screen = Screen::Help { scroll };
+                }
+                KeyCode::Tab | KeyCode::Esc | KeyCode::Char('?') => self.screen = Screen::Menu,
+                _ => {}
+            },
             Screen::Settings { selected } => match key.code {
                 KeyCode::Up | KeyCode::Char('k') => {
                     let selected = (selected + SETTINGS.len() - 1) % SETTINGS.len();
@@ -1078,6 +1094,7 @@ impl App {
                 }
                 KeyCode::Char('f') => self.screen = Screen::Profile { scroll: 0 },
                 KeyCode::Char('e') => self.screen = Screen::Settings { selected: 0 },
+                KeyCode::Char('?') => self.screen = Screen::Help { scroll: 0 },
                 KeyCode::Char('u') if self.update.is_some() => {
                     self.update_now = true;
                     self.quit = true;
@@ -1405,6 +1422,28 @@ mod tests {
         assert!(a.underline_errors);
         a.on_key(press(KeyCode::Esc, KeyModifiers::NONE), Instant::now());
         assert!(matches!(a.screen, Screen::Menu));
+    }
+
+    #[test]
+    fn question_mark_in_the_menu_opens_the_help_and_types_in_a_test() {
+        let mut a = app(&["?"]);
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        a.on_key(
+            press(KeyCode::Char('?'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(matches!(a.screen, Screen::Help { scroll: 0 }));
+        a.on_key(
+            press(KeyCode::Char('?'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(matches!(a.screen, Screen::Menu));
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        a.on_key(
+            press(KeyCode::Char('?'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(a.session.is_finished(), "? is a letter of the test");
     }
 
     #[test]

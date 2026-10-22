@@ -1,6 +1,7 @@
 mod ascii;
 mod celebration;
 pub mod color256;
+mod help;
 mod menu;
 mod profile;
 mod results;
@@ -52,6 +53,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
         Screen::Celebration { page } => celebration::draw(frame, app, *page),
         Screen::Profile { scroll } => profile::draw(frame, app, *scroll),
         Screen::Settings { selected } => settings::draw(frame, app, *selected),
+        Screen::Help { scroll } => help::draw(frame, app, *scroll),
     }
     if app.ascii || app.plain_console {
         ascii::replace_symbols(frame.buffer_mut());
@@ -59,6 +61,11 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     if !app.truecolor {
         color256::reduce(frame.buffer_mut());
     }
+}
+
+/// The most rows that the help can scroll in the terminal now.
+pub fn help_max_scroll(app: &App) -> usize {
+    help::max_scroll(app, app.size.1)
 }
 
 /// The most rows that the profile can scroll in the terminal now.
@@ -134,6 +141,7 @@ pub fn screen_words(width: u16, height: u16, mut next_word: impl FnMut() -> Stri
 mod tests {
     use super::*;
     use crate::engine::{Mode, Session};
+    use crate::history::{History, Record};
     use ratatui::{Terminal, backend::TestBackend};
 
     fn render(app: &App, width: u16, height: u16) -> String {
@@ -157,9 +165,20 @@ mod tests {
 
     #[test]
     fn typing_screen_shows_the_words() {
-        let out = render(&app(&["hello", "world"]), 60, 20);
+        // Before the first test, the hint says how to start.
+        let mut a = app(&["hello", "world"]);
+        let out = render(&a, 60, 20);
         assert!(out.contains("hello world"), "{out}");
-        assert!(out.contains("• tab for menu"), "{out}");
+        assert!(
+            out.contains("• type to start · tab for menu, then ?"),
+            "{out}"
+        );
+        a.history = History::in_memory();
+        let _ = a
+            .history
+            .add(Record::new("words 2".into(), &a.session.result()));
+        let out = render(&a, 60, 20);
+        assert!(out.contains("• tab for menu · ctrl+r restart"), "{out}");
         // Nothing else: no mode name, counter or other hints.
         assert!(!out.contains("words 2") && !out.contains("ctrl+c"), "{out}");
     }
@@ -364,6 +383,7 @@ mod tests {
             Screen::Celebration { page: 0 },
             Screen::Profile { scroll: 0 },
             Screen::Settings { selected: 0 },
+            Screen::Help { scroll: 0 },
         ] {
             a.screen = screen;
             a.update = Some("v9.0.0".into());
@@ -526,7 +546,10 @@ mod tests {
             with_update.contains("update v9.0.0 available · u to update"),
             "{with_update}"
         );
-        assert!(out.contains("enter start · tab back · q quit"), "{out}");
+        assert!(
+            out.contains("enter start · tab back · ? help · q quit"),
+            "{out}"
+        );
         // The smallest terminal drops the logo but keeps every setting.
         let out = render(&a, 30, 11);
         assert!(!out.contains("_____"), "{out}");

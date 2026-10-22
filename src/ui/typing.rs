@@ -185,6 +185,9 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     // Zen starts with an empty screen, so it also says how to end.
     let hint_text = if replay {
         "• replay · any key to stop"
+    } else if app.history.records().is_empty() && !s.is_started() {
+        // The first start: say how to begin and where the keys are.
+        "• type to start · tab for menu, then ? for all keys"
     } else if s.mode() == Mode::Zen {
         "• tab for menu · enter to finish · ctrl+r restart"
     } else {
