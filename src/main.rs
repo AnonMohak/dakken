@@ -3,6 +3,7 @@ mod badges;
 mod best_runs;
 mod card;
 mod challenge;
+mod clipboard;
 mod config;
 mod engine;
 mod history;
@@ -356,6 +357,9 @@ fn run(
     };
     execute!(io::stdout(), caret)?;
     set_wezterm_active(true)?;
+    // The system clipboard command runs on its own thread, so a slow start
+    // (PowerShell on Windows) does not stop the screen.
+    let (copied_tx, copied) = std::sync::mpsc::channel();
     let result = (|| -> io::Result<()> {
         while !app.quit {
             terminal.draw(|f| ui::draw(f, &app, Instant::now()))?;
@@ -368,6 +372,8 @@ fn run(
                             let mut out = io::stdout();
                             write!(out, "{}", card::osc52(&text))?;
                             out.flush()?;
+                            let tx = copied_tx.clone();
+                            std::thread::spawn(move || tx.send(clipboard::copy(&text)));
                         }
                     }
                     Event::Resize(width, height) => app.on_resize(width, height),
@@ -375,6 +381,9 @@ fn run(
                 }
             }
             app.tick(Instant::now());
+            if let Ok(ok) = copied.try_recv() {
+                app.copied |= ok;
+            }
             if let Some(tag) = updates.as_ref().and_then(|u| u.try_recv().ok()) {
                 app.update = Some(tag);
             }

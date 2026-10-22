@@ -50,7 +50,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
         Screen::Celebration { page } => celebration::draw(frame, app, *page),
         Screen::Profile { scroll } => profile::draw(frame, app, *scroll),
     }
-    if app.ascii {
+    if app.ascii || app.plain_console {
         ascii::replace_symbols(frame.buffer_mut());
     }
 }

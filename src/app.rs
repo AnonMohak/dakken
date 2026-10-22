@@ -197,6 +197,9 @@ pub struct App {
     pub update_check: bool,
     /// Draw the screens with ASCII only (`symbols = "ascii"`).
     pub ascii: bool,
+    /// The Linux text console, whose font has few symbols: the screens use
+    /// ASCII there, but the saved `symbols` setting does not change.
+    pub plain_console: bool,
     /// The tag of a newer release, for the notice in the menu.
     pub update: Option<String>,
     /// `u` in the menu: quit, then update dakken.
@@ -232,8 +235,11 @@ pub struct App {
     pub previous_best: Option<f64>,
     /// Text for the main loop to put on the clipboard.
     pub copy: Option<String>,
-    /// The score card of the last test is on the clipboard.
+    /// The system clipboard command put the score card on the clipboard.
     pub copied: bool,
+    /// The score card is also saved in this file, for terminals where the
+    /// copy does not work.
+    pub card_file: Option<PathBuf>,
     /// The last finished test could not be added to the history file.
     pub save_failed: bool,
     pub quit: bool,
@@ -267,6 +273,7 @@ impl App {
             weekly_goal: config.weekly_goal,
             update_check: config.update_check,
             ascii: config.ascii,
+            plain_console: std::env::var_os("TERM").is_some_and(|t| t == "linux"),
             config_path,
             size,
             history,
@@ -299,6 +306,7 @@ impl App {
             weekly_goal: 0,
             update_check: false,
             ascii: false,
+            plain_console: false,
             update: None,
             update_now: false,
             config_path: None,
@@ -320,6 +328,7 @@ impl App {
             previous_best: None,
             copy: None,
             copied: false,
+            card_file: None,
             save_failed: false,
             quit: false,
         }
@@ -636,6 +645,17 @@ impl App {
         card::score_card(day, wpm, accuracy, &words, streak)
     }
 
+    /// Save the score card next to the history, for terminals where the
+    /// copy does not work. Gives the file, or `None` with no data folder.
+    fn save_card(&self, card: &str) -> Option<PathBuf> {
+        let path = self
+            .config_path
+            .as_deref()?
+            .with_file_name("score-card.txt");
+        std::fs::write(&path, card).ok()?;
+        Some(path)
+    }
+
     /// The letters the weak-keys list practises: the letters of the open
     /// key quests first, then the weakest letters, 5 in all.
     pub fn weak_letters(&self) -> Vec<char> {
@@ -813,6 +833,7 @@ impl App {
                 self.climb = passed.then(|| climb.next());
             }
             self.copied = false;
+            self.card_file = None;
             self.race_saved = None;
             let celebrate = self
                 .reward
@@ -862,8 +883,9 @@ impl App {
                 KeyCode::Char('x') if self.can_save_race() => self.save_race(),
                 KeyCode::Char('y') if self.reward.is_some() => {
                     if let Some(day) = self.daily {
-                        self.copy = Some(self.score_card(day, result.wpm, result.accuracy));
-                        self.copied = true;
+                        let card = self.score_card(day, result.wpm, result.accuracy);
+                        self.card_file = self.save_card(&card);
+                        self.copy = Some(card);
                     }
                 }
                 KeyCode::Tab | KeyCode::Esc => self.open_menu(),
@@ -1053,6 +1075,8 @@ fn engine_key(key: KeyEvent, layout: Layout) -> Option<Key> {
         KeyCode::Backspace if ctrl || alt => Some(Key::DeleteWord),
         KeyCode::Backspace => Some(Key::Backspace),
         KeyCode::Char('w') if ctrl && !alt => Some(Key::DeleteWord),
+        // Many Linux and macOS terminals send Ctrl+Backspace as Ctrl+H.
+        KeyCode::Char('h') if ctrl && !alt => Some(Key::DeleteWord),
         KeyCode::Char(' ') => Some(Key::Space),
         // AltGr arrives as Ctrl+Alt, so allow that for letters on some layouts.
         KeyCode::Char(c) if ctrl == alt => Some(Key::Char(layout.map(c))),
@@ -1072,6 +1096,33 @@ mod tests {
     fn app(words: &[&str]) -> App {
         let mode = Mode::Words(words.len());
         App::with_session(mode, Session::from_words(mode, words))
+    }
+
+    #[test]
+    fn ctrl_backspace_in_every_form_deletes_a_word() {
+        for key in [
+            press(KeyCode::Backspace, KeyModifiers::CONTROL),
+            press(KeyCode::Backspace, KeyModifiers::ALT),
+            press(KeyCode::Char('w'), KeyModifiers::CONTROL),
+            press(KeyCode::Char('h'), KeyModifiers::CONTROL),
+        ] {
+            assert_eq!(engine_key(key, Layout::Qwerty), Some(Key::DeleteWord));
+        }
+        // AltGr arrives as Ctrl+Alt, so it still types its letter.
+        let altgr = KeyModifiers::CONTROL | KeyModifiers::ALT;
+        assert_eq!(
+            engine_key(press(KeyCode::Char('h'), altgr), Layout::Qwerty),
+            Some(Key::Char('h'))
+        );
+    }
+
+    #[test]
+    fn accented_letters_from_dead_keys_type_the_word() {
+        // A dead key gives no event; the next key gives the composed letter.
+        let mut a = app(&["über", "señor"]);
+        type_text(&mut a, "über señor");
+        assert!(a.session.is_finished());
+        assert_eq!(a.session.result().chars.incorrect, 0);
     }
 
     #[test]
@@ -1562,7 +1613,9 @@ mod tests {
             "{card}"
         );
         assert_eq!(card.matches('🟦').count(), words::DAILY_WORDS, "{card}");
-        assert!(a.copied);
+        // The main loop copies it; with no data folder there is no file.
+        assert!(!a.copied);
+        assert_eq!(a.card_file, None);
         // Other tests have no card.
         let mut b = app(&["hi"]);
         type_text(&mut b, "hi");

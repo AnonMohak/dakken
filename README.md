@@ -31,10 +31,14 @@ A typing-speed test for the terminal.
 - Daily challenge: the same 30 words for everyone each day (UTC), with your
   streak of days in a row in `--stats`. Each 7 days of a streak give a
   streak freeze (you keep up to 2): a freeze keeps the streak when you miss
-  one day. After the test, press `y` to copy a
+  one day. The day changes at midnight UTC: the results say when the next
+  daily challenge starts. After the test, press `y` to copy a
   score card to paste in a chat: your WPM, accuracy and streak, and a 🟦 for
   each correct word (⬛ for a wrong word). The copy uses the OSC 52 escape
-  code, which WezTerm, Windows Terminal, kitty and iTerm2 support.
+  code and the clipboard command of your system (PowerShell on Windows,
+  `pbcopy` on macOS, `wl-copy`, `xclip` or `xsel` on Linux). The card is
+  also saved in `score-card.txt` in the data folder, for terminals where
+  the copy does not work.
 - Punctuation mode: capital letters at the start of sentences, and `. , ? ! ; :`,
   quotes and parentheses.
 - Numbers mode: random numbers in place of some words.
@@ -105,6 +109,13 @@ A typing-speed test for the terminal.
   `100` for century; 4 stay hidden until you get them.
 - One `.exe` with no runtime. Made and tested on Windows 11 with WezTerm.
 
+## Privacy
+
+dakken has no account and sends no data about you. It sends one request to
+GitHub each day to look for a newer version (`update_check = false` in
+`config.toml` turns it off). Your history, settings and badges stay in
+files on your computer.
+
 ## Install
 
 **Install script (Windows, no admin rights):**
@@ -160,6 +171,15 @@ Each file is one program with nothing else to install: the Windows file needs
 no Visual C++ Redistributable, and the Linux files are static, so they run on
 old and new systems.
 
+The files are not signed, so a file downloaded with a browser can get a
+warning. The install scripts, winget, Scoop and Homebrew do not get it.
+
+- Windows ("Windows protected your PC"): click **More info**, then **Run
+  anyway**.
+- macOS ("cannot be opened because the developer cannot be verified"):
+  run `xattr -d com.apple.quarantine ./dakken`, then start it again.
+- macOS and Linux: make the file executable with `chmod +x ./dakken`.
+
 **Build from source:** you need [Rust](https://rustup.rs). On Windows:
 `winget install Rustlang.Rustup`.
 
@@ -193,6 +213,24 @@ sends one request to GitHub each day). `dakken --check-update` asks at once.
 
 Your history, settings and badges stay in the data folder, so an update
 keeps them.
+
+## Uninstall
+
+Use the same tool you installed with:
+
+| Installed with | Uninstall |
+|---|---|
+| winget | `winget uninstall AnonMohak.dakken` |
+| Scoop | `scoop uninstall dakken` |
+| Homebrew | `brew uninstall dakken` |
+| Cargo | `cargo uninstall dakken` |
+| `install.ps1` | delete the folder `%LOCALAPPDATA%\Programs\dakken`, and remove it from your user `PATH` (Settings → System → About → Advanced system settings → Environment Variables) |
+| `install.sh` | delete `~/.local/bin/dakken`, and remove the line after `# Added by the dakken installer` from your shell config file |
+| A file from Releases | delete the file |
+
+Your history, settings and badges stay. To delete them too, delete the
+data folder: `%APPDATA%\dakken` on Windows, and `~/.local/share/dakken`
+(or `$XDG_DATA_HOME/dakken`) on macOS and Linux.
 
 ## Use
 
@@ -233,7 +271,7 @@ While you type:
 |---|---|
 | `Tab` or `Esc` | Open the menu |
 | `Enter` (in zen mode) | End the test |
-| `Ctrl+Backspace`, `Ctrl+W` | Delete the word |
+| `Ctrl+Backspace`, `Alt+Backspace`, `Ctrl+W`, `Ctrl+H` | Delete the word |
 | `Ctrl+C` | Quit (on every screen) |
 
 On the results:
@@ -314,7 +352,7 @@ caret = "block"      # block, bar or underline
 layout = "qwerty"    # qwerty, dvorak or colemak
 weekly_goal = 0      # words to type each week (Monday to Sunday, UTC); 0 is no goal
 update_check = true  # ask GitHub once a day for a newer version
-symbols = "unicode"  # or "ascii": the app screens use only ASCII characters
+symbols = "unicode"  # or "ascii": the app screens use only ASCII characters (always in the Linux text console)
 ```
 
 With a weekly goal, the menu shows the words of this week under your level,
@@ -353,6 +391,7 @@ the key quests. Saved races go in the `races` folder. XP and levels come
 from the history, so they need no file of their own.
 `mistakes.txt`, in the same folder, keeps the last 100 words you typed wrong.
 If it is empty, the `mistakes` list uses the English words.
+`score-card.txt` keeps the last daily score card that you copied with `y`.
 
 ## How the stats work
 
@@ -363,7 +402,36 @@ If it is empty, the `mistakes` list uses the English words.
   where `cv` is the standard deviation ÷ mean of the raw WPM in each second.
 - **Characters:** correct / incorrect / extra / missed.
 
-## Build problem on Windows
+## Troubleshooting
+
+**Boxes or question marks in place of symbols.** Your font does not have
+some symbols, such as `━`, `♥` or `▲`. Set `symbols = "ascii"` in
+`config.toml`, or use a font such as Cascadia Mono, JetBrains Mono or a Nerd
+Font. In the Linux text console, dakken uses ASCII automatically.
+
+**Wrong or strange colors.** The themes use 24-bit color. Use a terminal
+that supports it (Windows Terminal, WezTerm, iTerm2, kitty, Alacritty, GNOME
+Terminal, Konsole), or use the `terminal` theme, which uses the colors of
+your terminal: `dakken --theme terminal`.
+
+**`y` does not copy the score card.** dakken tries the OSC 52 escape code
+and the clipboard command of your system. On Linux, install `wl-clipboard`
+(Wayland) or `xclip` (X11). In tmux, add `set -g set-clipboard on` to
+`~/.tmux.conf`. Over SSH, only OSC 52 can work. The card is always in
+`score-card.txt` in the data folder.
+
+**A key does not do what it should.** Run `dakken --keys` and press the key
+to see what your terminal sends. Some terminals send `Ctrl+H` for
+`Ctrl+Backspace`; dakken deletes the word for both.
+
+**No update notice.** The update check needs `curl`. Windows 10 (1803 and
+newer), macOS and most Linux systems have it. `dakken --check-update`
+shows the error, if there is one.
+
+**"terminal too small".** dakken needs a terminal of at least 30 columns
+and 11 rows. Make the window bigger or the font smaller.
+
+### Build problem on Windows
 
 If `cargo build` fails with `link: extra operand`, the environment variables
 `VCINSTALLDIR` and `VSINSTALLDIR` are set globally. Rust then uses the wrong

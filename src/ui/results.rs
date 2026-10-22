@@ -181,16 +181,20 @@ fn best_line(app: &App, r: &TestResult) -> Line<'static> {
 /// The keys of the results screen, with `y` after a daily challenge and
 /// `x` for a test that can be a race.
 fn keys_text(app: &App) -> String {
-    let mut keys = vec!["enter restart", "r replay"];
+    let mut keys: Vec<String> = vec!["enter restart".into(), "r replay".into()];
     if app.can_save_race() {
-        keys.push("x save race");
+        keys.push("x save race".into());
     }
-    match (app.daily, app.copied) {
-        (Some(_), true) => keys.insert(0, "score card copied"),
-        (Some(_), false) if app.reward.is_some() => keys.push("y copy score card"),
+    match (app.daily, app.copied, &app.card_file) {
+        (Some(_), true, _) => keys.insert(0, "score card copied".into()),
+        // The terminal may have copied it too, with OSC 52.
+        (Some(_), false, Some(file)) => {
+            keys.insert(0, format!("score card in {}", file.display()));
+        }
+        (Some(_), false, None) if app.reward.is_some() => keys.push("y copy score card".into()),
         _ => {}
     }
-    keys.push("tab menu");
+    keys.push("tab menu".into());
     keys.join(" · ")
 }
 
@@ -341,6 +345,10 @@ fn source_text(app: &App) -> String {
 
 /// The mode and options, with the word list. Quotes have no word list.
 fn results_label(app: &App) -> String {
+    if app.daily.is_some() {
+        let next = crate::history::next_daily(crate::history::now_secs());
+        return format!("{} · {next}", app.label());
+    }
     match app.mode_now() {
         Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen => app.label(),
         _ if app.options.list == WordList::English => format!("{} · english", app.label()),

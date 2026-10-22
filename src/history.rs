@@ -265,12 +265,30 @@ const SHADES: [char; 4] = ['░', '▒', '▓', '█'];
 /// for the shades.
 const SHADE_COLORS: [u8; 4] = [159, 116, 37, 23];
 
+/// Seconds since 1970-01-01 UTC.
+pub fn now_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs())
+}
+
 /// Today as days since 1970-01-01 UTC.
 pub fn today() -> i64 {
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs());
-    (secs / 86_400) as i64
+    (now_secs() / 86_400) as i64
+}
+
+/// "next daily in 5h 12m": the time until midnight UTC, when the daily
+/// challenge changes. `now` is seconds since 1970-01-01 UTC.
+pub fn next_daily(now: u64) -> String {
+    let left = 86_400 - now % 86_400;
+    let (hours, minutes) = (left / 3600, (left % 3600).div_ceil(60));
+    // 59.5 minutes left shows as 1h 0m, not 0h 60m.
+    let (hours, minutes) = if minutes == 60 {
+        (hours + 1, 0)
+    } else {
+        (hours, minutes)
+    };
+    format!("next daily in {hours}h {minutes}m")
 }
 
 /// A calendar of the last weeks up to `today` (days since 1970-01-01 UTC),
@@ -374,8 +392,10 @@ pub fn stats_report(history: &History) -> String {
         out += &format!(
             "
 daily challenge: {} day{s} in a row{freezes}, best {best:.0} wpm
+  ({}; the day changes at midnight UTC)
 ",
-            streak.days
+            streak.days,
+            next_daily(now_secs())
         );
     }
 
@@ -663,5 +683,17 @@ mod tests {
         let out = report(&h);
         assert!(out.contains("42 wpm  time 15"), "{out}");
         assert!(out.contains("1970-01-01 00:00"), "{out}");
+    }
+
+    #[test]
+    fn next_daily_counts_to_midnight_utc() {
+        let day = 20_000 * 86_400;
+        assert_eq!(next_daily(day), "next daily in 24h 0m");
+        assert_eq!(next_daily(day + 86_400 - 90), "next daily in 0h 2m");
+        assert_eq!(next_daily(day + 18 * 3600 + 30), "next daily in 6h 0m");
+        assert_eq!(
+            next_daily(day + 11 * 3600 + 48 * 60),
+            "next daily in 12h 12m"
+        );
     }
 }
