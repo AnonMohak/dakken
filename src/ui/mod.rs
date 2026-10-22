@@ -1,5 +1,6 @@
 mod ascii;
 mod celebration;
+pub mod color256;
 mod menu;
 mod profile;
 mod results;
@@ -52,6 +53,9 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     }
     if app.ascii || app.plain_console {
         ascii::replace_symbols(frame.buffer_mut());
+    }
+    if !app.truecolor {
+        color256::reduce(frame.buffer_mut());
     }
 }
 

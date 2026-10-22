@@ -200,6 +200,9 @@ pub struct App {
     /// The Linux text console, whose font has few symbols: the screens use
     /// ASCII there, but the saved `symbols` setting does not change.
     pub plain_console: bool,
+    /// The terminal shows 24-bit color. Without it, the screens use the
+    /// nearest of the 256 colors.
+    pub truecolor: bool,
     /// The tag of a newer release, for the notice in the menu.
     pub update: Option<String>,
     /// `u` in the menu: quit, then update dakken.
@@ -274,6 +277,7 @@ impl App {
             update_check: config.update_check,
             ascii: config.ascii,
             plain_console: std::env::var_os("TERM").is_some_and(|t| t == "linux"),
+            truecolor: ui::color256::truecolor(),
             config_path,
             size,
             history,
@@ -307,6 +311,7 @@ impl App {
             update_check: false,
             ascii: false,
             plain_console: false,
+            truecolor: true,
             update: None,
             update_now: false,
             config_path: None,

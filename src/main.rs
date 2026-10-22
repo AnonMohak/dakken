@@ -192,15 +192,13 @@ fn main() -> io::Result<()> {
                 goal,
             ))
             .1;
-        use std::io::IsTerminal;
-        let color = io::stdout().is_terminal();
+        let color = color_output();
         print!("{}", badges::report(&history, &badges, color));
         return Ok(());
     }
     let key_stats = keystats::default_path().map_or_else(KeyStats::in_memory, KeyStats::load);
     if cli.heatmap {
-        use std::io::IsTerminal;
-        let color = io::stdout().is_terminal();
+        let color = color_output();
         print!("{}", keystats::heatmap(&key_stats, color));
         print!(
             "\n{}",
@@ -210,8 +208,7 @@ fn main() -> io::Result<()> {
     }
     let mut quests = quests::default_path().map_or_else(Quests::in_memory, Quests::load);
     if cli.skills {
-        use std::io::IsTerminal;
-        let color = io::stdout().is_terminal();
+        let color = color_output();
         let now = history.records().last().map_or(0, |r| r.time);
         let _ = quests.fill(&key_stats, now);
         print!("{}", quests::skill_map(&key_stats, &quests, color));
@@ -394,6 +391,13 @@ fn run(
     set_wezterm_active(false)?;
     ratatui::restore();
     result.map(|()| app.update.filter(|_| app.update_now))
+}
+
+/// Color in the printed reports: only in a terminal, and not with the
+/// `NO_COLOR` environment variable (no-color.org).
+fn color_output() -> bool {
+    use std::io::IsTerminal;
+    io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none_or(|v| v.is_empty())
 }
 
 /// Tell WezTerm that dakken runs, with the `dakken_active` user var. A

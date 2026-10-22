@@ -409,10 +409,13 @@ some symbols, such as `━`, `♥` or `▲`. Set `symbols = "ascii"` in
 `config.toml`, or use a font such as Cascadia Mono, JetBrains Mono or a Nerd
 Font. In the Linux text console, dakken uses ASCII automatically.
 
-**Wrong or strange colors.** The themes use 24-bit color. Use a terminal
-that supports it (Windows Terminal, WezTerm, iTerm2, kitty, Alacritty, GNOME
-Terminal, Konsole), or use the `terminal` theme, which uses the colors of
-your terminal: `dakken --theme terminal`.
+**Wrong or strange colors.** The themes use 24-bit color. When the
+`COLORTERM` environment variable does not say `truecolor` or `24bit`,
+dakken uses the nearest of the 256 colors. If your terminal shows 24-bit
+color but does not set `COLORTERM`, set `COLORTERM=truecolor`. You can also
+use the `terminal` theme, which uses the colors of your terminal:
+`dakken --theme terminal`. The printed reports (`--heatmap`, `--badges`,
+`--skills`) have no color with `NO_COLOR` set.
 
 **`y` does not copy the score card.** dakken tries the OSC 52 escape code
 and the clipboard command of your system. On Linux, install `wl-clipboard`
