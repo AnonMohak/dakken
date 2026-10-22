@@ -413,6 +413,49 @@ mod tests {
     }
 
     #[test]
+    fn scrolled_screens_do_not_move_to_the_side() {
+        // The left edge of the text, without the keys line at the bottom
+        // and the "> " of the selected row, which moves with the selection.
+        let left = |out: &str| {
+            let rows: Vec<String> = out.lines().map(|l| l.replacen("> ", "  ", 1)).collect();
+            (rows[..rows.len() - 3].iter())
+                .filter(|l| !l.trim().is_empty())
+                .map(|l| l.len() - l.trim_start().len())
+                .min()
+        };
+        let mut a = app(&["hi"]);
+        a.size = (80, 16);
+        for (top, end) in [
+            (Screen::Help { scroll: 0 }, Screen::Help { scroll: 1000 }),
+            (
+                Screen::Profile { scroll: 0 },
+                Screen::Profile { scroll: 1000 },
+            ),
+            (
+                Screen::Stats { page: 2, scroll: 0 },
+                Screen::Stats {
+                    page: 2,
+                    scroll: 1000,
+                },
+            ),
+            (
+                Screen::Settings { selected: 0 },
+                Screen::Settings { selected: 8 },
+            ),
+            (
+                Screen::Modes { selected: 0 },
+                Screen::Modes { selected: 13 },
+            ),
+        ] {
+            a.screen = top;
+            let first = render(&a, 80, 16);
+            a.screen = end;
+            let last = render(&a, 80, 16);
+            assert_eq!(left(&first), left(&last), "{first}\n{last}");
+        }
+    }
+
+    #[test]
     fn a_new_badge_fills_the_screen() {
         let mut a = app(&["hi"]);
         a.session

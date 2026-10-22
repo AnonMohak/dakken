@@ -97,17 +97,10 @@ pub fn draw(frame: &mut Frame, app: &App) {
             ])
         })
         .collect();
-    // Momo mode and the profile are apart from the settings: their keys
-    // open them at once.
+    // The daily challenge, the profile and the settings are apart from the
+    // test options: their keys open them at once.
     let mut settings = settings;
     settings.push(Line::default());
-    settings.push(Line::from(vec![
-        Span::styled(format!("x{}", " ".repeat(GAP)), sub),
-        Span::styled(
-            "momo mode",
-            Style::new().fg(t.main).add_modifier(Modifier::BOLD),
-        ),
-    ]));
     let today = crate::history::today();
     let (daily, daily_style) = if crate::history::daily_done(&app.history, today) {
         ("done today", sub)
@@ -129,6 +122,15 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Span::styled(format!("e{}", " ".repeat(GAP)), sub),
         Span::styled("settings ", Style::new().fg(t.text)),
         Span::styled(format!("theme {}", app.theme.name), sub),
+    ]));
+    // Momo mode is a mode on its own, so it is apart from the rest.
+    settings.push(Line::default());
+    settings.push(Line::from(vec![
+        Span::styled(format!("x{}", " ".repeat(GAP)), sub),
+        Span::styled(
+            "momo mode",
+            Style::new().fg(t.main).add_modifier(Modifier::BOLD),
+        ),
     ]));
     let width = settings.iter().map(Line::width).max().unwrap_or(0) as u16;
     // The logo and the level go on top when there is room for them.
@@ -199,7 +201,10 @@ pub fn draw_modes(frame: &mut Frame, app: &App, selected: usize) {
         });
     }
     let height = lines.len() as u16;
-    let width = lines.iter().map(Line::width).max().unwrap_or(0) as u16;
+    // The width of all the modes, not only the ones on screen, so the list
+    // does not move to the side when it scrolls.
+    let width =
+        (MODES.iter().map(|&m| mode_label(m).chars().count()).max()).unwrap_or(0) as u16 + 2;
     let area = column(screen, height);
     let left = (screen.width.saturating_sub(width) / 2).max(MARGIN);
     let area = Rect {

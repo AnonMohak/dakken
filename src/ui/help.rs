@@ -73,9 +73,11 @@ pub fn draw(frame: &mut Frame, app: &App, scroll: usize) {
     let lines = lines(app);
     let rows = visible_rows(screen.height);
     let scroll = scroll.min(lines.len().saturating_sub(rows));
+    // The width of all the rows, not only the ones on screen, so the page
+    // does not move to the side when it scrolls.
+    let width = lines.iter().map(Line::width).max().unwrap_or(0) as u16;
     let shown: Vec<Line> = lines.into_iter().skip(scroll).take(rows).collect();
     let height = shown.len() as u16;
-    let width = shown.iter().map(Line::width).max().unwrap_or(0) as u16;
     let area = column(screen, height);
     let left = (screen.width.saturating_sub(width) / 2).max(MARGIN);
     let area = Rect {

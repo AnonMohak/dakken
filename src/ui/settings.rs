@@ -9,6 +9,16 @@ use ratatui::{
 use super::column;
 use super::menu::{HINT_ROWS, MARGIN, keys_line};
 use crate::app::{App, SETTINGS};
+use crate::ui::theme;
+
+/// Room for the longest value, such as "catppuccin-latte" or "10000 words",
+/// so the rows do not move when a value or the selected row changes.
+fn value_width() -> usize {
+    (theme::names().iter().map(|n| n.len()))
+        .chain(["custom".len(), "50000 words".len()])
+        .max()
+        .unwrap_or(0)
+}
 
 /// The settings that are not test options, one row each, from `e` in the
 /// menu. The selected row is in the theme color.
@@ -40,7 +50,8 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
         });
     }
     let height = lines.len() as u16;
-    let width = lines.iter().map(Line::width).max().unwrap_or(0) as u16 + 2;
+    // "> " + name + "< " + value + " >", the same for every row.
+    let width = (2 + width + 2 + value_width() + 2) as u16;
     let area = column(screen, height);
     let left = (screen.width.saturating_sub(width) / 2).max(MARGIN);
     let area = Rect {
