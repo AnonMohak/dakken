@@ -301,6 +301,7 @@ In the menu, each setting shows its key on the left:
 | `m` | Go to the next strict mode |
 | `g` | Go to the next challenge |
 | `x` | Start momo mode |
+| `d` | Start the daily challenge (the menu shows if you did it today) |
 | `q` | Quit |
 | `f` | Open your profile (`↑`/`↓` or `j`/`k` scroll, `Tab` goes back) |
 | `Enter` | Start a new test |

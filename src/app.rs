@@ -355,9 +355,16 @@ impl App {
         self.restart();
     }
 
-    /// Leave momo mode and start a test of the chosen mode.
+    /// Leave momo mode or the daily challenge, and start a test of the
+    /// chosen mode. The daily challenge is never saved as the mode, so the
+    /// chosen mode comes back from the config file.
     fn start_chosen(&mut self) {
         self.momo = false;
+        if self.daily.take().is_some()
+            && let Some(path) = &self.config_path
+        {
+            self.mode = Config::load(path).mode;
+        }
         self.restart();
     }
 
@@ -982,6 +989,10 @@ impl App {
                 KeyCode::Enter => self.start_chosen(),
                 KeyCode::Char('x') => self.start_momo(),
                 KeyCode::Char('q') => self.quit = true,
+                KeyCode::Char('d') => {
+                    self.start_daily(history::today());
+                    self.screen = Screen::Typing;
+                }
                 KeyCode::Char('f') => self.screen = Screen::Profile { scroll: 0 },
                 KeyCode::Char('u') if self.update.is_some() => {
                     self.update_now = true;
@@ -1208,6 +1219,24 @@ mod tests {
         );
         assert!(matches!(a.screen, Screen::Typing));
         assert!(!a.session.is_started());
+    }
+
+    #[test]
+    fn d_in_the_menu_starts_the_daily_challenge() {
+        let mut a = app(&["hi"]);
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        a.on_key(
+            press(KeyCode::Char('d'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(matches!(a.screen, Screen::Typing));
+        assert_eq!(a.daily, Some(history::today()));
+        assert_eq!(a.label(), "daily");
+        // Enter in the menu leaves the daily challenge.
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        assert_eq!(a.daily, None);
+        assert_ne!(a.label(), "daily");
     }
 
     #[test]

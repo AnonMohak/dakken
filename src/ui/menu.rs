@@ -113,6 +113,17 @@ pub fn draw(frame: &mut Frame, app: &App) {
             Style::new().fg(t.main).add_modifier(Modifier::BOLD),
         ),
     ]));
+    let today = crate::history::today();
+    let (daily, daily_style) = if crate::history::daily_done(&app.history, today) {
+        ("done today", sub)
+    } else {
+        ("not done today", Style::new().fg(t.main))
+    };
+    settings.push(Line::from(vec![
+        Span::styled(format!("d{}", " ".repeat(GAP)), sub),
+        Span::styled("daily challenge ", Style::new().fg(t.text)),
+        Span::styled(daily, daily_style),
+    ]));
     settings.push(Line::from(vec![
         Span::styled(format!("f{}", " ".repeat(GAP)), sub),
         Span::styled("profile", Style::new().fg(t.text)),

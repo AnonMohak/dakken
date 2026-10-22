@@ -420,6 +420,11 @@ pub struct Streak {
     pub freezes: usize,
 }
 
+/// A daily challenge was finished on `today` (days since 1970-01-01 UTC).
+pub fn daily_done(history: &History, today: i64) -> bool {
+    (history.records().iter()).any(|r| r.label == "daily" && (r.time / 86_400) as i64 == today)
+}
+
 /// The daily-challenge streak up to `today`. A missed day uses a streak
 /// freeze if there is one, else it ends the streak. Today is not missed
 /// until it is over.
