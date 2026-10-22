@@ -523,10 +523,7 @@ mod tests {
             with_update.contains("update v9.0.0 available · u to update"),
             "{with_update}"
         );
-        assert!(
-            out.contains("enter start · tab back · ctrl+c exit"),
-            "{out}"
-        );
+        assert!(out.contains("enter start · tab back · q quit"), "{out}");
         // The smallest terminal drops the logo but keeps every setting.
         let out = render(&a, 30, 11);
         assert!(!out.contains("_____"), "{out}");

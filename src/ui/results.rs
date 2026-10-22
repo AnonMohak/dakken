@@ -195,6 +195,7 @@ fn keys_text(app: &App) -> String {
         _ => {}
     }
     keys.push("tab menu".into());
+    keys.push("q quit".into());
     keys.join(" · ")
 }
 

@@ -35,6 +35,9 @@ fn ascii_for(symbol: &str) -> Option<&'static str> {
         '│' | '┃' => "|",
         '└' | '┘' | '┌' | '┐' | '├' | '┤' | '┬' | '┴' | '┼' => "+",
         '•' => "*",
+        '×' => "x",
+        '“' | '”' => "\"",
+        '‘' | '’' => "'",
         '↑' => "^",
         '↓' => "v",
         '♥' => "<",
@@ -65,6 +68,8 @@ mod tests {
         assert_eq!(ascii_for("━"), Some("="));
         assert_eq!(ascii_for("└"), Some("+"));
         assert_eq!(ascii_for("\u{28ff}"), Some("*"));
+        assert_eq!(ascii_for("×"), Some("x"));
+        assert_eq!(ascii_for("“"), Some("\""));
         assert_eq!(ascii_for("ü"), None);
         assert_eq!(ascii_for("a"), None);
         assert_eq!(mood('♥', true), "<3");

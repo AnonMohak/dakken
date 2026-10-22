@@ -157,7 +157,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         );
     }
     frame.render_widget(Paragraph::new(lines[logo_rows..].to_vec()), settings_area);
-    keys_line(frame, t, height, "enter start · tab back · ctrl+c exit");
+    keys_line(frame, t, height, "enter start · tab back · q quit");
     if let Some(tag) = &app.update {
         update_line(frame, t, height, tag);
     }

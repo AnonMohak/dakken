@@ -283,6 +283,7 @@ On the results:
 | `y` | Copy the score card (daily challenge only) |
 | `x` | Save the test as a race file for `--race` |
 | `Tab` or `Esc` | Open the menu |
+| `q` | Quit |
 
 In the menu, each setting shows its key on the left:
 
@@ -298,6 +299,7 @@ In the menu, each setting shows its key on the left:
 | `m` | Go to the next strict mode |
 | `g` | Go to the next challenge |
 | `x` | Start momo mode |
+| `q` | Quit |
 | `f` | Open your profile (`↑`/`↓` or `j`/`k` scroll, `Tab` goes back) |
 | `Enter` | Start a new test |
 | `Tab` or `Esc` | Go back to the test or the results |

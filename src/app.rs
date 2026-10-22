@@ -886,6 +886,7 @@ impl App {
                     }));
                 }
                 KeyCode::Char('x') if self.can_save_race() => self.save_race(),
+                KeyCode::Char('q') => self.quit = true,
                 KeyCode::Char('y') if self.reward.is_some() => {
                     if let Some(day) = self.daily {
                         let card = self.score_card(day, result.wpm, result.accuracy);
@@ -942,6 +943,7 @@ impl App {
             Screen::Menu => match key.code {
                 KeyCode::Enter => self.start_chosen(),
                 KeyCode::Char('x') => self.start_momo(),
+                KeyCode::Char('q') => self.quit = true,
                 KeyCode::Char('f') => self.screen = Screen::Profile { scroll: 0 },
                 KeyCode::Char('u') if self.update.is_some() => {
                     self.update_now = true;
@@ -1101,6 +1103,31 @@ mod tests {
     fn app(words: &[&str]) -> App {
         let mode = Mode::Words(words.len());
         App::with_session(mode, Session::from_words(mode, words))
+    }
+
+    #[test]
+    fn q_quits_on_the_menu_and_the_results_but_types_in_a_test() {
+        let mut a = app(&["quiet"]);
+        a.on_key(
+            press(KeyCode::Char('q'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(!a.quit);
+        type_text(&mut a, "uiet");
+        a.skip_celebration();
+        assert!(matches!(a.screen, Screen::Results(_)));
+        a.on_key(
+            press(KeyCode::Char('q'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(a.quit);
+        let mut b = app(&["hi"]);
+        b.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        b.on_key(
+            press(KeyCode::Char('q'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(b.quit);
     }
 
     #[test]
