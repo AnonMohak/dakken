@@ -282,7 +282,7 @@ On the results:
 | `Enter` | Start the next test, with new words |
 | `a` | Start the same words again (not in momo or zen mode, or in a climb) |
 | `r` | Replay the test at the speed you typed it (any key stops it) |
-| `y` | Copy the score card (daily challenge only) |
+| `y` | Copy the score card: WPM, accuracy and a square for each word (the daily challenge card also has your streak) |
 | `x` | Save the test as a race file for `--race` |
 | `Tab` or `Esc` | Open the menu |
 | `q` | Quit |
@@ -412,7 +412,7 @@ the key quests. Saved races go in the `races` folder. XP and levels come
 from the history, so they need no file of their own.
 `mistakes.txt`, in the same folder, keeps the last 100 words you typed wrong.
 If it is empty, the `mistakes` list uses the English words.
-`score-card.txt` keeps the last daily score card that you copied with `y`.
+`score-card.txt` keeps the last score card that you copied with `y`.
 
 ## How the stats work
 

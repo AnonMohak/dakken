@@ -758,16 +758,22 @@ impl App {
         (bosses.iter().filter(|&&c| c).count(), bosses.len())
     }
 
-    /// The score card of the daily challenge just finished.
-    fn score_card(&self, day: i64, wpm: f64, accuracy: f64) -> String {
-        let words: Vec<bool> = self
-            .session
-            .checked_words()
-            .into_iter()
-            .map(|(_, correct)| correct)
-            .collect();
-        let streak = history::daily_streak(&self.history, day).days;
-        card::score_card(day, wpm, accuracy, &words, streak)
+    /// The score card of the test just finished. The daily challenge card
+    /// has the streak; a zen test has no words to show.
+    fn score_card(&self, wpm: f64, accuracy: f64) -> String {
+        let words: Vec<bool> = match self.mode_now() {
+            Mode::Zen => Vec::new(),
+            _ => (self.session.checked_words().into_iter())
+                .map(|(_, correct)| correct)
+                .collect(),
+        };
+        match self.daily {
+            Some(day) => {
+                let streak = history::daily_streak(&self.history, day).days;
+                card::score_card(day, wpm, accuracy, &words, streak)
+            }
+            None => card::test_card(&self.label(), history::today(), wpm, accuracy, &words),
+        }
     }
 
     /// Save the score card next to the history, for terminals where the
@@ -1013,11 +1019,9 @@ impl App {
                 KeyCode::Char('x') if self.can_save_race() => self.save_race(),
                 KeyCode::Char('q') => self.quit = true,
                 KeyCode::Char('y') if self.reward.is_some() => {
-                    if let Some(day) = self.daily {
-                        let card = self.score_card(day, result.wpm, result.accuracy);
-                        self.card_file = self.save_card(&card);
-                        self.copy = Some(card);
-                    }
+                    let card = self.score_card(result.wpm, result.accuracy);
+                    self.card_file = self.save_card(&card);
+                    self.copy = Some(card);
                 }
                 KeyCode::Tab | KeyCode::Esc => self.open_menu(),
                 _ => {}
@@ -2023,14 +2027,16 @@ mod tests {
         // The main loop copies it; with no data folder there is no file.
         assert!(!a.copied);
         assert_eq!(a.card_file, None);
-        // Other tests have no card.
+        // Other tests have a card with their label.
         let mut b = app(&["hi"]);
         type_text(&mut b, "hi");
+        b.skip_celebration();
         b.on_key(
             press(KeyCode::Char('y'), KeyModifiers::NONE),
             Instant::now(),
         );
-        assert_eq!(b.copy, None);
+        let card = b.copy.take().expect("y gives a card for any test");
+        assert!(card.starts_with("dakken words 1 "), "{card}");
     }
 
     #[test]

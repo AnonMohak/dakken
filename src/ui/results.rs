@@ -181,21 +181,22 @@ fn best_line(app: &App, r: &TestResult) -> Line<'static> {
 /// The keys of the results screen, with `y` after a daily challenge and
 /// `x` for a test that can be a race.
 fn keys_text(app: &App) -> String {
-    let mut keys: Vec<String> = vec!["enter next test".into()];
+    // Short words, so the line fits in 80 columns; ? in the menu explains.
+    let mut keys: Vec<String> = vec!["enter next".into()];
     if app.can_repeat() {
-        keys.push("a same words".into());
+        keys.push("a again".into());
     }
     keys.push("r replay".into());
     if app.can_save_race() {
-        keys.push("x save race".into());
+        keys.push("x race".into());
     }
-    match (app.daily, app.copied, &app.card_file) {
-        (Some(_), true, _) => keys.insert(0, "score card copied".into()),
+    match (app.copied, &app.card_file) {
+        (true, _) => keys.insert(0, "score card copied".into()),
         // The terminal may have copied it too, with OSC 52.
-        (Some(_), false, Some(file)) => {
+        (false, Some(file)) => {
             keys.insert(0, format!("score card in {}", file.display()));
         }
-        (Some(_), false, None) if app.reward.is_some() => keys.push("y copy score card".into()),
+        (false, None) if app.reward.is_some() => keys.push("y card".into()),
         _ => {}
     }
     keys.push("tab menu".into());

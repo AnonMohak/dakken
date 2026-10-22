@@ -1,10 +1,12 @@
-//! The daily score card: a short text to paste in a chat, and the escape code
-//! that puts text on the clipboard.
+//! The score card: a short text to paste in a chat, and the escape code that
+//! puts text on the clipboard.
 
 use crate::history::format_time;
 
 /// Squares on each row of the card, one for each word.
 const ROW: usize = 10;
+/// Squares at most: a long test shows its first 100 words.
+const MAX_SQUARES: usize = 100;
 
 /// The card for the daily challenge of `day` (days since 1970-01-01 UTC): the
 /// score, the streak, then a blue square for each correct word and a black
@@ -12,10 +14,22 @@ const ROW: usize = 10;
 pub fn score_card(day: i64, wpm: f64, accuracy: f64, words: &[bool], streak: usize) -> String {
     let date = &format_time(day.max(0) as u64 * 86_400)[..10];
     let s = if streak == 1 { "" } else { "s" };
-    let mut out = format!(
-        "dakken daily {date}\n{wpm:.0} wpm · {accuracy:.0}% acc · {streak} day{s} in a row\n"
-    );
-    for row in words.chunks(ROW) {
+    format!("dakken daily {date}\n{wpm:.0} wpm · {accuracy:.0}% acc · {streak} day{s} in a row\n")
+        + &squares(words)
+}
+
+/// The card for any other test, with its label (such as "time 30") and
+/// the `day` it was typed.
+pub fn test_card(label: &str, day: i64, wpm: f64, accuracy: f64, words: &[bool]) -> String {
+    let date = &format_time(day.max(0) as u64 * 86_400)[..10];
+    format!("dakken {label} {date}\n{wpm:.0} wpm · {accuracy:.0}% acc\n") + &squares(words)
+}
+
+/// A blue square for each correct word and a black square for each wrong
+/// word, 10 on each row.
+fn squares(words: &[bool]) -> String {
+    let mut out = String::new();
+    for row in words[..words.len().min(MAX_SQUARES)].chunks(ROW) {
         for &correct in row {
             out += if correct { "🟦" } else { "⬛" };
         }
@@ -66,6 +80,16 @@ mod tests {
              🟦🟦🟦⬛🟦🟦🟦🟦🟦🟦\n🟦🟦\n"
         );
         assert!(score_card(0, 1.0, 1.0, &[], 1).contains("1 day in a row"));
+    }
+
+    #[test]
+    fn other_tests_get_a_card_with_their_label() {
+        let card = test_card("time 30 · punctuation", 20_381, 71.6, 95.2, &[true; 150]);
+        assert!(
+            card.starts_with("dakken time 30 · punctuation 2025-10-20\n72 wpm · 95% acc\n"),
+            "{card}"
+        );
+        assert_eq!(card.matches('🟦').count(), 100, "at most 100 squares");
     }
 
     #[test]
