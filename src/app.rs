@@ -491,6 +491,40 @@ impl App {
         self.screen = Screen::Typing;
     }
 
+    /// The last test can start again with the same words: not momo or zen
+    /// mode, which have no fixed words, and not a climb, whose rounds change.
+    pub fn can_repeat(&self) -> bool {
+        !self.momo && self.mode_now() != Mode::Zen && !self.climb_on()
+    }
+
+    /// Start the same words again. Time mode gets them in a loop, for a
+    /// faster try than the last one.
+    fn repeat_test(&mut self) {
+        if self.fixed_text() || self.mode == Mode::Custom {
+            self.restart();
+            return;
+        }
+        let words: Vec<String> = (self.session.words().iter())
+            .map(|w| w.iter().collect())
+            .collect();
+        let mode = self.session.mode();
+        self.session = match mode {
+            Mode::Time(_) => {
+                let mut next = 0;
+                Session::new(mode, move || {
+                    next += 1;
+                    words[(next - 1) % words.len()].clone()
+                })
+            }
+            _ => Session::from_words(mode, &words),
+        };
+        self.session.set_strict(self.strict_now());
+        if self.challenge_now() == Challenge::Survival {
+            self.session.set_lives(challenge::LIVES);
+        }
+        self.screen = Screen::Typing;
+    }
+
     fn new_test(&mut self) {
         (self.session, self.source) = match &self.custom {
             _ if self.daily.is_some() => {
@@ -878,6 +912,7 @@ impl App {
             Screen::Replay(_) => self.screen = Screen::Results(self.session.result()),
             Screen::Results(ref result) => match key.code {
                 KeyCode::Enter => self.restart(),
+                KeyCode::Char('a') if self.can_repeat() => self.repeat_test(),
                 KeyCode::Char('r') if !self.session.log().is_empty() => {
                     self.screen = Screen::Replay(Box::new(Replay {
                         session: self.session.replay(),
@@ -1128,6 +1163,35 @@ mod tests {
             Instant::now(),
         );
         assert!(b.quit);
+    }
+
+    #[test]
+    fn a_on_the_results_repeats_the_same_words() {
+        let mut a = app(&["one", "two"]);
+        type_text(&mut a, "one two");
+        a.skip_celebration();
+        a.on_key(
+            press(KeyCode::Char('a'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(matches!(a.screen, Screen::Typing));
+        let words: Vec<String> = (a.session.words().iter())
+            .map(|w| w.iter().collect())
+            .collect();
+        assert_eq!(words, ["one", "two"]);
+        assert!(!a.session.is_started());
+        // Time mode gets the same words in a loop.
+        let mode = Mode::Time(std::time::Duration::from_secs(15));
+        let mut b = App::with_session(mode, Session::from_words(mode, &["x", "y"]));
+        b.screen = Screen::Results(b.session.result());
+        b.on_key(
+            press(KeyCode::Char('a'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        let words: Vec<String> = (b.session.words().iter().take(4))
+            .map(|w| w.iter().collect())
+            .collect();
+        assert_eq!(words, ["x", "y", "x", "y"]);
     }
 
     #[test]

@@ -181,7 +181,11 @@ fn best_line(app: &App, r: &TestResult) -> Line<'static> {
 /// The keys of the results screen, with `y` after a daily challenge and
 /// `x` for a test that can be a race.
 fn keys_text(app: &App) -> String {
-    let mut keys: Vec<String> = vec!["enter restart".into(), "r replay".into()];
+    let mut keys: Vec<String> = vec!["enter next test".into()];
+    if app.can_repeat() {
+        keys.push("a same words".into());
+    }
+    keys.push("r replay".into());
     if app.can_save_race() {
         keys.push("x save race".into());
     }

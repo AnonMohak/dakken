@@ -278,7 +278,8 @@ On the results:
 
 | Key | Action |
 |---|---|
-| `Enter` | Start a new test |
+| `Enter` | Start the next test, with new words |
+| `a` | Start the same words again (not in momo or zen mode, or in a climb) |
 | `r` | Replay the test at the speed you typed it (any key stops it) |
 | `y` | Copy the score card (daily challenge only) |
 | `x` | Save the test as a race file for `--race` |
