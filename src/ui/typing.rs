@@ -185,9 +185,9 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     let hint_text = if replay {
         "• replay · any key to stop"
     } else if s.mode() == Mode::Zen {
-        "• tab for menu · enter to finish"
+        "• tab for menu · enter to finish · ctrl+r restart"
     } else {
-        "• tab for menu"
+        "• tab for menu · ctrl+r restart"
     };
     let hint = Line::styled(
         hint_text,

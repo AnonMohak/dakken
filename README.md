@@ -271,6 +271,7 @@ While you type:
 |---|---|
 | `Tab` or `Esc` | Open the menu |
 | `Enter` (in zen mode) | End the test |
+| `Ctrl+R` | Start a new test at once |
 | `Ctrl+Backspace`, `Alt+Backspace`, `Ctrl+W`, `Ctrl+H` | Delete the word |
 | `Ctrl+C` | Quit (on every screen) |
 

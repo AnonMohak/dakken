@@ -898,6 +898,9 @@ impl App {
         match self.screen {
             Screen::Typing => match key.code {
                 KeyCode::Tab | KeyCode::Esc => self.open_menu(),
+                KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    self.restart();
+                }
                 KeyCode::Enter if self.mode == Mode::Zen => {
                     self.session.finish(now);
                     self.tick(now);
@@ -1192,6 +1195,19 @@ mod tests {
             .map(|w| w.iter().collect())
             .collect();
         assert_eq!(words, ["x", "y", "x", "y"]);
+    }
+
+    #[test]
+    fn ctrl_r_starts_a_new_test_while_typing() {
+        let mut a = app(&["hello", "there"]);
+        type_text(&mut a, "hel");
+        assert!(a.session.is_started());
+        a.on_key(
+            press(KeyCode::Char('r'), KeyModifiers::CONTROL),
+            Instant::now(),
+        );
+        assert!(matches!(a.screen, Screen::Typing));
+        assert!(!a.session.is_started());
     }
 
     #[test]
