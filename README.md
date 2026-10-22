@@ -127,8 +127,8 @@ files on your computer.
 irm https://raw.githubusercontent.com/AnonMohak/dakken/master/install.ps1 | iex
 ```
 
-It downloads the newest `dakken.exe` from Releases, checks it against the
-release's `SHA256SUMS`, puts it in `%LOCALAPPDATA%\Programs\dakken`, and
+It downloads the newest `dakken.exe` for your system (x64 or ARM64) from
+Releases, checks it against the release's `SHA256SUMS`, puts it in `%LOCALAPPDATA%\Programs\dakken`, and
 adds that folder to your user `PATH`. To read the script before you run it,
 open [install.ps1](install.ps1).
 
@@ -483,8 +483,9 @@ the Homebrew formula. Update their version and SHA256 hashes for each release.
 
 CI runs fmt, clippy and the tests on Windows, Linux (x86-64 and ARM64) and
 macOS, and builds the Intel macOS binary. To publish a release, push a tag such
-as `v0.4.0`: the release workflow builds the five binaries and adds them to
-the GitHub Release.
+as `v0.4.0`: the release workflow builds the six binaries (Windows x64 and
+ARM64, macOS Intel and Apple Silicon, Linux x86-64 and ARM64) and adds them
+to the GitHub Release.
 
 The code has three parts:
 

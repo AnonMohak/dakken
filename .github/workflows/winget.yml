@@ -47,6 +47,6 @@ jobs:
         with:
           identifier: AnonMohak.dakken
           release-tag: ${{ inputs.tag }}
-          installers-regex: '-x86_64-pc-windows-msvc\.exe$'
+          installers-regex: '-(x86_64|aarch64)-pc-windows-msvc\.exe$'
           release-notes-url: https://github.com/AnonMohak/dakken/releases/tag/${{ inputs.tag }}
           token: ${{ secrets.WINGET_TOKEN }}

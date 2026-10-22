@@ -2,8 +2,8 @@
 #
 #   irm https://raw.githubusercontent.com/AnonMohak/dakken/master/install.ps1 | iex
 #
-# It downloads the newest dakken.exe from GitHub Releases, checks it against
-# the release's SHA256SUMS, puts it in %LOCALAPPDATA%\Programs\dakken, and
+# It downloads the newest dakken.exe for your system (x64 or ARM64) from
+# GitHub Releases, checks it against the release's SHA256SUMS, puts it in %LOCALAPPDATA%\Programs\dakken, and
 # adds that folder to your user PATH. Run it again to update; in dakken, `u`
 # in the menu also updates it.
 #
@@ -20,8 +20,13 @@
     $repo = 'AnonMohak/dakken'
     $headers = @{ 'User-Agent' = 'dakken-install' }
     $tag = (Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest" -Headers $headers).tag_name
-    $name = "dakken-$tag-x86_64-pc-windows-msvc.exe"
     $base = "https://github.com/$repo/releases/download/$tag"
+    $arm = $false
+    try {
+        $arm = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64'
+    } catch {
+        $arm = $env:PROCESSOR_ARCHITECTURE -eq 'ARM64' -or $env:PROCESSOR_ARCHITEW6432 -eq 'ARM64'
+    }
 
     $dir = $env:DAKKEN_INSTALL_DIR
     $setPath = -not $dir
@@ -32,13 +37,24 @@
     $download = Join-Path $dir 'dakken.download'
     $sumsFile = Join-Path $dir 'SHA256SUMS.download'
     try {
-        Invoke-WebRequest "$base/$name" -OutFile $download -UseBasicParsing -Headers $headers
         Invoke-WebRequest "$base/SHA256SUMS" -OutFile $sumsFile -UseBasicParsing -Headers $headers
-        $want = Get-Content $sumsFile |
-            Where-Object { ($_ -split '\s+', 2)[1] -replace '^\*', '' -eq $name } |
-            ForEach-Object { ($_ -split '\s+')[0] } |
-            Select-Object -First 1
+        $sums = Get-Content $sumsFile
+        $hashOf = {
+            param($file)
+            $sums | Where-Object { ($_ -split '\s+', 2)[1] -replace '^\*', '' -eq $file } |
+                ForEach-Object { ($_ -split '\s+')[0] } |
+                Select-Object -First 1
+        }
+        # An older release has no ARM64 file; the x64 file runs with
+        # emulation on Windows on ARM.
+        $name = "dakken-$tag-aarch64-pc-windows-msvc.exe"
+        $want = if ($arm) { & $hashOf $name }
+        if (-not $want) {
+            $name = "dakken-$tag-x86_64-pc-windows-msvc.exe"
+            $want = & $hashOf $name
+        }
         if (-not $want) { throw "SHA256SUMS has no line for $name." }
+        Invoke-WebRequest "$base/$name" -OutFile $download -UseBasicParsing -Headers $headers
         $got = (Get-FileHash $download -Algorithm SHA256).Hash
         if ($got -ne $want) { throw "The download does not match its checksum. Nothing was installed." }
         $exe = Join-Path $dir 'dakken.exe'
