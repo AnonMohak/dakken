@@ -226,7 +226,12 @@ pub fn skill_map(stats: &KeyStats, quests: &Quests, color: bool) -> String {
         return out;
     }
     let avg = levels.iter().map(|&l| f64::from(l)).sum::<f64>() / levels.len() as f64;
-    out += &format!("\n  average level {avg:.1} · teal: quest done · ·: not enough data\n");
+    let done = if color {
+        "\x1b[30;48;5;37m   \x1b[0m quest done"
+    } else {
+        "teal: quest done"
+    };
+    out += &format!("\n  average level {avg:.1} · {done} · ·: not enough data\n");
     out += &format!("\nkey quests ({} done)\n", quests.done_count());
     let open: Vec<&Quest> = quests.open().collect();
     if open.is_empty() {

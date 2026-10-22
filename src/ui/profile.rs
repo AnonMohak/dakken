@@ -12,8 +12,10 @@ use crate::badges::BADGES;
 use crate::history;
 use crate::progress::{self, Level, RANKS};
 use crate::{keystats, quests};
+use ratatui::style::Color;
 
-use super::{ansi, column};
+use super::ansi;
+use super::theme::Theme;
 
 /// The pages after the profile, with `→`.
 const STATS_NAMES: [&str; 4] = ["stats", "history", "keys", "skills"];
@@ -84,29 +86,74 @@ fn stats_lines(app: &App, page: usize) -> Vec<Line<'static>> {
         } else {
             head
         };
-        ansi::line(row, style)
+        themed(ansi::line(row, style), t)
     }));
     out
 }
 
-/// Draw `lines` in the middle, with `scroll` rows hidden at the top when
-/// the terminal is too short.
+/// The shades of the speed calendar (ANSI 256), as the report prints them.
+const SHADE_COLORS: [u8; 4] = [159, 116, 37, 23];
+
+/// The fixed colors of a report in the colors of the theme: teal becomes
+/// the theme color, yellow and red the two error colors, gray the gray of
+/// the theme. A day of the speed calendar keeps its shade character in the
+/// theme color.
+fn themed(mut line: Line<'static>, t: Theme) -> Line<'static> {
+    for span in &mut line.spans {
+        let s = span.style;
+        if let (Some(Color::Indexed(f)), Some(Color::Indexed(b))) = (s.fg, s.bg)
+            && f == b
+            && SHADE_COLORS.contains(&f)
+        {
+            span.style = s.fg(t.main).bg(t.bg.unwrap_or(Color::Reset));
+            continue;
+        }
+        span.style.fg = s.fg.map(|c| report_color(c, t));
+        span.style.bg = s.bg.map(|c| report_color(c, t));
+    }
+    line
+}
+
+fn report_color(color: Color, t: Theme) -> Color {
+    match color {
+        Color::Indexed(6 | 14 | 37) => t.main,
+        Color::Indexed(3 | 11) => t.error_extra,
+        Color::Indexed(1 | 9) => t.error,
+        Color::Indexed(8 | 244) => t.sub,
+        // Black letters on a colored key.
+        Color::Indexed(0) => t.bg.unwrap_or(Color::Black),
+        color => color,
+    }
+}
+
+/// The widest row of the profile and of every stats page, so each page
+/// starts in the same column and the page names do not move.
+fn pages_width(app: &App) -> u16 {
+    (0..STATS_PAGES)
+        .map(|page| stats_lines(app, page))
+        .chain([lines(app)])
+        .flat_map(|lines| lines.iter().map(Line::width).collect::<Vec<_>>())
+        .max()
+        .unwrap_or(0) as u16
+}
+
+/// Draw `lines` at the top, in the middle, with `scroll` rows hidden at
+/// the top when the terminal is too short. Every page has the same place,
+/// so the arrows and scrolling do not move the page names.
 fn draw_lines(frame: &mut Frame, app: &App, lines: Vec<Line<'static>>, scroll: usize) {
     let t = app.theme();
     let screen = frame.area();
     let rows = visible_rows(screen.height);
     let scroll = scroll.min(lines.len().saturating_sub(rows));
-    // The width of all the rows, not only the ones on screen, so the page
-    // does not move to the side when it scrolls.
-    let width = lines.iter().map(Line::width).max().unwrap_or(0) as u16;
+    let width = pages_width(app);
     let shown: Vec<Line> = lines.into_iter().skip(scroll).take(rows).collect();
     let height = shown.len() as u16;
-    let area = column(screen, height);
     let left = (screen.width.saturating_sub(width) / 2).max(MARGIN);
     let area = Rect {
         x: screen.x + left.min(screen.width),
+        y: screen.y + TOP.min(screen.height),
         width: width.min(screen.width.saturating_sub(left)),
-        ..area
+        height: height.min(screen.height.saturating_sub(TOP)),
     };
     frame.render_widget(Paragraph::new(shown), area);
     keys_line(frame, t, height, "←→ pages · ↑↓ scroll · tab back");
@@ -117,9 +164,12 @@ pub fn max_scroll(app: &App, height: u16) -> usize {
     lines(app).len().saturating_sub(visible_rows(height))
 }
 
+/// Free rows above the pages.
+const TOP: u16 = 1;
+
 /// Rows for the profile, with the keys line under them.
 fn visible_rows(height: u16) -> usize {
-    usize::from(height.saturating_sub(HINT_ROWS)).max(1)
+    usize::from(height.saturating_sub(HINT_ROWS + TOP)).max(1)
 }
 
 fn lines(app: &App) -> Vec<Line<'static>> {

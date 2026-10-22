@@ -54,7 +54,10 @@ On the results:
 | `Tab` or `Esc` | Open the menu |
 | `q` | Quit |
 
-In the menu, each setting shows its key on the left:
+In the menu, each setting shows its key on the left. Quote, zen and custom
+modes, the daily challenge and races have their own text, so there
+punctuation, numbers and the word list are gray, and `p`, `n` and `l` do
+nothing:
 
 | Key | Action |
 |---|---|

@@ -456,6 +456,24 @@ mod tests {
     }
 
     #[test]
+    fn the_keys_page_has_the_colors_of_the_theme() {
+        let mut a = app(&["hi"]);
+        a.theme = theme::Theme::find("dracula").unwrap();
+        a.screen = Screen::Stats { page: 2, scroll: 0 };
+        let mut terminal = Terminal::new(TestBackend::new(90, 30)).unwrap();
+        terminal.draw(|f| draw(f, &a, Instant::now())).unwrap();
+        let buf = terminal.backend().buffer();
+        let colors: Vec<_> = (buf.content.iter())
+            .flat_map(|c| [c.fg, c.bg])
+            .filter(|c| matches!(c, ratatui::style::Color::Indexed(_)))
+            .collect();
+        assert!(colors.is_empty(), "report colors left: {colors:?}");
+        // The keys with no data are in the gray of the theme.
+        let q = (buf.content.iter()).find(|c| c.symbol() == "q").unwrap();
+        assert_eq!(q.fg, a.theme.sub);
+    }
+
+    #[test]
     fn a_new_badge_fills_the_screen() {
         let mut a = app(&["hi"]);
         a.session

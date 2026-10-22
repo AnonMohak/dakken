@@ -8,8 +8,6 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
-use ratatui::crossterm::style::Stylize;
-
 use crate::engine::stats::Press;
 
 /// Fewer presses than this are not enough to judge a key.
@@ -209,6 +207,19 @@ pub fn default_path() -> Option<PathBuf> {
 
 pub const ROWS: [&str; 3] = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 
+/// The ANSI codes of the heatmap colors: black letters on teal, yellow and
+/// red keys, and gray letters for keys with too few presses. The codes are
+/// written here, not by crossterm, which leaves them out with `NO_COLOR`:
+/// the caller decides about color (the app shows these in its theme).
+const TEAL: &str = "30;48;5;6";
+const YELLOW: &str = "30;48;5;11";
+const RED: &str = "30;48;5;9";
+const GRAY: &str = "38;5;8";
+
+fn paint(code: &str, text: &str) -> String {
+    format!("\x1b[{code}m{text}\x1b[0m")
+}
+
 /// The text for `dakken --heatmap`: a keyboard colored by error rate, then
 /// the slowest keys and the keys with the most errors.
 pub fn heatmap(stats: &KeyStats, color: bool) -> String {
@@ -221,20 +232,33 @@ pub fn heatmap(stats: &KeyStats, color: bool) -> String {
             if !color {
                 out += &cell;
             } else if s.presses < MIN_PRESSES {
-                out += &cell.dark_grey().to_string();
+                out += &paint(GRAY, &cell);
             } else if s.error_rate() < 0.02 {
                 // Teal, the default theme color, like `Theme::main`.
-                out += &cell.black().on_dark_cyan().to_string();
+                out += &paint(TEAL, &cell);
             } else if s.error_rate() < 0.05 {
-                out += &cell.black().on_yellow().to_string();
+                out += &paint(YELLOW, &cell);
             } else {
-                out += &cell.black().on_red().to_string();
+                out += &paint(RED, &cell);
             }
             out += " ";
         }
         out += "\n";
     }
-    out += "\n  teal: under 2%   yellow: 2% to 5%   red: 5% or more   gray: not enough data\n";
+    out += &if color {
+        // A sample of each color, so the legend fits any colors (the app
+        // shows the report in the colors of its theme).
+        format!(
+            "\n  {} under 2%   {} 2% to 5%   {} 5% or more   {} not enough data\n",
+            paint(TEAL, "   "),
+            paint(YELLOW, "   "),
+            paint(RED, "   "),
+            paint(GRAY, " · "),
+        )
+    } else {
+        "\n  teal: under 2%   yellow: 2% to 5%   red: 5% or more   gray: not enough data\n"
+            .to_string()
+    };
 
     let mut known: Vec<(char, KeyStat)> = stats
         .keys

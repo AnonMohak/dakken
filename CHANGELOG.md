@@ -29,6 +29,12 @@ All notable changes to dakken. Versions follow [Semantic Versioning](https://sem
 
 ### Changed
 
+- The heatmaps and the skill map in the app use the colors of the theme.
+- In modes with their own text (quote, zen, custom, daily, race),
+  punctuation, numbers and the word list are gray in the menu, and `p`, `n`
+  and `l` do nothing.
+- The profile and its pages start at the top, in the same place on each
+  page. A long word list row (`weak-pairs`) no longer moves the menu.
 - The menu is shorter: the display options moved to the settings screen
   (`t`, `s` and `c` still work as shortcuts).
 - The daily challenge words are the same on every system.

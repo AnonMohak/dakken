@@ -540,6 +540,14 @@ impl App {
         self.daily.is_some() || self.race.is_some()
     }
 
+    /// Punctuation, numbers and the word list change the words of the test.
+    /// Quote, zen and custom modes, the daily challenge and races have their
+    /// own text, so the menu shows these options gray and `p`, `n` and `l`
+    /// do nothing.
+    pub fn word_options_apply(&self) -> bool {
+        !self.fixed_text() && !matches!(self.mode, Mode::Quote(_) | Mode::Zen | Mode::Custom)
+    }
+
     /// Save the finished test as a race file, for `--race`.
     fn save_race(&mut self) {
         if self.session.checked_words().is_empty() {
@@ -1158,6 +1166,7 @@ impl App {
                     self.screen = Screen::Modes { selected };
                 }
                 // New words are needed, so these start a new test.
+                KeyCode::Char('p' | 'n' | 'l') if !self.word_options_apply() => {}
                 KeyCode::Char('p') => {
                     self.options.punctuation = !self.options.punctuation;
                     self.save_config();
@@ -1544,6 +1553,26 @@ mod tests {
         );
         assert!(a.word_file.is_none());
         assert_eq!(a.options.list, WordList::English);
+    }
+
+    #[test]
+    fn word_options_do_nothing_in_modes_with_their_own_text() {
+        let mut a = app(&["hi"]);
+        a.mode = Mode::Quote(QuoteLength::Short);
+        a.screen = Screen::Menu;
+        for key in ['p', 'n', 'l'] {
+            a.on_key(
+                press(KeyCode::Char(key), KeyModifiers::NONE),
+                Instant::now(),
+            );
+        }
+        assert_eq!(a.options, Options::default());
+        a.mode = Mode::Words(10);
+        a.on_key(
+            press(KeyCode::Char('l'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert_eq!(a.options.list, WordList::English1k);
     }
 
     #[test]

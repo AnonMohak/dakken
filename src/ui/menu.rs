@@ -47,8 +47,15 @@ pub fn draw(frame: &mut Frame, app: &App) {
         (None, None) => mode_label(app.mode),
     };
     setting('o', "mode", &mode, t.main);
-    // Each setting shows the key that changes it.
-    let on_off = |on: bool| if on { ("on", t.main) } else { ("off", t.text) };
+    // Each setting shows the key that changes it. In modes with their own
+    // text the word options do not apply: they are gray, and the list
+    // shows english.
+    let apply = app.word_options_apply();
+    let on_off = |on: bool| match (apply, on) {
+        (false, _) => ("off", t.sub),
+        (true, true) => ("on", t.main),
+        (true, false) => ("off", t.text),
+    };
     let (state, color) = on_off(app.options.punctuation);
     setting('p', "punctuation", state, color);
     let (state, color) = on_off(app.options.numbers);
@@ -73,7 +80,17 @@ pub fn draw(frame: &mut Frame, app: &App) {
         list => list.name().to_string(),
     };
     let list = app.word_file.as_ref().map_or(list, |f| f.name.clone());
-    setting('l', "words", &list, t.text);
+    // Only the list name counts for the width of the menu: the letters of
+    // weak-keys or a long file name go out to the right.
+    let list_name = (app.word_file.as_ref()).map_or(app.options.list.name(), |_| "file");
+    let list_width = format!("l{}words {list_name}", " ".repeat(GAP))
+        .chars()
+        .count();
+    if apply {
+        setting('l', "words", &list, t.text);
+    } else {
+        setting('l', "words", WordList::English.name(), t.sub);
+    }
     let strict_color = if app.strict == Strict::Off {
         t.text
     } else {
@@ -132,7 +149,14 @@ pub fn draw(frame: &mut Frame, app: &App) {
             Style::new().fg(t.main).add_modifier(Modifier::BOLD),
         ),
     ]));
-    let width = settings.iter().map(Line::width).max().unwrap_or(0) as u16;
+    let is_list_row =
+        |line: &Line| (line.spans.first()).is_some_and(|s| s.content.starts_with('l'));
+    let width = (settings.iter())
+        .filter(|line| !is_list_row(line))
+        .map(Line::width)
+        .chain([list_width])
+        .max()
+        .unwrap_or(0) as u16;
     // The logo and the level go on top when there is room for them.
     let level = Level::from_xp(progress::total_xp(app.history.records()));
     let goal = app.weekly_goal > 0;
@@ -158,7 +182,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let settings_area = Rect {
         x: screen.x + left.min(screen.width),
         y: area.y + logo_rows as u16,
-        width: width.min(screen.width.saturating_sub(left)),
+        // Room to the right for a long list row.
+        width: screen.width.saturating_sub(left),
         height: height - logo_rows as u16,
     };
     if with_logo {
