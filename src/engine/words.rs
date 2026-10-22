@@ -5,6 +5,8 @@ const ENGLISH_1K: &str = include_str!("../../assets/words/english_1k.txt");
 const CODE: &str = include_str!("../../assets/words/code.txt");
 const SPANISH: &str = include_str!("../../assets/words/spanish.txt");
 const GERMAN: &str = include_str!("../../assets/words/german.txt");
+const FRENCH: &str = include_str!("../../assets/words/french.txt");
+const PORTUGUESE: &str = include_str!("../../assets/words/portuguese.txt");
 const QUOTES: &str = include_str!("../../assets/quotes/english.txt");
 const MOMO: &str = include_str!("../../assets/quotes/momo.md");
 
@@ -230,6 +232,10 @@ pub enum WordList {
     Spanish,
     /// 250 common German words. Nouns start with a capital letter.
     German,
+    /// 250 common French words, with no apostrophes.
+    French,
+    /// 250 common Portuguese words.
+    Portuguese,
     /// Words typed wrong in past tests. The app gives these words; `words`
     /// gives English for when there are no mistakes yet.
     Mistakes,
@@ -242,12 +248,14 @@ pub enum WordList {
 }
 
 /// The lists in menu order.
-pub const WORD_LISTS: [WordList; 8] = [
+pub const WORD_LISTS: [WordList; 10] = [
     WordList::English,
     WordList::English1k,
     WordList::Code,
     WordList::Spanish,
     WordList::German,
+    WordList::French,
+    WordList::Portuguese,
     WordList::Mistakes,
     WordList::WeakKeys,
     WordList::WeakPairs,
@@ -261,6 +269,8 @@ impl WordList {
             Self::Code => "code",
             Self::Spanish => "spanish",
             Self::German => "german",
+            Self::French => "french",
+            Self::Portuguese => "portuguese",
             Self::Mistakes => "mistakes",
             Self::WeakKeys => "weak-keys",
             Self::WeakPairs => "weak-pairs",
@@ -285,6 +295,8 @@ impl WordList {
             Self::Code => CODE,
             Self::Spanish => SPANISH,
             Self::German => GERMAN,
+            Self::French => FRENCH,
+            Self::Portuguese => PORTUGUESE,
         };
         text.lines()
             .map(str::trim)
@@ -568,7 +580,12 @@ mod tests {
 
     #[test]
     fn language_lists_have_250_unique_words() {
-        for list in [WordList::Spanish, WordList::German] {
+        for list in [
+            WordList::Spanish,
+            WordList::German,
+            WordList::French,
+            WordList::Portuguese,
+        ] {
             let words = list.words();
             let mut sorted = words.clone();
             sorted.sort();
@@ -578,6 +595,8 @@ mod tests {
         }
         assert!(WordList::Spanish.words().contains(&"también"));
         assert!(WordList::German.words().contains(&"Straße"));
+        assert!(WordList::French.words().contains(&"été"));
+        assert!(WordList::Portuguese.words().contains(&"não"));
     }
 
     #[test]

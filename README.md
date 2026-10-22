@@ -45,8 +45,9 @@ A typing-speed test for the terminal.
   quotes and parentheses.
 - Numbers mode: random numbers in place of some words.
 - Word lists: `english` (200 common words), `english-1k` (1000 words),
-  `code` (keywords, operators and short pieces of code), `spanish` and `german`
-  (250 common words each), `mistakes`, `weak-keys` and `weak-pairs`.
+  `code` (keywords, operators and short pieces of code), `spanish`, `german`,
+  `french` and `portuguese` (250 common words each), `mistakes`, `weak-keys`
+  and `weak-pairs`.
 - Practise your weak keys: the `weak-keys` list uses words with the 5 letters
   that have the most errors (then the slowest) in your key stats.
 - Skill map and key quests: `--skills` shows a keyboard with a level from 1
@@ -366,7 +367,7 @@ mode = "time 30"     # untimed, quote, quote short/medium/long, zen, time N or w
 theme = "tokyo-night"  # tokyo-night, terminal, dracula, nord, github-light, ...
 punctuation = false
 numbers = false
-words = "english"    # english, english-1k, code, spanish, german, mistakes, weak-keys or weak-pairs
+words = "english"    # english, english-1k, code, spanish, german, french, portuguese, mistakes, weak-keys or weak-pairs
 live = false         # live WPM and accuracy during the test
 pace = false         # pace caret that replays your personal-best test
 strict = "off"       # off, stop-on-error, no-backspace or master
@@ -493,8 +494,8 @@ The code has three parts:
 
 ## Word lists and quotes
 
-The word lists (English, code, Spanish and German) were written for this
-project. The quotes of quote mode are from public-domain books, poems and
+The word lists (English, code, Spanish, German, French and Portuguese) were
+written for this project. The quotes of quote mode are from public-domain books, poems and
 speeches. The momo mode collection (`assets/quotes/momo.md`) has quotes,
 paraphrases and longer speeches about One Piece (Eiichiro Oda), Hunter x Hunter (Yoshihiro Togashi) and
 Vinland Saga (Makoto Yukimura). They are not public domain and belong to
