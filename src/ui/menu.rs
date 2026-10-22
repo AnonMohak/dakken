@@ -72,6 +72,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         }
         list => list.name().to_string(),
     };
+    let list = app.word_file.as_ref().map_or(list, |f| f.name.clone());
     setting('l', "words", &list, t.text);
     let strict_color = if app.strict == Strict::Off {
         t.text

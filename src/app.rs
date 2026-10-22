@@ -294,6 +294,9 @@ pub struct App {
     pub momo_quotes: Rc<RefCell<Vec<words::MomoQuote>>>,
     /// The text for custom mode, from `--file`.
     pub custom: Option<CustomText>,
+    /// A word list from a file, from `--words-file`: random words from it
+    /// in place of the chosen list, until `l` in the menu.
+    pub word_file: Option<CustomText>,
     pub screen: Screen,
     pub history: History,
     pub mistakes: Mistakes,
@@ -395,6 +398,7 @@ impl App {
             momo: false,
             momo_quotes: Rc::default(),
             custom: None,
+            word_file: None,
             screen: Screen::Typing,
             history: History::in_memory(),
             mistakes: Mistakes::in_memory(),
@@ -606,7 +610,7 @@ impl App {
         self.screen = Screen::Typing;
     }
 
-    fn new_test(&mut self) {
+    pub fn new_test(&mut self) {
         (self.session, self.source) = match &self.custom {
             _ if self.daily.is_some() => {
                 let words = words::daily_words(self.daily.unwrap_or_default());
@@ -809,6 +813,9 @@ impl App {
     /// uses the list's own words: English for mistakes, all of english-1k for
     /// weak keys and weak pairs.
     fn practice_words(&self) -> Option<Vec<String>> {
+        if let Some(file) = &self.word_file {
+            return Some(file.words.clone());
+        }
         let words: Vec<String> = match self.options.list {
             WordList::Mistakes => self.mistakes.words().to_vec(),
             WordList::WeakKeys => {
@@ -909,7 +916,9 @@ impl App {
             parts.push(self.challenge_now().name().to_string());
         }
         // The defaults add nothing, so old history labels stay the same.
-        if !own_text && self.options.list != WordList::English {
+        if let (false, Some(file)) = (own_text, &self.word_file) {
+            parts.push(file.name.clone());
+        } else if !own_text && self.options.list != WordList::English {
             parts.push(self.options.list.name().to_string());
         }
         if self.layout != Layout::Qwerty {
@@ -1157,6 +1166,11 @@ impl App {
                 KeyCode::Char('n') => {
                     self.options.numbers = !self.options.numbers;
                     self.save_config();
+                    self.new_test();
+                }
+                // The first l leaves the word file for the chosen list.
+                KeyCode::Char('l') if self.word_file.is_some() => {
+                    self.word_file = None;
                     self.new_test();
                 }
                 KeyCode::Char('l') => {
@@ -1507,6 +1521,29 @@ mod tests {
             a.on_key(left, Instant::now());
         }
         assert!(matches!(a.screen, Screen::Profile { scroll: 0 }));
+    }
+
+    #[test]
+    fn a_word_file_gives_random_words_from_it_until_l() {
+        let mut a = app(&["hi"]);
+        a.word_file = Some(CustomText {
+            name: "verbs.txt".into(),
+            words: vec!["run".into(), "jump".into()],
+        });
+        a.mode = Mode::Words(20);
+        a.new_test();
+        assert!(
+            (a.session.words().iter())
+                .all(|w| ["run", "jump"].contains(&w.iter().collect::<String>().as_str()))
+        );
+        assert_eq!(a.label(), "words 20 · verbs.txt");
+        a.screen = Screen::Menu;
+        a.on_key(
+            press(KeyCode::Char('l'), KeyModifiers::NONE),
+            Instant::now(),
+        );
+        assert!(a.word_file.is_none());
+        assert_eq!(a.options.list, WordList::English);
     }
 
     #[test]

@@ -88,6 +88,11 @@ struct Cli {
     #[arg(short = 'l', long, value_name = "NAME")]
     words_list: Option<String>,
 
+    /// Use the words of this file as the word list, in random order (with
+    /// --file, the text is typed in order instead).
+    #[arg(long, value_name = "PATH", conflicts_with_all = ["file", "quote", "zen", "daily", "race", "words_list"])]
+    words_file: Option<PathBuf>,
+
     /// Caret shape: block (default), bar or underline.
     #[arg(long, value_name = "SHAPE", value_parser = ["block", "bar", "underline"])]
     caret: Option<String>,
@@ -308,6 +313,20 @@ fn main() -> io::Result<()> {
         key_stats,
         custom,
     );
+    if let Some(path) = &cli.words_file {
+        match CustomText::load(path) {
+            Ok(mut file) => {
+                file.words.sort();
+                file.words.dedup();
+                app.word_file = Some(file);
+                app.new_test();
+            }
+            Err(e) => {
+                eprintln!("error: cannot use {}: {e}", path.display());
+                std::process::exit(2);
+            }
+        }
+    }
     app.best_runs = best_runs::default_path().map_or_else(BestRuns::in_memory, BestRuns::load);
     app.badges = badges;
     app.quests = quests;

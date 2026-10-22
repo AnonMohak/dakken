@@ -26,7 +26,9 @@ A typing-speed test for the terminal.
   starts momo mode: momo is not in the `o` list, and `Enter` in the menu
   starts the mode from `o`, with your own theme. Momo mode is a mode on its
   own: challenges (`g`) and strict modes (`m`) are always off in it.
-- Custom mode: type the text of your own file, with `--file`.
+- Custom mode: type the text of your own file, with `--file`. Or use the
+  words of a file as the word list, in random order, with `--words-file`
+  (`l` in the menu goes back to the chosen list).
 - Zen mode: type anything with no target text. `Enter` ends the test.
 - Daily challenge: the same 30 words for everyone each day (UTC), with your
   streak of days in a row in `--stats`. Each 7 days of a streak give a
@@ -241,6 +243,7 @@ dakken -w 25      # 25-word test
 dakken -q         # quote test
 dakken -q short   # short quote test
 dakken -f notes.txt  # type the text of a file
+dakken --words-file verbs.txt  # random words from a file
 dakken -z         # zen: type freely, Enter to finish
 dakken -d         # daily challenge: the same words for everyone today
 dakken -l code    # test with the code word list
