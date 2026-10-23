@@ -67,7 +67,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
     }
 }
 
-pub use profile::STATS_PAGES;
+pub use profile::{PRACTICE_PAGE, STATS_PAGES};
 
 /// The most rows that a stats page can scroll in the terminal now.
 pub fn stats_max_scroll(app: &App, page: usize) -> usize {
@@ -249,6 +249,28 @@ mod tests {
         ] {
             assert!(out.contains(text), "{text}: {out}");
         }
+    }
+
+    #[test]
+    fn practice_page_shows_the_progress_and_the_reset_key() {
+        let mut a = app(&["hi"]);
+        a.screen = Screen::Stats {
+            page: PRACTICE_PAGE,
+            scroll: 0,
+        };
+        let out = render(&a, 100, 30);
+        assert!(
+            out.contains("profile  stats  history  keys  skills  practice"),
+            "{out}"
+        );
+        assert!(
+            out.contains("adaptive practice: each letter needs 35 wpm"),
+            "{out}"
+        );
+        assert!(out.contains("r resets english"), "{out}");
+        a.reset_armed = true;
+        let out = render(&a, 100, 30);
+        assert!(out.contains("press r again to reset english"), "{out}");
     }
 
     #[test]

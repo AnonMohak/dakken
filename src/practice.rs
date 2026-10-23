@@ -2,18 +2,28 @@
 //! recent speed of each key, and the focus key. A new letter unlocks when
 //! every unlocked letter is fast enough. The file has an `unlocked` line for
 //! each language (the name and the count) and a `key` line for each key
-//! (the key, the time in milliseconds, the error rate and the presses).
-
-// Practice mode uses this from the next steps on.
-#![allow(dead_code)]
+//! (the key, the time in milliseconds, the error rate and the presses). A
+//! `total` line has the lessons and the seconds of all practice.
 
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
+use crate::engine::practice::LetterModel;
 use crate::engine::stats::Press;
 use crate::engine::words::WordList;
+use crate::keystats::KeyStats;
+
+/// The languages of adaptive practice, in menu order.
+pub const LANGUAGES: [WordList; 5] = [
+    WordList::English,
+    WordList::Spanish,
+    WordList::German,
+    WordList::French,
+    WordList::Portuguese,
+];
 
 /// The letters a new practice starts with.
 pub const START_LETTERS: usize = 6;
@@ -46,6 +56,15 @@ pub fn model_words(language: WordList) -> Vec<&'static str> {
         WordList::English => WordList::English1k.words(),
         _ => language.words(),
     }
+}
+
+/// The letter model of the practice language of `list`. The models are
+/// made once, the first time one is needed.
+pub fn model(list: WordList) -> &'static LetterModel {
+    static MODELS: OnceLock<Vec<LetterModel>> = OnceLock::new();
+    let models = MODELS.get_or_init(|| LANGUAGES.map(|l| LetterModel::new(model_words(l))).into());
+    let i = LANGUAGES.iter().position(|&l| l == language(list));
+    &models[i.unwrap_or(0)]
 }
 
 /// The recent speed and errors of one key, from the last lessons.
@@ -85,6 +104,9 @@ pub struct Progress {
     pub unlocked: BTreeMap<String, usize>,
     /// The recent speed of each key, for all languages.
     pub speeds: BTreeMap<char, KeySpeed>,
+    /// All practice lessons, of every kind.
+    pub lessons: u64,
+    pub seconds: f64,
 }
 
 impl Progress {
@@ -103,6 +125,10 @@ impl Progress {
                     if let (Some(_), Ok(n)) = (WordList::parse(name), n.parse()) {
                         p.unlocked.insert(name.to_string(), n);
                     }
+                }
+                ["total", lessons, seconds] => {
+                    p.lessons = lessons.parse().unwrap_or(0);
+                    p.seconds = seconds.parse().unwrap_or(0.0);
                 }
                 ["key", key, ms, error_rate, presses] => {
                     let mut chars = key.chars();
@@ -139,7 +165,8 @@ impl Progress {
             .speeds
             .iter()
             .map(|(key, s)| format!("key\t{key}\t{}\t{}\t{}\n", s.ms, s.error_rate, s.presses));
-        fs::write(path, unlocked.chain(keys).collect::<String>())
+        let total = format!("total\t{}\t{}\n", self.lessons, self.seconds);
+        fs::write(path, total + &unlocked.chain(keys).collect::<String>())
     }
 
     /// The unlocked letters of a language, from its unlock `order`.
@@ -212,6 +239,87 @@ impl Progress {
         self.unlocked.remove(language.name());
     }
 }
+
+/// The report of the practice tab in the profile: the letters of each
+/// language, the speed of each unlocked key in the language of `list`, the
+/// weak and strong keys from `all` (tests and practice), and the time.
+pub fn report(p: &Progress, target: u32, list: WordList, all: &KeyStats, color: bool) -> String {
+    let paint = |code: u8, s: &str| {
+        if color {
+            format!("\x1b[38;5;{code}m{s}\x1b[0m")
+        } else {
+            s.to_string()
+        }
+    };
+    let mut out = format!("adaptive practice: each letter needs {target} wpm\n");
+    for language in LANGUAGES {
+        let order = model(language).order();
+        let name = format!("  {:<12}", language.name());
+        if !p.unlocked.contains_key(language.name()) && language != self::language(list) {
+            out += &format!("{name}{}\n", paint(GRAY, "not started"));
+            continue;
+        }
+        let letters = p.letters(language, order);
+        let mut line = format!("{name}{} of {} letters", letters.len(), order.len());
+        if let Some(next) = order.get(letters.len()) {
+            line += &format!(" · next {next}");
+        }
+        if let Some(focus) = p.focus(letters, target) {
+            line += &format!(" · focus {focus}");
+        }
+        out += &line;
+        out += "\n";
+    }
+    let minutes = (p.seconds / 60.0).round() as u64;
+    let lessons = if p.lessons == 1 { "lesson" } else { "lessons" };
+    out += &format!(
+        "  {} {lessons} · {}h {:02}m in all\n",
+        p.lessons,
+        minutes / 60,
+        minutes % 60
+    );
+
+    let language = self::language(list);
+    out += &format!("\nkey speed: {}, in wpm\n", language.name());
+    let letters = p.letters(language, model(language).order());
+    for row in letters.chunks(8) {
+        out += " ";
+        for &c in row {
+            let speed = p.speed(c);
+            let cell = match speed.known() {
+                true => format!("{:>3.0}", speed.wpm()),
+                false => "  ·".to_string(),
+            };
+            let cell = format!(" {c} {cell}  ");
+            out += &match (speed.ready(target), speed.known()) {
+                (true, _) => paint(TEAL, &cell),
+                (false, false) => paint(GRAY, &cell),
+                _ => cell,
+            };
+        }
+        out += "\n";
+    }
+
+    let weak = all.weakest_letters(5);
+    let mut strong = all.weakest_letters(usize::MAX);
+    strong.reverse();
+    strong.retain(|c| !weak.contains(c));
+    strong.truncate(5);
+    let chars = |keys: &[char]| keys.iter().map(char::to_string).collect::<Vec<_>>();
+    let or_none = |items: Vec<String>| match items.is_empty() {
+        true => paint(GRAY, "no data yet"),
+        false => items.join(" "),
+    };
+    out += "\nweak and strong keys: tests and practice\n";
+    out += &format!("  weak keys    {}\n", or_none(chars(&weak)));
+    out += &format!("  strong keys  {}\n", or_none(chars(&strong)));
+    out += &format!("  weak pairs   {}\n", or_none(all.weakest_pairs(5)));
+    out
+}
+
+/// Teal and gray (ANSI 256), like the other reports.
+const TEAL: u8 = 37;
+const GRAY: u8 = 244;
 
 pub fn default_path() -> Option<PathBuf> {
     Some(crate::history::data_dir()?.join("practice.tsv"))
@@ -337,6 +445,7 @@ mod tests {
         let path = dir.join("practice.tsv");
         let mut p = Progress::load(path.clone());
         p.unlocked.insert("german".to_string(), 9);
+        (p.lessons, p.seconds) = (3, 95.5);
         p.add_lesson(
             WordList::English,
             &ORDER,
@@ -348,6 +457,59 @@ mod tests {
         fs::write(&path, text + "bad line\nkey\tab\t1\t0\t1\n").unwrap();
         assert_eq!(Progress::load(path), p);
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn models_are_made_once_for_each_language() {
+        assert!(std::ptr::eq(
+            model(WordList::Code),
+            model(WordList::English)
+        ));
+        assert!(model(WordList::Spanish).order().contains(&'ñ'));
+    }
+
+    #[test]
+    fn report_shows_letters_speeds_and_keys() {
+        let mut p = Progress::default();
+        let mut all = KeyStats::in_memory();
+        let none = report(&p, 35, WordList::English, &all, false);
+        assert!(
+            none.contains("adaptive practice: each letter needs 35 wpm"),
+            "{none}"
+        );
+        assert!(
+            none.contains("  english     6 of 26 letters · next "),
+            "{none}"
+        );
+        assert!(none.contains("  german      not started"), "{none}");
+        assert!(none.contains("  0 lessons · 0h 00m in all"), "{none}");
+        assert!(none.contains("  weak keys    no data yet"), "{none}");
+
+        let order = model(WordList::German).order();
+        p.add_lesson(
+            WordList::German,
+            order,
+            35,
+            &lesson(&"e".repeat(20), 200, &[]),
+        );
+        p.unlocked.insert("german".to_string(), 7);
+        (p.lessons, p.seconds) = (2, 3700.0);
+        let presses = lesson("abcdefghijklmnop", 100, &['b']);
+        all.add_test(&presses).unwrap();
+        all.add_test(&presses).unwrap();
+        all.add_test(&presses).unwrap();
+        all.add_test(&presses).unwrap();
+        all.add_test(&presses).unwrap();
+        let text = report(&p, 35, WordList::German, &all, false);
+        assert!(text.contains("  german      7 of "), "{text}");
+        assert!(text.contains("key speed: german, in wpm"), "{text}");
+        assert!(text.contains(" e  60  "), "{text}");
+        assert!(text.contains("  2 lessons · 1h 02m in all"), "{text}");
+        assert!(text.contains("  weak keys    b "), "{text}");
+        assert!(
+            !text.contains("strong keys  b") && text.contains("strong keys  "),
+            "{text}"
+        );
     }
 
     #[test]

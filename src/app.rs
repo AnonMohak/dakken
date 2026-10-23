@@ -367,6 +367,9 @@ pub struct App {
     pub practice_mistakes: Mistakes,
     /// The practice session on screen.
     pub lessons: Lessons,
+    /// `r` on the practice page of the profile: one more `r` resets the
+    /// adaptive practice of the chosen language.
+    pub reset_armed: bool,
     /// The letters of the adaptive lesson on screen.
     pub lesson_letters: Option<LessonLetters>,
     /// The key times of each personal-best test, for the pace caret.
@@ -477,6 +480,7 @@ impl App {
             practice_keys: KeyStats::in_memory(),
             practice_mistakes: Mistakes::in_memory(),
             lessons: Lessons::default(),
+            reset_armed: false,
             lesson_letters: None,
             best_runs: BestRuns::in_memory(),
             badges: Badges::in_memory(),
@@ -781,16 +785,17 @@ impl App {
         l.presses += presses.len();
         l.correct += presses.iter().filter(|p| p.correct).count();
         l.last_wpm = Some(result.wpm);
+        self.practice.lessons += 1;
+        self.practice.seconds += seconds;
         self.save_failed = self.practice_keys.add_test(presses).is_err();
         let checked = self.session.checked_words();
         match self.mode {
             Mode::Practice(PracticeKind::Adaptive) => {
                 let language = practice::language(self.options.list);
-                let model = LetterModel::new(practice::model_words(language));
+                let model = practice::model(language);
                 let target = self.practice_target;
                 let new = (self.practice).add_lesson(language, model.order(), target, presses);
                 self.lessons.unlocked.extend(new);
-                self.save_failed |= self.practice.save().is_err();
             }
             Mode::Practice(PracticeKind::Mistakes) => {
                 // A mistake typed right leaves both lists. Punctuation mode
@@ -810,6 +815,7 @@ impl App {
                 self.save_failed |= self.mistakes.update(&[], &fixed).is_err();
                 self.save_failed |= self.practice_mistakes.update(&[], &fixed).is_err();
                 if !all.is_empty() && self.all_mistakes().is_empty() {
+                    self.save_failed |= self.practice.save().is_err();
                     return self.give_exorcist();
                 }
             }
@@ -822,6 +828,7 @@ impl App {
                 self.save_failed |= self.practice_mistakes.update(&wrong, &[]).is_err();
             }
         }
+        self.save_failed |= self.practice.save().is_err();
         false
     }
 
@@ -1050,9 +1057,9 @@ impl App {
 
     /// Adaptive practice in the language of the chosen list: its letter
     /// model, the number of unlocked letters, and the focus key.
-    pub fn adaptive(&self) -> (LetterModel, usize, Option<char>) {
+    pub fn adaptive(&self) -> (&'static LetterModel, usize, Option<char>) {
         let language = practice::language(self.options.list);
-        let model = LetterModel::new(practice::model_words(language));
+        let model = practice::model(language);
         let letters = self.practice.letters(language, model.order());
         let focus = self.practice.focus(letters, self.practice_target);
         let count = letters.len();
@@ -1225,6 +1232,9 @@ impl App {
     }
 
     pub fn on_key(&mut self, key: KeyEvent, now: Instant) {
+        if key.code != KeyCode::Char('r') {
+            self.reset_armed = false;
+        }
         // Windows sends a Release event for each key too. Use only Press.
         if key.kind != KeyEventKind::Press {
             return;
@@ -1312,6 +1322,7 @@ impl App {
                 _ => {}
             },
             Screen::Stats { page, scroll } => match key.code {
+                KeyCode::Char('r') if page == ui::PRACTICE_PAGE => self.press_reset(),
                 KeyCode::Up | KeyCode::Char('k') => {
                     let scroll = scroll.saturating_sub(1);
                     self.screen = Screen::Stats { page, scroll };
@@ -1512,6 +1523,21 @@ impl App {
             Setting::UpdateCheck => self.update_check = !self.update_check,
         }
         self.save_config();
+    }
+
+    /// `r` on the practice page: the first press asks, the second resets
+    /// the adaptive practice of the chosen language. The key speeds stay.
+    fn press_reset(&mut self) {
+        if !self.reset_armed {
+            self.reset_armed = true;
+            return;
+        }
+        self.reset_armed = false;
+        self.practice.reset(practice::language(self.options.list));
+        self.save_failed |= self.practice.save().is_err();
+        if self.practising() {
+            self.new_test();
+        }
     }
 
     fn open_menu(&mut self) {
@@ -2648,6 +2674,33 @@ mod tests {
         // After the badge, the next lesson.
         a.skip_celebration();
         assert!(matches!(a.screen, Screen::Typing));
+    }
+
+    #[test]
+    fn r_two_times_on_the_practice_page_resets_the_language() {
+        let r = press(KeyCode::Char('r'), KeyModifiers::NONE);
+        let mut a = app(&["hi"]);
+        a.options.list = WordList::Spanish;
+        a.practice.unlocked.insert("spanish".to_string(), 9);
+        a.practice.unlocked.insert("english".to_string(), 8);
+        a.screen = Screen::Stats {
+            page: ui::PRACTICE_PAGE,
+            scroll: 0,
+        };
+        a.on_key(r, Instant::now());
+        assert!(a.reset_armed);
+        // Another key takes the question back.
+        a.on_key(press(KeyCode::Down, KeyModifiers::NONE), Instant::now());
+        assert!(!a.reset_armed);
+        a.on_key(r, Instant::now());
+        a.on_key(r, Instant::now());
+        assert!(!a.reset_armed);
+        assert!(!a.practice.unlocked.contains_key("spanish"));
+        assert_eq!(a.practice.unlocked["english"], 8);
+        // On the other pages, r does nothing.
+        a.screen = Screen::Stats { page: 0, scroll: 0 };
+        a.on_key(r, Instant::now());
+        assert!(!a.reset_armed);
     }
 
     #[test]

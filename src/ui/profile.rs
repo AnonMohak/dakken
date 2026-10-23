@@ -11,15 +11,17 @@ use crate::app::App;
 use crate::badges::BADGES;
 use crate::history;
 use crate::progress::{self, Level, RANKS};
-use crate::{keystats, quests};
+use crate::{keystats, practice, quests};
 use ratatui::style::Color;
 
 use super::ansi;
 use super::theme::Theme;
 
 /// The pages after the profile, with `→`.
-const STATS_NAMES: [&str; 4] = ["stats", "history", "keys", "skills"];
+const STATS_NAMES: [&str; 5] = ["stats", "history", "keys", "skills", "practice"];
 pub const STATS_PAGES: usize = STATS_NAMES.len();
+/// The stats page of practice, where `r` resets the adaptive practice.
+pub const PRACTICE_PAGE: usize = 4;
 
 /// Everything about the user: level, test stats, badges, keys. `scroll`
 /// rows are hidden at the top when the terminal is too short.
@@ -75,7 +77,25 @@ fn stats_lines(app: &App, page: usize) -> Vec<Line<'static>> {
                 + "\n"
                 + &history::day_heatmap(&app.history, today, true)
         }
-        _ => quests::skill_map(&app.key_stats, &app.quests, true),
+        Some(&"skills") => quests::skill_map(&app.key_stats, &app.quests, true),
+        _ => {
+            let language = practice::language(app.options.list).name();
+            let reset = if app.reset_armed {
+                format!("\x1b[38;5;37mpress r again to reset {language}\x1b[0m")
+            } else {
+                format!("\x1b[38;5;244mr resets {language}\x1b[0m")
+            };
+            let all = app.all_key_stats();
+            practice::report(
+                &app.practice,
+                app.practice_target,
+                app.options.list,
+                &all,
+                true,
+            ) + "\n  "
+                + &reset
+                + "\n"
+        }
     };
     let head = Style::new().fg(t.main).add_modifier(Modifier::BOLD);
     (text.lines())
