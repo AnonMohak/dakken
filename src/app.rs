@@ -361,6 +361,10 @@ pub struct App {
     pub practice: Progress,
     /// The speed in WPM that each letter needs before the next unlocks.
     pub practice_target: u32,
+    /// The key stats of practice, apart from the tests.
+    pub practice_keys: KeyStats,
+    /// The words typed wrong in practice, apart from the tests.
+    pub practice_mistakes: Mistakes,
     /// The practice session on screen.
     pub lessons: Lessons,
     /// The letters of the adaptive lesson on screen.
@@ -416,6 +420,7 @@ impl App {
             update_check: config.update_check,
             ascii: config.ascii,
             underline_errors: config.underline_errors,
+            practice_target: config.practice_target,
             plain_console: std::env::var_os("TERM").is_some_and(|t| t == "linux"),
             truecolor: ui::color256::truecolor(),
             config_path,
@@ -469,6 +474,8 @@ impl App {
             key_stats: KeyStats::in_memory(),
             practice: Progress::default(),
             practice_target: practice::DEFAULT_TARGET,
+            practice_keys: KeyStats::in_memory(),
+            practice_mistakes: Mistakes::in_memory(),
             lessons: Lessons::default(),
             lesson_letters: None,
             best_runs: BestRuns::in_memory(),
@@ -758,11 +765,12 @@ impl App {
     }
 
     /// A practice lesson ended: update the practice data and add the lesson
-    /// to the session. Nothing goes into the history.
-    fn record_lesson(&mut self) {
+    /// to the session. Nothing goes into the history. True when the lesson
+    /// gave the exorcist badge.
+    fn record_lesson(&mut self) -> bool {
         let presses = self.session.presses();
         if presses.is_empty() {
-            return;
+            return false;
         }
         let result = self.session.result();
         let seconds = result.duration.as_secs_f64();
@@ -773,6 +781,8 @@ impl App {
         l.presses += presses.len();
         l.correct += presses.iter().filter(|p| p.correct).count();
         l.last_wpm = Some(result.wpm);
+        self.save_failed = self.practice_keys.add_test(presses).is_err();
+        let checked = self.session.checked_words();
         match self.mode {
             Mode::Practice(PracticeKind::Adaptive) => {
                 let language = practice::language(self.options.list);
@@ -780,25 +790,72 @@ impl App {
                 let target = self.practice_target;
                 let new = (self.practice).add_lesson(language, model.order(), target, presses);
                 self.lessons.unlocked.extend(new);
+                self.save_failed |= self.practice.save().is_err();
             }
             Mode::Practice(PracticeKind::Mistakes) => {
-                // A mistake typed right leaves the list. Punctuation mode
+                // A mistake typed right leaves both lists. Punctuation mode
                 // adds marks and capitals, so compare without them too.
-                let typed: Vec<String> = (self.session.checked_words().into_iter())
+                let typed: Vec<String> = (checked.into_iter())
                     .filter(|(_, correct)| *correct)
                     .flat_map(|(word, _)| {
                         let bare = word.trim_matches(|c: char| !c.is_alphanumeric());
                         [bare.to_lowercase(), word]
                     })
                     .collect();
-                let fixed: Vec<String> = (self.mistakes.words().iter())
+                let all = self.all_mistakes();
+                let fixed: Vec<String> = (all.iter())
                     .filter(|m| typed.contains(m) || typed.contains(&m.to_lowercase()))
                     .cloned()
                     .collect();
-                self.save_failed = self.mistakes.update(&[], &fixed).is_err();
+                self.save_failed |= self.mistakes.update(&[], &fixed).is_err();
+                self.save_failed |= self.practice_mistakes.update(&[], &fixed).is_err();
+                if !all.is_empty() && self.all_mistakes().is_empty() {
+                    return self.give_exorcist();
+                }
             }
-            _ => {}
+            _ => {
+                // The weak kinds take their words from english-1k.
+                let wrong: Vec<String> = (checked.into_iter())
+                    .filter(|(_, correct)| !correct)
+                    .filter_map(|(w, _)| mistakes::practice_word(&w, Some(WordList::English1k)))
+                    .collect();
+                self.save_failed |= self.practice_mistakes.update(&wrong, &[]).is_err();
+            }
         }
+        false
+    }
+
+    /// The mistakes of the tests, then those of practice.
+    pub fn all_mistakes(&self) -> Vec<String> {
+        let mut all = self.mistakes.words().to_vec();
+        for w in self.practice_mistakes.words() {
+            if !all.contains(w) {
+                all.push(w.clone());
+            }
+        }
+        all
+    }
+
+    /// Emptying the mistakes in practice gives the exorcist badge: the one
+    /// reward that practice gives. True when the badge is new, for its
+    /// celebration.
+    fn give_exorcist(&mut self) -> bool {
+        let (new, saved) = self.badges.add(&["exorcist"]);
+        self.save_failed |= saved.is_err();
+        if new.is_empty() {
+            return false;
+        }
+        let level = Level::from_xp(progress::total_xp(self.history.records()));
+        self.reward = Some(Reward {
+            xp: 0,
+            before: level,
+            after: level,
+            badges: new,
+            goal_reached: false,
+            bosses: None,
+            quests: Vec::new(),
+        });
+        true
     }
 
     /// Tab in a practice lesson: count the lesson typed so far, then show
@@ -933,11 +990,16 @@ impl App {
         Some(path)
     }
 
-    /// The letters the weak-keys list practises: the letters of the open
+    /// The key stats of the tests and of practice together.
+    pub fn all_key_stats(&self) -> KeyStats {
+        self.key_stats.merged(&self.practice_keys)
+    }
+
+    /// The letters weak-keys practice practises: the letters of the open
     /// key quests first, then the weakest letters, 5 in all.
     pub fn weak_letters(&self) -> Vec<char> {
         let mut letters: Vec<char> = self.quests.open().map(|q| q.key).collect();
-        for c in self.key_stats.weakest_letters(5) {
+        for c in self.all_key_stats().weakest_letters(5) {
             if !letters.contains(&c) {
                 letters.push(c);
             }
@@ -946,9 +1008,9 @@ impl App {
         letters
     }
 
-    /// The letter pairs the weak-pairs list practises.
+    /// The letter pairs weak-pairs practice practises.
     pub fn weak_pairs(&self) -> Vec<String> {
-        self.key_stats.weakest_pairs(5)
+        self.all_key_stats().weakest_pairs(5)
     }
 
     /// The words of a practice lesson, or of the word file from
@@ -979,8 +1041,10 @@ impl App {
                 weak(&|w| pairs.iter().any(|p| w.contains(p.as_str())))
             }
             // With no mistakes yet, the chosen list.
-            PracticeKind::Mistakes if self.mistakes.words().is_empty() => return None,
-            PracticeKind::Mistakes => self.mistakes.words().to_vec(),
+            PracticeKind::Mistakes => match self.all_mistakes() {
+                all if all.is_empty() => return None,
+                all => all,
+            },
         })
     }
 
@@ -1021,6 +1085,7 @@ impl App {
                 update_check: self.update_check,
                 ascii: self.ascii,
                 underline_errors: self.underline_errors,
+                practice_target: self.practice_target,
             };
             let _ = config.save(path);
         }
@@ -1111,8 +1176,11 @@ impl App {
         if matches!(self.screen, Screen::Typing) && self.session.is_finished() {
             // The next lesson starts at once.
             if self.practising() {
-                self.record_lesson();
+                let badge = self.record_lesson();
                 self.new_test();
+                if badge {
+                    self.screen = Screen::Celebration { page: 0 };
+                }
                 return;
             }
             let result = self.session.result();
@@ -1221,6 +1289,8 @@ impl App {
                     let pages = self.reward.as_ref().map_or(0, |r| r.celebrations().len());
                     self.screen = if page + 1 < pages {
                         Screen::Celebration { page: page + 1 }
+                    } else if self.practising() {
+                        Screen::Typing
                     } else {
                         Screen::Results(self.session.result())
                     };
@@ -2487,6 +2557,7 @@ mod tests {
         a.session = Session::from_words(a.mode, &["Hello."]);
         type_text(&mut a, "Hello.");
         assert!(a.mistakes.words().is_empty());
+        a.skip_celebration();
         assert!(matches!(a.screen, Screen::Typing));
         assert_eq!(a.history.records().len(), 1);
     }
@@ -2530,6 +2601,53 @@ mod tests {
         assert!(!a.session.is_started());
         assert_eq!(a.lessons.count, 1);
         assert!(a.lesson_letters.is_some());
+    }
+
+    #[test]
+    fn practice_keeps_its_own_keys_and_mistakes() {
+        let mut a = app(&["hi"]);
+        a.mode = Mode::Practice(PracticeKind::WeakKeys);
+        a.restart();
+        a.session = Session::from_words(a.mode, &["Quiz,", "jam"]);
+        type_text(&mut a, "Quix, jam");
+        // The test data does not change; practice has the key presses and
+        // the wrong word, without its comma and capital.
+        assert_eq!(a.key_stats.get('q').presses, 0);
+        assert!(a.mistakes.words().is_empty());
+        assert_eq!(a.practice_keys.get('u').presses, 1);
+        assert_eq!(a.practice_mistakes.words(), ["quiz"]);
+        assert_eq!(a.all_mistakes(), ["quiz"]);
+        // The weak kinds read the test data and the practice data together.
+        assert_eq!(a.all_key_stats().get('j').presses, 1);
+    }
+
+    #[test]
+    fn emptying_the_mistakes_in_practice_gives_the_exorcist_badge() {
+        let mut a = app(&["hi"]);
+        a.mistakes.update(&["one".to_string()], &[]).unwrap();
+        a.practice_mistakes
+            .update(&["two".to_string()], &[])
+            .unwrap();
+        a.mode = Mode::Practice(PracticeKind::Mistakes);
+        a.restart();
+        let mut words: Vec<String> = a
+            .session
+            .words()
+            .iter()
+            .map(|w| w.iter().collect())
+            .collect();
+        words.sort();
+        words.dedup();
+        assert_eq!(words, ["one", "two"]);
+        a.session = Session::from_words(a.mode, &["one", "two"]);
+        type_text(&mut a, "one two");
+        assert!(a.all_mistakes().is_empty());
+        assert!(matches!(a.screen, Screen::Celebration { page: 0 }));
+        assert_eq!(a.reward.as_ref().unwrap().badges, ["exorcist"]);
+        assert!(a.history.records().is_empty());
+        // After the badge, the next lesson.
+        a.skip_celebration();
+        assert!(matches!(a.screen, Screen::Typing));
     }
 
     #[test]

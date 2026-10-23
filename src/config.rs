@@ -35,6 +35,9 @@ pub struct Config {
     pub ascii: bool,
     /// Underline wrong letters, so errors do not show by color only.
     pub underline_errors: bool,
+    /// The speed in WPM each letter needs in adaptive practice before the
+    /// next letter unlocks.
+    pub practice_target: u32,
 }
 
 /// The shape of the text cursor.
@@ -82,6 +85,7 @@ impl Default for Config {
             update_check: true,
             ascii: false,
             underline_errors: false,
+            practice_target: crate::practice::DEFAULT_TARGET,
         }
     }
 }
@@ -136,6 +140,11 @@ impl Config {
                 "update_check" => config.update_check = value != "false",
                 "symbols" => config.ascii = value == "ascii",
                 "underline_errors" => config.underline_errors = value == "true",
+                "practice_target" => {
+                    config.practice_target = (value.parse().ok())
+                        .filter(|t| (1..=300).contains(t))
+                        .unwrap_or(config.practice_target)
+                }
                 "numbers" => config.options.numbers = value == "true",
                 "words" => match (WordList::parse(value), PracticeKind::parse(value)) {
                     (Some(list), _) => config.options.list = list,
@@ -175,7 +184,8 @@ impl Config {
              weekly_goal = {}\n\
              update_check = {}\n\
              symbols = \"{}\"\n\
-             underline_errors = {}\n",
+             underline_errors = {}\n\
+             practice_target = {}\n",
             mode_label(self.mode),
             self.theme.name,
             self.options.punctuation,
@@ -190,7 +200,8 @@ impl Config {
             self.weekly_goal,
             self.update_check,
             if self.ascii { "ascii" } else { "unicode" },
-            self.underline_errors
+            self.underline_errors,
+            self.practice_target
         ) + &self.custom_colors_text()
     }
 
@@ -258,6 +269,7 @@ mod tests {
             update_check: false,
             ascii: true,
             underline_errors: true,
+            practice_target: 50,
         };
         assert_eq!(Config::parse(&config.to_text()), config);
     }

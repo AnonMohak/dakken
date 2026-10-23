@@ -65,6 +65,28 @@ impl KeyStats {
         }
     }
 
+    /// These stats and `other` added up, in memory only.
+    pub fn merged(&self, other: &Self) -> Self {
+        let mut all = Self {
+            path: None,
+            keys: self.keys.clone(),
+            pairs: self.pairs.clone(),
+        };
+        let add = |a: &mut KeyStat, b: &KeyStat| {
+            a.presses += b.presses;
+            a.errors += b.errors;
+            a.total_ms += b.total_ms;
+            a.timed += b.timed;
+        };
+        for (k, s) in &other.keys {
+            add(all.keys.entry(*k).or_default(), s);
+        }
+        for (k, s) in &other.pairs {
+            add(all.pairs.entry(*k).or_default(), s);
+        }
+        all
+    }
+
     pub fn get(&self, key: char) -> KeyStat {
         self.keys.get(&key).copied().unwrap_or_default()
     }
@@ -342,6 +364,20 @@ mod tests {
         assert_eq!(loaded.weakest_pairs(2), ["th", "he"]);
         assert_eq!(loaded.get('t').presses, 5);
         let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn merged_stats_add_up_and_stay_in_memory() {
+        let (mut a, mut b) = (KeyStats::in_memory(), KeyStats::in_memory());
+        a.add_test(&[press(0, 't', true), press(200, 'h', false)])
+            .unwrap();
+        b.add_test(&[press(0, 't', true), press(100, 'h', true)])
+            .unwrap();
+        let all = a.merged(&b);
+        let h = all.get('h');
+        assert_eq!((h.presses, h.errors, h.total_ms, h.timed), (2, 1, 300, 2));
+        assert_eq!(all.pairs[&('t', 'h')].presses, 2);
+        assert!(all.path.is_none());
     }
 
     #[test]

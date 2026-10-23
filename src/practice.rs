@@ -1,11 +1,16 @@
 //! Adaptive practice: which letters are unlocked in each language, the
 //! recent speed of each key, and the focus key. A new letter unlocks when
-//! every unlocked letter is fast enough.
+//! every unlocked letter is fast enough. The file has an `unlocked` line for
+//! each language (the name and the count) and a `key` line for each key
+//! (the key, the time in milliseconds, the error rate and the presses).
 
 // Practice mode uses this from the next steps on.
 #![allow(dead_code)]
 
 use std::collections::BTreeMap;
+use std::fs;
+use std::io;
+use std::path::PathBuf;
 
 use crate::engine::stats::Press;
 use crate::engine::words::WordList;
@@ -74,6 +79,8 @@ impl KeySpeed {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Progress {
+    /// `None` keeps the progress in memory only.
+    path: Option<PathBuf>,
     /// The number of unlocked letters, by language name.
     pub unlocked: BTreeMap<String, usize>,
     /// The recent speed of each key, for all languages.
@@ -81,6 +88,60 @@ pub struct Progress {
 }
 
 impl Progress {
+    /// Read the progress. A missing file is a new start, and bad lines are
+    /// skipped.
+    pub fn load(path: PathBuf) -> Self {
+        let text = fs::read_to_string(&path).unwrap_or_default();
+        let mut p = Self {
+            path: Some(path),
+            ..Self::default()
+        };
+        for line in text.lines() {
+            let f: Vec<&str> = line.split('\t').collect();
+            match f[..] {
+                ["unlocked", name, n] => {
+                    if let (Some(_), Ok(n)) = (WordList::parse(name), n.parse()) {
+                        p.unlocked.insert(name.to_string(), n);
+                    }
+                }
+                ["key", key, ms, error_rate, presses] => {
+                    let mut chars = key.chars();
+                    let (Some(key), None) = (chars.next(), chars.next()) else {
+                        continue;
+                    };
+                    if let (Ok(ms), Ok(error_rate), Ok(presses)) =
+                        (ms.parse(), error_rate.parse(), presses.parse())
+                    {
+                        let speed = KeySpeed {
+                            ms,
+                            error_rate,
+                            presses,
+                        };
+                        p.speeds.insert(key, speed);
+                    }
+                }
+                _ => {}
+            }
+        }
+        p
+    }
+
+    /// Write the file, if there is one.
+    pub fn save(&self) -> io::Result<()> {
+        let Some(path) = &self.path else {
+            return Ok(());
+        };
+        if let Some(dir) = path.parent() {
+            fs::create_dir_all(dir)?;
+        }
+        let unlocked = (self.unlocked.iter()).map(|(name, n)| format!("unlocked\t{name}\t{n}\n"));
+        let keys = self
+            .speeds
+            .iter()
+            .map(|(key, s)| format!("key\t{key}\t{}\t{}\t{}\n", s.ms, s.error_rate, s.presses));
+        fs::write(path, unlocked.chain(keys).collect::<String>())
+    }
+
     /// The unlocked letters of a language, from its unlock `order`.
     pub fn letters<'a>(&self, language: WordList, order: &'a [char]) -> &'a [char] {
         let n = self.unlocked.get(language.name()).copied();
@@ -150,6 +211,20 @@ impl Progress {
     pub fn reset(&mut self, language: WordList) {
         self.unlocked.remove(language.name());
     }
+}
+
+pub fn default_path() -> Option<PathBuf> {
+    Some(crate::history::data_dir()?.join("practice.tsv"))
+}
+
+/// The key stats of practice, apart from the tests.
+pub fn keys_path() -> Option<PathBuf> {
+    Some(crate::history::data_dir()?.join("practice-keys.tsv"))
+}
+
+/// The words typed wrong in practice, apart from the tests.
+pub fn mistakes_path() -> Option<PathBuf> {
+    Some(crate::history::data_dir()?.join("practice-mistakes.txt"))
 }
 
 #[cfg(test)]
@@ -254,6 +329,25 @@ mod tests {
         p.reset(WordList::English);
         assert_eq!(p.letters(WordList::English, &ORDER).len(), 6);
         assert!(p.speed('n').presses == 0 && p.speed('e').known());
+    }
+
+    #[test]
+    fn progress_is_saved_and_read_back() {
+        let dir = std::env::temp_dir().join(format!("dakken-practice-{}", std::process::id()));
+        let path = dir.join("practice.tsv");
+        let mut p = Progress::load(path.clone());
+        p.unlocked.insert("german".to_string(), 9);
+        p.add_lesson(
+            WordList::English,
+            &ORDER,
+            35,
+            &lesson("eaeaea", 150, &['a']),
+        );
+        p.save().unwrap();
+        let text = fs::read_to_string(&path).unwrap();
+        fs::write(&path, text + "bad line\nkey\tab\t1\t0\t1\n").unwrap();
+        assert_eq!(Progress::load(path), p);
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

@@ -39,6 +39,7 @@ use engine::{Mode, PracticeKind, QuoteLength, STRICT_MODES, Strict};
 use history::History;
 use keystats::KeyStats;
 use mistakes::Mistakes;
+use practice::Progress;
 use quests::Quests;
 use ui::theme::Theme;
 
@@ -344,6 +345,15 @@ fn main() -> io::Result<()> {
     app.best_runs = best_runs::default_path().map_or_else(BestRuns::in_memory, BestRuns::load);
     app.badges = badges;
     app.quests = quests;
+    // Practice keeps its own data, apart from the tests. The first lesson
+    // needs it and the quests, so it is made again.
+    app.practice = practice::default_path().map_or_else(Progress::default, Progress::load);
+    app.practice_keys = practice::keys_path().map_or_else(KeyStats::in_memory, KeyStats::load);
+    app.practice_mistakes =
+        practice::mistakes_path().map_or_else(Mistakes::in_memory, Mistakes::load);
+    if app.practising() {
+        app.new_test();
+    }
     if cli.daily {
         app.start_daily(history::today());
     }

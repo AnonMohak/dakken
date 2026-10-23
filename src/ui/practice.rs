@@ -47,7 +47,7 @@ pub fn status(app: &App) -> Vec<Span<'static>> {
             spans.push(Span::styled(format!("weak pairs {}", or_all(&pairs)), sub));
         }
         _ => {
-            let left = app.mistakes.words().len();
+            let left = app.all_mistakes().len();
             spans.push(Span::styled(format!("{left} mistakes left"), sub));
         }
     }
