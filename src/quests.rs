@@ -213,7 +213,7 @@ pub fn skill_map(stats: &KeyStats, quests: &Quests, color: bool) -> String {
             };
             out += &match (color, done.contains(&key), level.is_some()) {
                 // Teal (ANSI 256), like the badges.
-                (true, true, _) => format!("\x1b[30;48;5;37m{cell}\x1b[0m"),
+                (true, true, _) => format!("\x1b[30;48;5;43m{cell}\x1b[0m"),
                 (true, false, false) => format!("\x1b[38;5;244m{cell}\x1b[0m"),
                 _ => cell,
             };
@@ -227,7 +227,7 @@ pub fn skill_map(stats: &KeyStats, quests: &Quests, color: bool) -> String {
     }
     let avg = levels.iter().map(|&l| f64::from(l)).sum::<f64>() / levels.len() as f64;
     let done = if color {
-        "\x1b[30;48;5;37m   \x1b[0m quest done"
+        "\x1b[30;48;5;43m   \x1b[0m quest done"
     } else {
         "teal: quest done"
     };

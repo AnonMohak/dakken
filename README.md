@@ -35,8 +35,9 @@ irm https://raw.githubusercontent.com/AnonMohak/dakken/master/install.ps1 | iex
 curl -fsSL https://raw.githubusercontent.com/AnonMohak/dakken/master/install.sh | sh
 ```
 
-You can also use winget (`winget install AnonMohak.dakken`), Scoop,
-Homebrew, Cargo or a file from Releases. See
+You can also use Scoop, Homebrew, Cargo or a file from Releases. (winget
+is not ready yet: the package waits for approval, so do not use
+`winget install AnonMohak.dakken` for now.) See
 [docs/install.md](docs/install.md), which also tells how to update and
 uninstall.
 

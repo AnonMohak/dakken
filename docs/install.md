@@ -25,7 +25,8 @@ It downloads the newest dakken for your system, checks it against
 `~/.bash_profile` on macOS, fish's `config.fish`, or `~/.profile`). Read
 it first in [install.sh](../install.sh).
 
-**winget (Windows):**
+**winget (Windows):** not ready yet. The package waits for approval in the
+winget repository, so do not use this command for now.
 
 ```powershell
 winget install AnonMohak.dakken

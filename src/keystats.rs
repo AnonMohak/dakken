@@ -207,12 +207,14 @@ pub fn default_path() -> Option<PathBuf> {
 
 pub const ROWS: [&str; 3] = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 
-/// The ANSI codes of the heatmap colors: black letters on teal, yellow and
-/// red keys, and gray letters for keys with too few presses. The codes are
-/// written here, not by crossterm, which leaves them out with `NO_COLOR`:
-/// the caller decides about color (the app shows these in its theme).
-const TEAL: &str = "30;48;5;6";
-const YELLOW: &str = "30;48;5;11";
+/// The ANSI codes of the heatmap colors: black letters on the logo teal
+/// (#2dd4bf, ANSI 256 color 43), white letters on the dark logo teal
+/// (#0f5f59, color 23), black letters on red, and gray letters for keys
+/// with too few presses. The codes are written here, not by crossterm,
+/// which leaves them out with `NO_COLOR`: the caller decides about color
+/// (the app shows these in its theme).
+const TEAL: &str = "30;48;5;43";
+const DARK_TEAL: &str = "97;48;5;23";
 const RED: &str = "30;48;5;9";
 const GRAY: &str = "38;5;8";
 
@@ -237,7 +239,7 @@ pub fn heatmap(stats: &KeyStats, color: bool) -> String {
                 // Teal, the default theme color, like `Theme::main`.
                 out += &paint(TEAL, &cell);
             } else if s.error_rate() < 0.05 {
-                out += &paint(YELLOW, &cell);
+                out += &paint(DARK_TEAL, &cell);
             } else {
                 out += &paint(RED, &cell);
             }
@@ -251,12 +253,12 @@ pub fn heatmap(stats: &KeyStats, color: bool) -> String {
         format!(
             "\n  {} under 2%   {} 2% to 5%   {} 5% or more   {} not enough data\n",
             paint(TEAL, "   "),
-            paint(YELLOW, "   "),
+            paint(DARK_TEAL, "   "),
             paint(RED, "   "),
             paint(GRAY, " · "),
         )
     } else {
-        "\n  teal: under 2%   yellow: 2% to 5%   red: 5% or more   gray: not enough data\n"
+        "\n  teal: under 2%   dark teal: 2% to 5%   red: 5% or more   gray: not enough data\n"
             .to_string()
     };
 

@@ -95,8 +95,8 @@ fn stats_lines(app: &App, page: usize) -> Vec<Line<'static>> {
 const SHADE_COLORS: [u8; 4] = [159, 116, 37, 23];
 
 /// The fixed colors of a report in the colors of the theme: teal becomes
-/// the theme color, yellow and red the two error colors, gray the gray of
-/// the theme. A day of the speed calendar keeps its shade character in the
+/// the theme color, dark teal and red the two error colors, gray the gray
+/// of the theme. A day of the speed calendar keeps its shade character in the
 /// theme color.
 fn themed(mut line: Line<'static>, t: Theme) -> Line<'static> {
     for span in &mut line.spans {
@@ -116,12 +116,12 @@ fn themed(mut line: Line<'static>, t: Theme) -> Line<'static> {
 
 fn report_color(color: Color, t: Theme) -> Color {
     match color {
-        Color::Indexed(6 | 14 | 37) => t.main,
-        Color::Indexed(3 | 11) => t.error_extra,
+        Color::Indexed(6 | 14 | 37 | 43) => t.main,
+        Color::Indexed(23) => t.error_extra,
         Color::Indexed(1 | 9) => t.error,
         Color::Indexed(8 | 244) => t.sub,
-        // Black letters on a colored key.
-        Color::Indexed(0) => t.bg.unwrap_or(Color::Black),
+        // Black or white letters on a colored key.
+        Color::Indexed(0 | 15) => t.bg.unwrap_or(Color::Black),
         color => color,
     }
 }
