@@ -2,6 +2,16 @@
 
 All notable changes to dakken. Versions follow [Semantic Versioning](https://semver.org).
 
+## 0.6.1 - 2026-10-24
+
+### Changed
+
+- `u` updates a Cargo install with the release file, as for a file from
+  Releases: nothing compiles, so a broken Rust or Visual Studio setup cannot
+  stop the update. `cargo install` stays as the fallback, and it no longer
+  takes Cygwin's or Git's `link.exe` for the Visual Studio linker when
+  `VCINSTALLDIR` is set but empty.
+
 ## 0.6.0 - 2026-10-24
 
 ### Added
