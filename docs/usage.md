@@ -11,7 +11,8 @@ dakken --words-file verbs.txt  # random words from a file
 dakken -z         # zen: type freely, Enter to finish
 dakken -d         # daily challenge: the same words for everyone today
 dakken -l code    # test with the code word list
-dakken -l weak-pairs  # words with your slowest letter pairs
+dakken --practice  # adaptive practice: a new letter when you are fast enough
+dakken -l weak-pairs  # practise your slowest letter pairs (or weak-keys, mistakes)
 dakken -p         # test with punctuation
 dakken -p -n      # test with punctuation and numbers
 dakken --theme nord  # use a color theme
@@ -42,6 +43,15 @@ While you type:
 | `Ctrl+Backspace`, `Alt+Backspace`, `Ctrl+W`, `Ctrl+H` | Delete the word |
 | `Ctrl+C` | Quit (on every screen) |
 
+In practice (the `practice` rows of `o`):
+
+| Key | Action |
+|---|---|
+| `Tab` or `Esc` | End the practice session and show the summary (with no lesson typed, open the menu) |
+| `Ctrl+R` | Start a new lesson at once |
+| `Enter` (on the summary) | Practise again |
+| `Tab` or `Esc` (on the summary) | Open the menu |
+
 On the results:
 
 | Key | Action |
@@ -61,7 +71,7 @@ nothing:
 
 | Key | Action |
 |---|---|
-| `o` | Choose the mode: untimed, quote, zen, time or words |
+| `o` | Choose the mode: untimed, quote, zen, time, words or practice |
 | `p` | Turn punctuation on or off |
 | `n` | Turn numbers on or off |
 | `l` | Go to the next word list |
@@ -70,7 +80,7 @@ nothing:
 | `x` | Start momo mode |
 | `d` | Start the daily challenge (the menu shows if you did it today) |
 | `q` | Quit |
-| `f` | Open your profile (`↑`/`↓` or `j`/`k` scroll, `←`/`→` go to the pages stats, history, keys and skills, `Tab` goes back) |
+| `f` | Open your profile (`↑`/`↓` or `j`/`k` scroll, `←`/`→` go to the pages stats, history, keys, skills and practice, `r` two times on the practice page resets adaptive practice, `Tab` goes back) |
 | `e` | Open the settings |
 | `?` | Show all the keys |
 | `t`, `s`, `c` | Shortcuts: next theme, live WPM on or off, pace caret on or off |

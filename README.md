@@ -9,8 +9,10 @@ and Linux, with no account and nothing else to install.
 
 - **Many ways to type:** time, words, quotes, untimed, zen, your own text,
   and a daily challenge with the same words for everyone.
-- **Practice what is slow:** your weak keys, slow letter pairs and past
-  mistakes become word lists. A skill map and key quests show your progress.
+- **Practice mode:** short lessons of made-up words from a few letters,
+  with a new letter when you are fast enough. Or practise your weak keys,
+  slow letter pairs and past mistakes. Practice stays apart from your
+  history. A skill map and key quests show your progress.
 - **Progress:** XP, ranks, badges, daily streaks and a weekly goal.
 - **Challenges:** survival, boss words, climb, strict modes, and ghost races
   that you can send to a friend.

@@ -8,13 +8,27 @@ systems. A personal best counts only tests with the same mode and options,
 for example `time 30 · punctuation`. Delete the file to clear the history.
 
 `keys.tsv` keeps the presses, errors and time for each key and each letter
-pair, for `--heatmap`, `weak-keys` and `weak-pairs`. `best-runs.tsv` keeps the
+pair, for `--heatmap` and weak-keys and weak-pairs practice. `best-runs.tsv` keeps the
 key times of each personal-best test, for the pace caret.
 `badges.tsv` keeps each badge you got, with its date. `quests.tsv` keeps
 the key quests. Saved races go in the `races` folder. XP and levels come
 from the history, so they need no file of their own.
 `mistakes.txt`, in the same folder, keeps the last 100 words you typed wrong.
-If it is empty, the `mistakes` list uses the English words.
+If it is empty, mistakes practice uses the chosen word list.
+
+## Practice
+
+Practice has its own files, so it does not change your tests, stats or XP:
+
+- `practice.tsv`: the unlocked letters of each language, the recent speed
+  and errors of each key, and the lessons and time of all practice.
+- `practice-keys.tsv`: the presses, errors and time of each key in
+  practice, like `keys.tsv`.
+- `practice-mistakes.txt`: the words you typed wrong in practice.
+
+Weak-keys, weak-pairs and mistakes practice use your tests and your practice
+together. Delete `practice.tsv` to start adaptive practice again in every
+language.
 `score-card.txt` keeps the last score card that you copied with `y`.
 
 ## How the stats work

@@ -11,7 +11,7 @@ use super::menu::{HINT_ROWS, MARGIN, keys_line};
 use crate::app::App;
 
 /// Each part of the help: a title and its keys.
-const HELP: [(&str, &[(&str, &str)]); 5] = [
+const HELP: [(&str, &[(&str, &str)]); 6] = [
     (
         "while you type",
         &[
@@ -23,6 +23,14 @@ const HELP: [(&str, &[(&str, &str)]); 5] = [
             ),
             ("enter", "end the test, in zen mode"),
             ("ctrl+c", "quit, on every screen"),
+        ],
+    ),
+    (
+        "in practice",
+        &[
+            ("tab, esc", "end the lessons and show the summary"),
+            ("enter", "practise again, on the summary"),
+            ("r r", "reset adaptive practice, on the practice page"),
         ],
     ),
     (

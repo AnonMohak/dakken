@@ -6,6 +6,16 @@ All notable changes to dakken. Versions follow [Semantic Versioning](https://sem
 
 ### Added
 
+- Practice mode: four new rows in the `o` list. `practice adaptive` gives
+  short lessons of made-up words from a few letters, with a new letter when
+  every letter reaches the target speed (`practice_target`, 35 WPM).
+  `practice weak-keys`, `weak-pairs` and `mistakes` practise your weak
+  points. Lessons follow one another; `Tab` shows a summary. Practice keeps
+  its own files and does not count in the history, XP or stats. `--practice`
+  starts it from the command line.
+- A practice page in the profile, with the letters of each language, the
+  speed of each key, your weak and strong keys, and `r` two times to reset.
+
 - Settings screen (`e` in the menu): theme, live stats, pace caret, caret,
   layout, weekly goal, symbols, underline errors and the update check.
 - Help screen (`?` in the menu) with all the keys, and a hint before the
@@ -28,6 +38,10 @@ All notable changes to dakken. Versions follow [Semantic Versioning](https://sem
 - Windows on ARM release binary.
 
 ### Changed
+
+- The `mistakes`, `weak-keys` and `weak-pairs` word lists are now practice
+  kinds in the `o` list. `-l weak-keys` (and the others) and old config
+  files start that practice.
 
 - The heatmaps and the skill map in the app use the colors of the theme.
 - In modes with their own text (quote, zen, custom, daily, race),

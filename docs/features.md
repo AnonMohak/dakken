@@ -40,21 +40,40 @@
 - Numbers mode: random numbers in place of some words.
 - Word lists: `english` (200 common words), `english-1k` (1000 words),
   `code` (keywords, operators and short pieces of code), `spanish`, `german`,
-  `french` and `portuguese` (250 common words each), `mistakes`, `weak-keys`
-  and `weak-pairs`.
-- Practise your weak keys: the `weak-keys` list uses words with the 5 letters
-  that have the most errors (then the slowest) in your key stats.
+  `french` and `portuguese` (250 common words each).
+- Practice mode: the last four rows of the `o` list. A practice session is
+  short lessons of 3 lines, one after the other, with no results screen.
+  Above the words, a status line shows the lesson, what it practises and
+  the WPM of the last lesson. `Tab` ends the session and shows a summary:
+  WPM, accuracy, lessons, time and new letters. Practice is not saved in
+  the history and gives no XP, badges, quests or streak (one exception:
+  emptying your mistakes in practice gives the `exorcist` badge). Strict
+  modes and challenges are off in practice; punctuation and numbers work.
+  - `practice adaptive`: made-up words from a few letters, made from the
+    letter patterns of the language of `l` (English, Spanish, German,
+    French or Portuguese; `code` uses English). You start with the 6 most
+    common letters. The focus key (in the theme color) is the newest letter,
+    or else the slowest one, and most words have it. When every unlocked
+    letter is at the target speed (35 WPM, `practice_target` in the config)
+    with 10% errors or fewer, the next letter unlocks. Each language has its
+    own letters.
+  - `practice weak-keys`: words with the 5 letters that have the most
+    errors (then the slowest), from your tests and your practice.
+  - `practice weak-pairs`: words with the 5 slowest letter pairs (like `th`
+    or `er`), from your tests and your practice.
+  - `practice mistakes`: the words you typed wrong in tests and in practice.
+    A word leaves the list when you type it right there.
+- The practice page of the profile (`f`, then `→`) shows the letters of
+  each language, the speed of each unlocked key, your weak and strong keys,
+  and your practice time. Press `r` two times there to start the adaptive
+  practice of the language of `l` again (the key speeds stay).
 - Skill map and key quests: `--skills` shows a keyboard with a level from 1
   to 10 for each key, from its speed and errors. dakken gives your 3 weakest
   letters a quest, for example "q under 180 ms": type that letter at least 3
-  times in one test, faster than the target and with no errors. The
-  `weak-keys` list practises the quest letters first, the results say when
+  times in one test, faster than the target and with no errors.
+  `practice weak-keys` practises the quest letters first, the results say when
   you finish a quest, and the key turns teal on the skill map.
-- Practise your slow letter pairs: the `weak-pairs` list uses words with the
-  5 slowest letter pairs (like `th` or `er`) in your key stats. `--heatmap`
-  shows them.
-- Practise your mistakes: the `mistakes` list uses the words you typed wrong
-  in past tests. A word leaves the list when you type it right there.
+- `--heatmap` shows your slowest letter pairs.
 - Clear errors: wrong and missed letters in red, extra letters in dark red,
   backspace into a previous word only if it has an error.
 - Mistakes do not stop you: the test ends when the last word has all its
