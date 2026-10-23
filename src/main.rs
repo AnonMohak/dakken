@@ -11,6 +11,7 @@ mod keystats;
 mod layout;
 mod localtime;
 mod mistakes;
+mod practice;
 mod progress;
 mod quests;
 mod race;
