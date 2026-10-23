@@ -401,7 +401,22 @@ mod tests {
     #[test]
     fn momo_mode_shows_one_quote_and_who_said_it_under_it() {
         let mut a = app(&["hi"]);
-        a.start_momo();
+        // The quotes come in random order. This test needs a second quote
+        // ready (a long first quote can fill all the words of the start),
+        // and one that does not start with words of the first.
+        let three = |text: &str| {
+            text.split_whitespace()
+                .take(3)
+                .collect::<Vec<_>>()
+                .join(" ")
+        };
+        loop {
+            a.start_momo();
+            let quotes = a.momo_quotes.borrow();
+            if quotes.len() >= 2 && !quotes[0].text.contains(&three(&quotes[1].text)) {
+                break;
+            }
+        }
         let (first, second) = {
             let quotes = a.momo_quotes.borrow();
             (quotes[0].clone(), quotes[1].clone())

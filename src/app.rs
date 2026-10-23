@@ -2165,6 +2165,11 @@ mod tests {
             None,
         );
         a.start_momo();
+        // A long first quote can fill all the words of the start; this test
+        // needs the whole first quote and a second one ready.
+        while a.momo_quotes.borrow().len() < 2 {
+            a.start_momo();
+        }
         assert_eq!(
             a.session.remaining(Instant::now()),
             Some(crate::engine::session::MOMO_TIME)
@@ -2205,6 +2210,11 @@ mod tests {
         assert_eq!(a.session.mode(), Mode::Momo);
         assert_eq!(a.mode, Mode::Words(1), "the chosen mode stays");
         assert!(matches!(a.screen, Screen::Typing));
+        // A long first quote can fill all the words of the start; this test
+        // needs the whole first quote and a second one ready.
+        while a.momo_quotes.borrow().len() < 2 {
+            a.start_momo();
+        }
         assert!(a.momo_done().is_empty());
         let first = a.momo_quotes.borrow()[0].clone();
         let n = first.text.split_whitespace().count();
