@@ -1508,7 +1508,11 @@ fn new_session(
             _ => words.next_word(),
         }
     };
-    if matches!(mode, Mode::Untimed | Mode::Practice(_)) {
+    if let Mode::Practice(_) = mode {
+        let words = ui::lesson_words(width, height, &mut next_word);
+        return Session::from_words(mode, &words);
+    }
+    if mode == Mode::Untimed {
         let words = ui::screen_words(width, height, &mut next_word);
         return Session::from_words(mode, &words);
     }

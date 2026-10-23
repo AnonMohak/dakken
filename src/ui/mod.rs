@@ -119,15 +119,33 @@ pub fn word_lines(height: u16) -> usize {
     (height as usize).div_ceil(2)
 }
 
+/// Lines in one practice lesson, so a lesson is short.
+const LESSON_LINES: usize = 3;
+
 /// Words that fill the word area of a terminal `width` x `height`.
-pub fn screen_words(width: u16, height: u16, mut next_word: impl FnMut() -> String) -> Vec<String> {
+pub fn screen_words(width: u16, height: u16, next_word: impl FnMut() -> String) -> Vec<String> {
+    fill_lines(width, height, usize::MAX, next_word)
+}
+
+/// Words for a practice lesson: `LESSON_LINES` lines at most.
+pub fn lesson_words(width: u16, height: u16, next_word: impl FnMut() -> String) -> Vec<String> {
+    fill_lines(width, height, LESSON_LINES, next_word)
+}
+
+/// Words that fill the word area, with no more than `max_lines` lines.
+fn fill_lines(
+    width: u16,
+    height: u16,
+    max_lines: usize,
+    mut next_word: impl FnMut() -> String,
+) -> Vec<String> {
     let area = typing_area(Rect::new(
         0,
         0,
         width.max(MIN_WIDTH),
         height.max(MIN_HEIGHT),
     ));
-    let (width, lines) = (area.width as usize, word_lines(area.height));
+    let (width, lines) = (area.width as usize, word_lines(area.height).min(max_lines));
     // Fill the lines the way `typing::wrap` does: one space between words,
     // and a long word on a line of its own.
     let mut words = Vec::new();
@@ -192,6 +210,45 @@ mod tests {
         assert!(out.contains("• tab for menu · ctrl+r restart"), "{out}");
         // Nothing else: no mode name, counter or other hints.
         assert!(!out.contains("words 2") && !out.contains("ctrl+c"), "{out}");
+    }
+
+    #[test]
+    fn practice_shows_the_letters_and_ends_with_a_summary() {
+        use crate::engine::PracticeKind;
+        let mut a = app(&["hi"]);
+        a.mode = Mode::Practice(PracticeKind::Adaptive);
+        a.size = (100, 24);
+        a.new_test();
+        let out = render(&a, 100, 24);
+        let letters = a.lesson_letters.clone().unwrap();
+        let all: Vec<String> = letters.order.iter().map(char::to_string).collect();
+        assert!(
+            out.contains(&format!("lesson 1  {}", all.join(" "))),
+            "{out}"
+        );
+        assert!(
+            out.contains("• tab to end practice · ctrl+r restart"),
+            "{out}"
+        );
+
+        a.lessons.count = 3;
+        a.lessons.seconds = 75.0;
+        a.lessons.words = 50.0;
+        a.lessons.presses = 100;
+        a.lessons.correct = 95;
+        a.lessons.unlocked = vec!['n', 's'];
+        a.screen = Screen::PracticeSummary;
+        let out = render(&a, 100, 24);
+        for text in [
+            "practice adaptive",
+            "40 wpm",
+            "95% accuracy",
+            "3 lessons · 1:15",
+            "new letters n s",
+            "enter practise again · tab menu · q quit",
+        ] {
+            assert!(out.contains(text), "{text}: {out}");
+        }
     }
 
     #[test]
