@@ -896,7 +896,13 @@ impl App {
             beat_ghost: self.race.as_ref().is_some_and(|r| result.wpm > r.wpm),
             climb_round,
             quests_done: self.quests.done_count(),
-            local_hour: crate::localtime::hour(),
+            // Tests must not read the clock: from 00:00 to 04:00 they would
+            // get the night owl badge. The badge has its own tests.
+            local_hour: if cfg!(test) {
+                None
+            } else {
+                crate::localtime::hour()
+            },
         };
         let records = self.history.records();
         let earned = badges::earned(records, &moment, self.weekly_goal);
