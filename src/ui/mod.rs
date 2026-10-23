@@ -474,6 +474,33 @@ mod tests {
     }
 
     #[test]
+    fn the_page_names_stay_at_the_top_in_the_middle() {
+        let mut a = app(&["hi"]);
+        a.size = (80, 16);
+        for screen in [
+            Screen::Profile { scroll: 0 },
+            Screen::Profile { scroll: 1000 },
+            Screen::Stats {
+                page: 2,
+                scroll: 1000,
+            },
+        ] {
+            a.screen = screen;
+            let out = render(&a, 80, 16);
+            let row = out.lines().nth(1).unwrap();
+            assert!(
+                row.contains("profile  stats  history  keys  skills"),
+                "{out}"
+            );
+            let (left, right) = (
+                row.len() - row.trim_start().len(),
+                row.len() - row.trim_end().len(),
+            );
+            assert!(left.abs_diff(right) <= 1, "not in the middle:\n{out}");
+        }
+    }
+
+    #[test]
     fn a_new_badge_fills_the_screen() {
         let mut a = app(&["hi"]);
         a.session

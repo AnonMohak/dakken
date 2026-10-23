@@ -24,12 +24,12 @@ pub const STATS_PAGES: usize = STATS_NAMES.len();
 /// Everything about the user: level, test stats, badges, keys. `scroll`
 /// rows are hidden at the top when the terminal is too short.
 pub fn draw(frame: &mut Frame, app: &App, scroll: usize) {
-    draw_lines(frame, app, lines(app), scroll);
+    draw_lines(frame, app, 0, lines(app), scroll);
 }
 
 /// A stats page: one of the reports that the command line prints.
 pub fn draw_stats(frame: &mut Frame, app: &App, page: usize, scroll: usize) {
-    draw_lines(frame, app, stats_lines(app, page), scroll);
+    draw_lines(frame, app, page + 1, stats_lines(app, page), scroll);
 }
 
 /// The most rows that `scroll` can hide on a stats page.
@@ -58,8 +58,8 @@ fn tabs_line(app: &App, page: usize) -> Line<'static> {
     Line::from(spans)
 }
 
-/// The report of a stats page, in its colors, with the page names on top.
-/// The report titles are bold; the other rows are text.
+/// The report of a stats page, in its colors. The report titles are bold;
+/// the other rows are text.
 fn stats_lines(app: &App, page: usize) -> Vec<Line<'static>> {
     let t = app.theme();
     let today = history::today();
@@ -78,17 +78,17 @@ fn stats_lines(app: &App, page: usize) -> Vec<Line<'static>> {
         _ => quests::skill_map(&app.key_stats, &app.quests, true),
     };
     let head = Style::new().fg(t.main).add_modifier(Modifier::BOLD);
-    let mut out = vec![tabs_line(app, page + 1), Line::default()];
-    out.extend(text.lines().map(|row| {
-        let plain = ansi::plain(row);
-        let style = if plain.starts_with(' ') || plain.is_empty() {
-            Style::new().fg(t.text)
-        } else {
-            head
-        };
-        themed(ansi::line(row, style), t)
-    }));
-    out
+    (text.lines())
+        .map(|row| {
+            let plain = ansi::plain(row);
+            let style = if plain.starts_with(' ') || plain.is_empty() {
+                Style::new().fg(t.text)
+            } else {
+                head
+            };
+            themed(ansi::line(row, style), t)
+        })
+        .collect()
 }
 
 /// The shades of the speed calendar (ANSI 256), as the report prints them.
@@ -127,7 +127,7 @@ fn report_color(color: Color, t: Theme) -> Color {
 }
 
 /// The widest row of the profile and of every stats page, so each page
-/// starts in the same column and the page names do not move.
+/// starts in the same column.
 fn pages_width(app: &App) -> u16 {
     (0..STATS_PAGES)
         .map(|page| stats_lines(app, page))
@@ -137,26 +137,39 @@ fn pages_width(app: &App) -> u16 {
         .unwrap_or(0) as u16
 }
 
-/// Draw `lines` at the top, in the middle, with `scroll` rows hidden at
-/// the top when the terminal is too short. Every page has the same place,
-/// so the arrows and scrolling do not move the page names.
-fn draw_lines(frame: &mut Frame, app: &App, lines: Vec<Line<'static>>, scroll: usize) {
+/// Draw page `page` (0 is the profile): the page names fixed at the top,
+/// in the middle of the screen, and under them `lines`, with `scroll` rows
+/// hidden at the top when the terminal is too short. Every page starts in
+/// the same column, so the arrows and scrolling move nothing to the side.
+fn draw_lines(frame: &mut Frame, app: &App, page: usize, lines: Vec<Line<'static>>, scroll: usize) {
     let t = app.theme();
     let screen = frame.area();
+    let tabs = Rect {
+        y: screen.y + TOP.min(screen.height),
+        height: 1.min(screen.height.saturating_sub(TOP)),
+        ..screen
+    };
+    frame.render_widget(Paragraph::new(tabs_line(app, page)).centered(), tabs);
     let rows = visible_rows(screen.height);
     let scroll = scroll.min(lines.len().saturating_sub(rows));
     let width = pages_width(app);
     let shown: Vec<Line> = lines.into_iter().skip(scroll).take(rows).collect();
     let height = shown.len() as u16;
     let left = (screen.width.saturating_sub(width) / 2).max(MARGIN);
+    let top = TOP + TABS_ROWS;
     let area = Rect {
         x: screen.x + left.min(screen.width),
-        y: screen.y + TOP.min(screen.height),
+        y: screen.y + top.min(screen.height),
         width: width.min(screen.width.saturating_sub(left)),
-        height: height.min(screen.height.saturating_sub(TOP)),
+        height: height.min(screen.height.saturating_sub(top)),
     };
     frame.render_widget(Paragraph::new(shown), area);
-    keys_line(frame, t, height, "←→ pages · ↑↓ scroll · tab back");
+    keys_line(
+        frame,
+        t,
+        height + TABS_ROWS,
+        "←→ pages · ↑↓ scroll · tab back",
+    );
 }
 
 /// The most rows that `scroll` can hide on a terminal `height` rows high.
@@ -164,12 +177,14 @@ pub fn max_scroll(app: &App, height: u16) -> usize {
     lines(app).len().saturating_sub(visible_rows(height))
 }
 
-/// Free rows above the pages.
+/// Free rows above the page names.
 const TOP: u16 = 1;
+/// The page names and the empty row under them.
+const TABS_ROWS: u16 = 2;
 
-/// Rows for the profile, with the keys line under them.
+/// Rows for a page, under the page names and with the keys line under it.
 fn visible_rows(height: u16) -> usize {
-    usize::from(height.saturating_sub(HINT_ROWS + TOP)).max(1)
+    usize::from(height.saturating_sub(HINT_ROWS + TOP + TABS_ROWS)).max(1)
 }
 
 fn lines(app: &App) -> Vec<Line<'static>> {
@@ -178,7 +193,7 @@ fn lines(app: &App) -> Vec<Line<'static>> {
     let head = Style::new().fg(t.main).add_modifier(Modifier::BOLD);
     let text = Style::new().fg(t.text);
     let sub = Style::new().fg(t.sub);
-    let mut out: Vec<Line> = vec![tabs_line(app, 0), Line::default()];
+    let mut out: Vec<Line> = Vec::new();
 
     // The level, the XP and the next rank.
     let xp = progress::total_xp(records);
