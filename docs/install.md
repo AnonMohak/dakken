@@ -89,11 +89,13 @@ Use the same tool you installed with:
 dakken asks GitHub once a day for a newer release, in the background. When
 there is one, the menu says `update v0.5.1 available · u to update`. Press
 `u`: dakken closes and runs the update command of the tool that installed it
-(Scoop, winget, Homebrew or Cargo). On Windows, the update runs in a new
+(Scoop, winget or Homebrew). On Windows, the update runs in a new
 window, because a running program cannot be replaced there; start dakken
-again when it is done. A file from Releases updates itself: dakken
-downloads the new file for your system, checks it against the release's
-`SHA256SUMS`, and puts it in place of the old one. Set `update_check = false` in `config.toml` to turn the check off (it
+again when it is done. A file from Releases and a Cargo install update
+themselves: dakken downloads the new file for your system, checks it
+against the release's `SHA256SUMS`, and puts it in place of the old one.
+Nothing compiles, so a broken Rust or Visual Studio setup cannot stop the
+update. If there is no file for your system, Cargo builds the update. Set `update_check = false` in `config.toml` to turn the check off (it
 sends one request to GitHub each day). `dakken --check-update` asks at once.
 
 Your history, settings and badges stay in the data folder, so an update

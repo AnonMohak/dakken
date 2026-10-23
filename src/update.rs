@@ -185,12 +185,21 @@ pub fn update(tag: &str) -> String {
         Err(e) => return format!("error: cannot find dakken: {e}\nGet {tag} from {RELEASES}\n"),
     };
     let install = install_kind(&exe);
-    let Some(args) = install.command() else {
+    // A Cargo install takes the release file too: nothing compiles, so a
+    // broken Rust or Visual Studio setup cannot stop the update. `cargo
+    // install` is the fallback, for systems with no release file.
+    if matches!(install, Install::File | Install::Cargo) {
         println!("Downloading dakken {tag}...");
-        return match self_update(&exe, tag) {
-            Ok(()) => format!("dakken is updated to {tag}. Start it again.\n"),
-            Err(e) => format!("error: {e}\nGet dakken {tag} from {RELEASES}\n"),
-        };
+        match self_update(&exe, tag) {
+            Ok(()) => return format!("dakken is updated to {tag}. Start it again.\n"),
+            Err(e) if install == Install::File => {
+                return format!("error: {e}\nGet dakken {tag} from {RELEASES}\n");
+            }
+            Err(e) => println!("The download did not work ({e}), so Cargo builds it."),
+        }
+    }
+    let Some(args) = install.command() else {
+        return format!("Get dakken {tag} from {RELEASES}\n");
     };
     let line = args.join(" ");
     if cfg!(windows) {
@@ -205,7 +214,11 @@ pub fn update(tag: &str) -> String {
         };
     }
     println!("Updating to {tag}: {line}");
-    match Command::new(args[0]).args(&args[1..]).status() {
+    let mut command = Command::new(args[0]);
+    for name in empty_vs_vars(|name| std::env::var_os(name)) {
+        command.env_remove(name);
+    }
+    match command.args(&args[1..]).status() {
         Ok(status) if status.success() => format!("dakken is updated to {tag}.\n"),
         Ok(_) => format!("error: the update did not finish. Run it yourself: {line}\n"),
         Err(e) => format!(
@@ -226,11 +239,26 @@ fn update_after_exit(line: &str) -> std::io::Result<()> {
          Read-Host 'Press Enter to close'",
         std::process::id()
     );
-    Command::new("powershell")
+    let mut command = Command::new("powershell");
+    for name in empty_vs_vars(|name| std::env::var_os(name)) {
+        command.env_remove(name);
+    }
+    command
         .args(["-NoProfile", "-Command", &script])
         .creation_flags(CREATE_NEW_CONSOLE)
         .spawn()
         .map(|_| ())
+}
+
+/// The Visual Studio variables that are set but empty. With `VCINSTALLDIR`
+/// set, Rust takes the first `link.exe` on the PATH as the Visual Studio
+/// linker; that can be the `link` of Cygwin or Git, and `cargo install`
+/// then fails. Without the variables, Rust finds Visual Studio itself.
+fn empty_vs_vars(var: impl Fn(&str) -> Option<std::ffi::OsString>) -> Vec<&'static str> {
+    ["VCINSTALLDIR", "VSINSTALLDIR"]
+        .into_iter()
+        .filter(|name| var(name).is_some_and(|v| v.is_empty()))
+        .collect()
 }
 
 #[cfg(not(windows))]
@@ -372,6 +400,18 @@ mod tests {
         );
         assert!(message("0.3.0", "v0.2.0").contains("is the latest version"));
         assert!(message("0.2.0", "nightly").starts_with("error"));
+    }
+
+    #[test]
+    fn only_empty_visual_studio_variables_are_removed() {
+        use std::ffi::OsString;
+        let env = |name: &str| match name {
+            "VCINSTALLDIR" => Some(OsString::new()),
+            "VSINSTALLDIR" => Some(OsString::from(r"C:\VS\")),
+            _ => None,
+        };
+        assert_eq!(empty_vs_vars(env), ["VCINSTALLDIR"]);
+        assert!(empty_vs_vars(|_| None).is_empty());
     }
 
     #[test]
