@@ -201,12 +201,57 @@ pub enum Screen {
     Help {
         scroll: usize,
     },
+    /// The end of a practice session: its lessons, WPM and new letters.
+    PracticeSummary,
     /// A page of stats after the profile (`→` on the profile): the
     /// reports of `--stats`, `--history`, `--heatmap` and `--skills`.
     Stats {
         page: usize,
         scroll: usize,
     },
+}
+
+/// The lessons of one practice session, for the status line and the
+/// summary at the end.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Lessons {
+    pub count: usize,
+    pub seconds: f64,
+    /// Words typed right, with one word = 5 correct characters.
+    pub words: f64,
+    pub presses: usize,
+    pub correct: usize,
+    /// The letters that unlocked in this session, in order.
+    pub unlocked: Vec<char>,
+    /// The WPM of the last lesson.
+    pub last_wpm: Option<f64>,
+}
+
+impl Lessons {
+    pub fn wpm(&self) -> f64 {
+        if self.seconds <= 0.0 {
+            return 0.0;
+        }
+        self.words * 60.0 / self.seconds
+    }
+
+    /// Percent of correct presses, 0 to 100.
+    pub fn accuracy(&self) -> f64 {
+        if self.presses == 0 {
+            return 0.0;
+        }
+        100.0 * self.correct as f64 / self.presses as f64
+    }
+}
+
+/// The letters of an adaptive lesson, for the status line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LessonLetters {
+    /// All the letters of the language, in the order they unlock.
+    pub order: Vec<char>,
+    /// How many of `order` are unlocked.
+    pub unlocked: usize,
+    pub focus: Option<char>,
 }
 
 /// One full-screen page of a reward.
@@ -316,6 +361,10 @@ pub struct App {
     pub practice: Progress,
     /// The speed in WPM that each letter needs before the next unlocks.
     pub practice_target: u32,
+    /// The practice session on screen.
+    pub lessons: Lessons,
+    /// The letters of the adaptive lesson on screen.
+    pub lesson_letters: Option<LessonLetters>,
     /// The key times of each personal-best test, for the pace caret.
     pub best_runs: BestRuns,
     pub badges: Badges,
@@ -420,6 +469,8 @@ impl App {
             key_stats: KeyStats::in_memory(),
             practice: Progress::default(),
             practice_target: practice::DEFAULT_TARGET,
+            lessons: Lessons::default(),
+            lesson_letters: None,
             best_runs: BestRuns::in_memory(),
             badges: Badges::in_memory(),
             quests: Quests::in_memory(),
@@ -673,6 +724,15 @@ impl App {
                 new_test(mode, self.options, self.size, self.practice_words(), boss)
             }
         };
+        self.lesson_letters =
+            (self.practising() && self.mode == Mode::Practice(PracticeKind::Adaptive)).then(|| {
+                let (model, unlocked, focus) = self.adaptive();
+                LessonLetters {
+                    order: model.order().to_vec(),
+                    unlocked,
+                    focus,
+                }
+            });
         self.session.set_strict(self.strict_now());
         if self.climb_on() && self.climb.is_none() {
             self.climb = Some(challenge::Climb::start(self.history.records()));
@@ -697,15 +757,29 @@ impl App {
         self.mistakes.update(&wrong, &[])
     }
 
-    /// A practice lesson ended: update the practice data and show the
-    /// results. Nothing goes into the history.
-    fn finish_lesson(&mut self) {
+    /// A practice lesson ended: update the practice data and add the lesson
+    /// to the session. Nothing goes into the history.
+    fn record_lesson(&mut self) {
+        let presses = self.session.presses();
+        if presses.is_empty() {
+            return;
+        }
+        let result = self.session.result();
+        let seconds = result.duration.as_secs_f64();
+        let l = &mut self.lessons;
+        l.count += 1;
+        l.seconds += seconds;
+        l.words += result.wpm * seconds / 60.0;
+        l.presses += presses.len();
+        l.correct += presses.iter().filter(|p| p.correct).count();
+        l.last_wpm = Some(result.wpm);
         match self.mode {
             Mode::Practice(PracticeKind::Adaptive) => {
                 let language = practice::language(self.options.list);
                 let model = LetterModel::new(practice::model_words(language));
-                let presses = self.session.presses();
-                (self.practice).add_lesson(language, model.order(), self.practice_target, presses);
+                let target = self.practice_target;
+                let new = (self.practice).add_lesson(language, model.order(), target, presses);
+                self.lessons.unlocked.extend(new);
             }
             Mode::Practice(PracticeKind::Mistakes) => {
                 // A mistake typed right leaves the list. Punctuation mode
@@ -725,12 +799,21 @@ impl App {
             }
             _ => {}
         }
-        self.reward = None;
-        self.climb_result = None;
-        self.copied = false;
-        self.card_file = None;
-        self.race_saved = None;
-        self.screen = Screen::Results(self.session.result());
+    }
+
+    /// Tab in a practice lesson: count the lesson typed so far, then show
+    /// the summary of the session, or the menu when no lesson was typed.
+    fn end_practice(&mut self, now: Instant) {
+        if self.session.is_started() {
+            self.session.finish(now);
+            self.record_lesson();
+            self.new_test();
+        }
+        self.screen = if self.lessons.count == 0 {
+            Screen::Menu
+        } else {
+            Screen::PracticeSummary
+        };
     }
 
     /// The XP and new badges of the test just added to the history.
@@ -1026,8 +1109,10 @@ impl App {
         }
         self.session.tick(now);
         if matches!(self.screen, Screen::Typing) && self.session.is_finished() {
+            // The next lesson starts at once.
             if self.practising() {
-                self.finish_lesson();
+                self.record_lesson();
+                self.new_test();
                 return;
             }
             let result = self.session.result();
@@ -1082,6 +1167,7 @@ impl App {
         }
         match self.screen {
             Screen::Typing => match key.code {
+                KeyCode::Tab | KeyCode::Esc if self.practising() => self.end_practice(now),
                 KeyCode::Tab | KeyCode::Esc => self.open_menu(),
                 KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                     self.restart();
@@ -1098,6 +1184,18 @@ impl App {
                 }
             },
             Screen::Replay(_) => self.screen = Screen::Results(self.session.result()),
+            Screen::PracticeSummary => match key.code {
+                KeyCode::Enter => {
+                    self.lessons = Lessons::default();
+                    self.restart();
+                }
+                KeyCode::Tab | KeyCode::Esc => {
+                    self.lessons = Lessons::default();
+                    self.open_menu();
+                }
+                KeyCode::Char('q') => self.quit = true,
+                _ => {}
+            },
             Screen::Results(ref result) => match key.code {
                 KeyCode::Enter => self.restart(),
                 KeyCode::Char('a') if self.can_repeat() => self.repeat_test(),
@@ -2385,8 +2483,8 @@ mod tests {
         a.session = Session::from_words(a.mode, &["Hello."]);
         type_text(&mut a, "Hello.");
         assert!(a.mistakes.words().is_empty());
+        assert!(matches!(a.screen, Screen::Typing));
         assert_eq!(a.history.records().len(), 1);
-        assert!(a.reward.is_none());
     }
 
     #[test]
@@ -2420,10 +2518,43 @@ mod tests {
 
         a.session = Session::from_words(a.mode, &["eeeeeeeeeeee"]);
         type_text(&mut a, "eeeeeeeeeeee");
-        assert!(matches!(a.screen, Screen::Results(_)));
         assert!(a.history.records().is_empty() && a.reward.is_none());
         assert_eq!(a.key_stats.get('e').presses, 0);
         assert_eq!(a.practice.speed('e').presses, 11);
+        // The next lesson starts at once, with no results screen.
+        assert!(matches!(a.screen, Screen::Typing));
+        assert!(!a.session.is_started());
+        assert_eq!(a.lessons.count, 1);
+        assert!(a.lesson_letters.is_some());
+    }
+
+    #[test]
+    fn tab_ends_practice_with_a_summary() {
+        let tab = press(KeyCode::Tab, KeyModifiers::NONE);
+        let mut a = app(&["hi"]);
+        a.mode = Mode::Practice(PracticeKind::WeakKeys);
+        a.restart();
+        // No lesson typed: tab opens the menu, as in a test.
+        a.on_key(tab, Instant::now());
+        assert!(matches!(a.screen, Screen::Menu));
+
+        a.restart();
+        a.session = Session::from_words(a.mode, &["ab", "cd"]);
+        type_text(&mut a, "ab cd");
+        assert_eq!(a.lessons.count, 1);
+        // A lesson typed in part counts too.
+        a.session = Session::from_words(a.mode, &["ef", "gh"]);
+        type_text(&mut a, "ex ");
+        a.on_key(tab, Instant::now());
+        assert!(matches!(a.screen, Screen::PracticeSummary));
+        assert_eq!(a.lessons.count, 2);
+        // The x and the space after the wrong word are wrong.
+        assert_eq!((a.lessons.presses, a.lessons.correct), (8, 6));
+        assert!(a.history.records().is_empty());
+        // Enter starts a new session; tab goes to the menu.
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        assert!(matches!(a.screen, Screen::Typing));
+        assert_eq!(a.lessons, Lessons::default());
     }
 
     #[test]

@@ -4,6 +4,7 @@ mod celebration;
 pub mod color256;
 mod help;
 mod menu;
+mod practice;
 mod profile;
 mod results;
 mod settings;
@@ -52,6 +53,7 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
         Screen::Menu => menu::draw(frame, app),
         Screen::Modes { selected } => menu::draw_modes(frame, app, *selected),
         Screen::Celebration { page } => celebration::draw(frame, app, *page),
+        Screen::PracticeSummary => practice::draw_summary(frame, app),
         Screen::Profile { scroll } => profile::draw(frame, app, *scroll),
         Screen::Settings { selected } => settings::draw(frame, app, *selected),
         Screen::Help { scroll } => help::draw(frame, app, *scroll),

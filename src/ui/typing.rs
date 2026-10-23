@@ -20,9 +20,9 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     let visible = word_lines(area.height);
     let t = app.theme();
 
-    // Above the words, on the left: the momo title, the climb round, the
-    // lives in survival, and the live stats when they are on. The timer is
-    // on the right.
+    // Above the words, on the left: the momo title, the practice status,
+    // the climb round, the lives in survival, and the live stats when they
+    // are on. The timer is on the right.
     let mut status: Vec<Vec<Span>> = Vec::new();
     let sub = |text: String| vec![Span::styled(text, Style::new().fg(t.sub))];
     if s.mode() == Mode::Momo {
@@ -30,6 +30,9 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
             "momo mode",
             Style::new().fg(t.main).add_modifier(Modifier::BOLD),
         )]);
+    }
+    if app.practising() && !replay {
+        status.push(super::practice::status(app));
     }
     if let (true, Some(climb)) = (app.climb_on() && !replay, app.climb) {
         status.push(sub(format!(
@@ -185,6 +188,8 @@ pub fn draw(frame: &mut Frame, app: &App, s: &Session, now: Instant, replay: boo
     // Zen starts with an empty screen, so it also says how to end.
     let hint_text = if replay {
         "• replay · any key to stop"
+    } else if app.practising() {
+        "• tab to end practice · ctrl+r restart"
     } else if app.history.records().is_empty() && !s.is_started() {
         // The first start: say how to begin and where the keys are.
         "• type to start · tab for menu, then ? for all keys"
