@@ -3,9 +3,6 @@
 //! with only the unlocked letters, so the words look like the language but
 //! use few keys.
 
-// Practice mode uses this from the next steps on.
-#![allow(dead_code)]
-
 use std::collections::BTreeMap;
 
 use rand::{Rng, RngExt};

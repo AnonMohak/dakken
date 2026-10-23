@@ -236,19 +236,10 @@ pub enum WordList {
     French,
     /// 250 common Portuguese words.
     Portuguese,
-    /// Words typed wrong in past tests. The app gives these words; `words`
-    /// gives English for when there are no mistakes yet.
-    Mistakes,
-    /// Words from `English1k` with the weakest letters. The app picks the
-    /// words; `words` gives the full list.
-    WeakKeys,
-    /// Words from `English1k` with the slowest letter pairs, like "th". The
-    /// app picks the words; `words` gives the full list.
-    WeakPairs,
 }
 
 /// The lists in menu order.
-pub const WORD_LISTS: [WordList; 10] = [
+pub const WORD_LISTS: [WordList; 7] = [
     WordList::English,
     WordList::English1k,
     WordList::Code,
@@ -256,9 +247,6 @@ pub const WORD_LISTS: [WordList; 10] = [
     WordList::German,
     WordList::French,
     WordList::Portuguese,
-    WordList::Mistakes,
-    WordList::WeakKeys,
-    WordList::WeakPairs,
 ];
 
 impl WordList {
@@ -271,9 +259,6 @@ impl WordList {
             Self::German => "german",
             Self::French => "french",
             Self::Portuguese => "portuguese",
-            Self::Mistakes => "mistakes",
-            Self::WeakKeys => "weak-keys",
-            Self::WeakPairs => "weak-pairs",
         }
     }
 
@@ -290,8 +275,8 @@ impl WordList {
     /// One word on each line of the list file.
     pub fn words(self) -> Vec<&'static str> {
         let text = match self {
-            Self::English | Self::Mistakes => ENGLISH,
-            Self::English1k | Self::WeakKeys | Self::WeakPairs => ENGLISH_1K,
+            Self::English => ENGLISH,
+            Self::English1k => ENGLISH_1K,
             Self::Code => CODE,
             Self::Spanish => SPANISH,
             Self::German => GERMAN,
@@ -604,8 +589,8 @@ mod tests {
         for list in WORD_LISTS {
             assert_eq!(WordList::parse(list.name()), Some(list));
         }
-        assert_eq!(WordList::WeakKeys.next(), WordList::WeakPairs);
-        assert_eq!(WordList::WeakPairs.next(), WordList::English);
+        assert_eq!(WordList::French.next(), WordList::Portuguese);
+        assert_eq!(WordList::Portuguese.next(), WordList::English);
     }
 
     #[test]

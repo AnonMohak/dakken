@@ -6,7 +6,8 @@ use std::time::{Duration, Instant};
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::engine::{
-    Key, Mode, QuoteLength, Session, Strict,
+    Key, Mode, PracticeKind, QuoteLength, Session, Strict,
+    practice::LetterModel,
     stats::TestResult,
     words::{self, WordGen, WordList},
 };
@@ -21,6 +22,7 @@ use crate::history::{self, History, Record};
 use crate::keystats::KeyStats;
 use crate::layout::Layout;
 use crate::mistakes::{self, Mistakes};
+use crate::practice::{self, Progress};
 use crate::progress::{self, Level};
 use crate::quests::{Quest, Quests};
 use crate::race::{self, Race};
@@ -85,7 +87,7 @@ fn cycle<T: Copy + PartialEq>(all: &[T], now: T, forward: bool) -> T {
     }]
 }
 
-pub const MODES: [Mode; 14] = [
+pub const MODES: [Mode; 18] = [
     Mode::Untimed,
     Mode::Quote(QuoteLength::All),
     Mode::Quote(QuoteLength::Short),
@@ -100,7 +102,14 @@ pub const MODES: [Mode; 14] = [
     Mode::Words(25),
     Mode::Words(50),
     Mode::Words(100),
+    Mode::Practice(PracticeKind::Adaptive),
+    Mode::Practice(PracticeKind::WeakKeys),
+    Mode::Practice(PracticeKind::WeakPairs),
+    Mode::Practice(PracticeKind::Mistakes),
 ];
+
+/// Made-up words in each adaptive lesson, for the random order.
+const ADAPTIVE_WORDS: usize = 50;
 
 pub fn mode_label(mode: Mode) -> String {
     match mode {
@@ -112,6 +121,7 @@ pub fn mode_label(mode: Mode) -> String {
         Mode::Momo => "momo".to_string(),
         Mode::Time(d) => format!("time {}", d.as_secs()),
         Mode::Words(n) => format!("words {n}"),
+        Mode::Practice(kind) => format!("practice {}", kind.name()),
     }
 }
 
@@ -124,6 +134,7 @@ pub fn parse_mode(label: &str) -> Option<Mode> {
         None if label == "zen" => Some(Mode::Zen),
         Some(("time", n)) => Some(Mode::Time(Duration::from_secs(n.parse().ok()?))),
         Some(("words", n)) => Some(Mode::Words(n.parse().ok()?)),
+        Some(("practice", kind)) => Some(Mode::Practice(PracticeKind::parse(kind)?)),
         _ => None,
     }
     .filter(|&m| m != Mode::Time(Duration::ZERO) && m != Mode::Words(0))
@@ -281,7 +292,7 @@ pub struct App {
     pub update_now: bool,
     /// The menu saves the settings here. `None` does not save them.
     pub config_path: Option<PathBuf>,
-    /// Terminal width and height. Untimed tests get the words that fit on
+    /// Terminal width and height. Untimed tests and practice lessons get the words that fit on
     /// the screen.
     pub size: (u16, u16),
     pub session: Session,
@@ -301,6 +312,10 @@ pub struct App {
     pub history: History,
     pub mistakes: Mistakes,
     pub key_stats: KeyStats,
+    /// The unlocked letters and key speeds of adaptive practice.
+    pub practice: Progress,
+    /// The speed in WPM that each letter needs before the next unlocks.
+    pub practice_target: u32,
     /// The key times of each personal-best test, for the pace caret.
     pub best_runs: BestRuns,
     pub badges: Badges,
@@ -403,6 +418,8 @@ impl App {
             history: History::in_memory(),
             mistakes: Mistakes::in_memory(),
             key_stats: KeyStats::in_memory(),
+            practice: Progress::default(),
+            practice_target: practice::DEFAULT_TARGET,
             best_runs: BestRuns::in_memory(),
             badges: Badges::in_memory(),
             quests: Quests::in_memory(),
@@ -446,20 +463,30 @@ impl App {
         self.restart();
     }
 
-    /// The challenge of the test on screen. Momo mode is a mode on its own,
-    /// so it has no challenge, whatever the menu says.
+    /// The challenge of the test on screen. Momo mode and practice are modes
+    /// on their own, so they have no challenge, whatever the menu says.
     pub fn challenge_now(&self) -> Challenge {
-        if self.momo {
+        if self.momo || self.practising() {
             Challenge::Off
         } else {
             self.challenge
         }
     }
 
-    /// The strict mode of the test on screen. Momo mode has none, whatever
-    /// the menu says.
+    /// The strict mode of the test on screen. Momo mode and practice have
+    /// none, whatever the menu says.
     pub fn strict_now(&self) -> Strict {
-        if self.momo { Strict::Off } else { self.strict }
+        if self.momo || self.practising() {
+            Strict::Off
+        } else {
+            self.strict
+        }
+    }
+
+    /// The test on screen is a practice lesson, which is not saved in the
+    /// history and gives no XP.
+    pub fn practising(&self) -> bool {
+        matches!(self.mode_now(), Mode::Practice(_)) && !self.fixed_text()
     }
 
     /// The mode of the test on screen: momo, or the chosen mode.
@@ -655,8 +682,7 @@ impl App {
         }
     }
 
-    /// Remember the words typed wrong. In the mistakes list, words typed
-    /// right are removed.
+    /// Remember the words typed wrong.
     fn update_mistakes(&mut self) -> std::io::Result<()> {
         // Quote, custom and zen tests have their own text, not a word list.
         let own_text = matches!(
@@ -664,26 +690,51 @@ impl App {
             Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
         );
         let list = (!own_text).then_some(self.options.list);
-        let practising = list == Some(WordList::Mistakes);
-        let (mut wrong, mut fixed) = (Vec::new(), Vec::new());
-        for (word, correct) in self.session.checked_words() {
-            match (mistakes::practice_word(&word, list), correct) {
-                (Some(w), false) => wrong.push(w),
-                (Some(w), true) if practising => fixed.push(w),
-                _ => {}
+        let wrong: Vec<String> = (self.session.checked_words().into_iter())
+            .filter(|(_, correct)| !correct)
+            .filter_map(|(word, _)| mistakes::practice_word(&word, list))
+            .collect();
+        self.mistakes.update(&wrong, &[])
+    }
+
+    /// A practice lesson ended: update the practice data and show the
+    /// results. Nothing goes into the history.
+    fn finish_lesson(&mut self) {
+        match self.mode {
+            Mode::Practice(PracticeKind::Adaptive) => {
+                let language = practice::language(self.options.list);
+                let model = LetterModel::new(practice::model_words(language));
+                let presses = self.session.presses();
+                (self.practice).add_lesson(language, model.order(), self.practice_target, presses);
             }
+            Mode::Practice(PracticeKind::Mistakes) => {
+                // A mistake typed right leaves the list. Punctuation mode
+                // adds marks and capitals, so compare without them too.
+                let typed: Vec<String> = (self.session.checked_words().into_iter())
+                    .filter(|(_, correct)| *correct)
+                    .flat_map(|(word, _)| {
+                        let bare = word.trim_matches(|c: char| !c.is_alphanumeric());
+                        [bare.to_lowercase(), word]
+                    })
+                    .collect();
+                let fixed: Vec<String> = (self.mistakes.words().iter())
+                    .filter(|m| typed.contains(m) || typed.contains(&m.to_lowercase()))
+                    .cloned()
+                    .collect();
+                self.save_failed = self.mistakes.update(&[], &fixed).is_err();
+            }
+            _ => {}
         }
-        self.mistakes.update(&wrong, &fixed)
+        self.reward = None;
+        self.climb_result = None;
+        self.copied = false;
+        self.card_file = None;
+        self.race_saved = None;
+        self.screen = Screen::Results(self.session.result());
     }
 
     /// The XP and new badges of the test just added to the history.
-    fn give_reward(&mut self, xp_before: u64, had_mistakes: bool) -> Reward {
-        let own_text = matches!(
-            self.mode_now(),
-            Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
-        );
-        let practising = !own_text && self.options.list == WordList::Mistakes;
-        let cleared = practising && had_mistakes && self.mistakes.words().is_empty();
+    fn give_reward(&mut self, xp_before: u64) -> Reward {
         let now = self.history.records().last().map_or(0, |r| r.time);
         let (done_quests, saved) =
             (self.quests).update(self.session.presses(), &self.key_stats, now);
@@ -694,7 +745,7 @@ impl App {
             _ => 0,
         };
         let moment = badges::Moment {
-            cleared_mistakes: cleared,
+            cleared_mistakes: false,
             beat_ghost: self.race.as_ref().is_some_and(|r| result.wpm > r.wpm),
             climb_round,
             quests_done: self.quests.done_count(),
@@ -817,36 +868,48 @@ impl App {
         self.key_stats.weakest_pairs(5)
     }
 
-    /// The words of the mistakes, weak-keys and weak-pairs lists. `None`
-    /// uses the list's own words: English for mistakes, all of english-1k for
-    /// weak keys and weak pairs.
+    /// The words of a practice lesson, or of the word file from
+    /// `--words-file`. `None` uses the chosen list.
     fn practice_words(&self) -> Option<Vec<String>> {
-        if let Some(file) = &self.word_file {
-            return Some(file.words.clone());
-        }
-        let words: Vec<String> = match self.options.list {
-            WordList::Mistakes => self.mistakes.words().to_vec(),
-            WordList::WeakKeys => {
-                let weak = self.weak_letters();
-                WordList::WeakKeys
-                    .words()
-                    .into_iter()
-                    .filter(|w| w.chars().any(|c| weak.contains(&c)))
-                    .map(String::from)
-                    .collect()
-            }
-            WordList::WeakPairs => {
-                let weak = self.weak_pairs();
-                WordList::WeakPairs
-                    .words()
-                    .into_iter()
-                    .filter(|w| weak.iter().any(|p| w.contains(p.as_str())))
-                    .map(String::from)
-                    .collect()
-            }
-            _ => Vec::new(),
+        let Mode::Practice(kind) = self.mode else {
+            return self.word_file.as_ref().map(|f| f.words.clone());
         };
-        (!words.is_empty()).then_some(words)
+        let weak = |keep: &dyn Fn(&str) -> bool| -> Vec<String> {
+            let all = WordList::English1k.words();
+            let words: Vec<&str> = all.iter().copied().filter(|w| keep(w)).collect();
+            // With no data yet, all of english-1k.
+            let words = if words.is_empty() { all } else { words };
+            words.into_iter().map(String::from).collect()
+        };
+        Some(match kind {
+            PracticeKind::Adaptive => {
+                let (model, letters, focus) = self.adaptive();
+                let letters = &model.order()[..letters];
+                model.words(letters, focus, ADAPTIVE_WORDS, &mut rand::rng())
+            }
+            PracticeKind::WeakKeys => {
+                let letters = self.weak_letters();
+                weak(&|w| w.chars().any(|c| letters.contains(&c)))
+            }
+            PracticeKind::WeakPairs => {
+                let pairs = self.weak_pairs();
+                weak(&|w| pairs.iter().any(|p| w.contains(p.as_str())))
+            }
+            // With no mistakes yet, the chosen list.
+            PracticeKind::Mistakes if self.mistakes.words().is_empty() => return None,
+            PracticeKind::Mistakes => self.mistakes.words().to_vec(),
+        })
+    }
+
+    /// Adaptive practice in the language of the chosen list: its letter
+    /// model, the number of unlocked letters, and the focus key.
+    pub fn adaptive(&self) -> (LetterModel, usize, Option<char>) {
+        let language = practice::language(self.options.list);
+        let model = LetterModel::new(practice::model_words(language));
+        let letters = self.practice.letters(language, model.order());
+        let focus = self.practice.focus(letters, self.practice_target);
+        let count = letters.len();
+        (model, count, focus)
     }
 
     /// Save the mode, options and theme. Settings are not important enough to
@@ -880,10 +943,10 @@ impl App {
         }
     }
 
-    /// Before the test starts, give an untimed test the words for the new width.
+    /// Before the test starts, give an untimed test or a practice lesson the words for the new width.
     pub fn on_resize(&mut self, width: u16, height: u16) {
         self.size = (width, height);
-        if self.mode == Mode::Untimed && !self.session.is_started() {
+        if matches!(self.mode, Mode::Untimed | Mode::Practice(_)) && !self.session.is_started() {
             self.new_test();
         }
     }
@@ -924,8 +987,17 @@ impl App {
             parts.push(self.challenge_now().name().to_string());
         }
         // The defaults add nothing, so old history labels stay the same.
-        if let (false, Some(file)) = (own_text, &self.word_file) {
+        let practising = self.practising();
+        if let (false, false, Some(file)) = (own_text, practising, &self.word_file) {
             parts.push(file.name.clone());
+        } else if practising {
+            // Only adaptive practice has a language; the other kinds pick
+            // their own words.
+            let language = practice::language(self.options.list);
+            if self.mode == Mode::Practice(PracticeKind::Adaptive) && language != WordList::English
+            {
+                parts.push(language.name().to_string());
+            }
         } else if !own_text && self.options.list != WordList::English {
             parts.push(self.options.list.name().to_string());
         }
@@ -954,11 +1026,14 @@ impl App {
         }
         self.session.tick(now);
         if matches!(self.screen, Screen::Typing) && self.session.is_finished() {
+            if self.practising() {
+                self.finish_lesson();
+                return;
+            }
             let result = self.session.result();
             let label = self.label();
             self.previous_best = self.history.best(&label);
             let xp_before = progress::total_xp(self.history.records());
-            let had_mistakes = !self.mistakes.words().is_empty();
             // A failed test is not a real result, so it is not saved.
             let failed = self.session.is_failed();
             if !failed {
@@ -974,7 +1049,7 @@ impl App {
                 self.save_failed |= self.key_stats.add_test(self.session.presses()).is_err();
             }
             self.save_failed |= self.update_mistakes().is_err();
-            self.reward = (!failed).then(|| self.give_reward(xp_before, had_mistakes));
+            self.reward = (!failed).then(|| self.give_reward(xp_before));
             self.climb_result = None;
             if let (true, Some(climb)) = (self.climb_on(), self.climb) {
                 let passed = !failed && climb.passed(result.wpm, result.accuracy);
@@ -1335,7 +1410,7 @@ fn new_session(
             _ => words.next_word(),
         }
     };
-    if mode == Mode::Untimed {
+    if matches!(mode, Mode::Untimed | Mode::Practice(_)) {
         let words = ui::screen_words(width, height, &mut next_word);
         return Session::from_words(mode, &words);
     }
@@ -2301,14 +2376,64 @@ mod tests {
         type_text(&mut a, "world");
         assert_eq!(a.mistakes.words(), ["hello"]);
 
-        // The mistakes list gives the saved words, and a right word leaves it.
-        a.options.list = WordList::Mistakes;
+        // Mistakes practice gives the saved words, and a right word leaves
+        // the list. The lesson is not saved in the history.
+        a.mode = Mode::Practice(PracticeKind::Mistakes);
         a.restart();
         let word: String = a.session.words()[0].iter().collect();
         assert_eq!(word, "hello");
-        a.session = Session::from_words(a.mode, &["hello"]);
-        type_text(&mut a, "hello");
+        a.session = Session::from_words(a.mode, &["Hello."]);
+        type_text(&mut a, "Hello.");
         assert!(a.mistakes.words().is_empty());
+        assert_eq!(a.history.records().len(), 1);
+        assert!(a.reward.is_none());
+    }
+
+    #[test]
+    fn adaptive_practice_uses_the_unlocked_letters_and_saves_nothing() {
+        let mut a = app(&["hi"]);
+        a.mode = Mode::Practice(PracticeKind::Adaptive);
+        a.strict = Strict::Master;
+        a.challenge = Challenge::Survival;
+        a.restart();
+        let (model, count, focus) = a.adaptive();
+        assert_eq!(count, practice::START_LETTERS);
+        let letters = &model.order()[..count];
+        assert_eq!(focus, Some(letters[count - 1]));
+        assert!(
+            a.session
+                .words()
+                .iter()
+                .flatten()
+                .all(|c| letters.contains(c))
+        );
+        assert_eq!(
+            (a.strict_now(), a.challenge_now()),
+            (Strict::Off, Challenge::Off)
+        );
+        assert_eq!(a.session.lives(), None);
+        assert_eq!(a.label(), "practice adaptive");
+        a.options.list = WordList::German;
+        assert_eq!(a.label(), "practice adaptive · german");
+        a.options.list = WordList::Code;
+        assert_eq!(a.label(), "practice adaptive");
+
+        a.session = Session::from_words(a.mode, &["eeeeeeeeeeee"]);
+        type_text(&mut a, "eeeeeeeeeeee");
+        assert!(matches!(a.screen, Screen::Results(_)));
+        assert!(a.history.records().is_empty() && a.reward.is_none());
+        assert_eq!(a.key_stats.get('e').presses, 0);
+        assert_eq!(a.practice.speed('e').presses, 11);
+    }
+
+    #[test]
+    fn practice_modes_parse_back() {
+        for kind in crate::engine::session::PRACTICE_KINDS {
+            let mode = Mode::Practice(kind);
+            assert!(MODES.contains(&mode));
+            assert_eq!(parse_mode(&mode_label(mode)), Some(mode));
+        }
+        assert_eq!(parse_mode("practice nope"), None);
     }
 
     #[test]
@@ -2423,7 +2548,7 @@ mod tests {
     }
 
     #[test]
-    fn weak_keys_list_uses_words_with_the_weakest_letters() {
+    fn weak_keys_practice_uses_words_with_the_weakest_letters() {
         use crate::engine::stats::Press;
         let mut a = app(&["hi"]);
         let presses: Vec<Press> = (0..10)
@@ -2436,7 +2561,7 @@ mod tests {
             .collect();
         a.key_stats.add_test(&presses).unwrap();
         assert_eq!(a.weak_letters(), ['q']);
-        a.options.list = WordList::WeakKeys;
+        a.mode = Mode::Practice(PracticeKind::WeakKeys);
         a.restart();
         assert!(
             a.session.words().iter().all(|w| w.contains(&'q')),

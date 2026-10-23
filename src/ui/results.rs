@@ -356,7 +356,7 @@ fn results_label(app: &App) -> String {
         return format!("{} · {next}", app.label());
     }
     match app.mode_now() {
-        Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen => app.label(),
+        Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen | Mode::Practice(_) => app.label(),
         _ if app.options.list == WordList::English => format!("{} · english", app.label()),
         _ => app.label(),
     }

@@ -5,4 +5,4 @@ pub mod session;
 pub mod stats;
 pub mod words;
 
-pub use session::{Key, Mode, QuoteLength, STRICT_MODES, Session, Strict};
+pub use session::{Key, Mode, PracticeKind, QuoteLength, STRICT_MODES, Session, Strict};

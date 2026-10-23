@@ -29,6 +29,46 @@ pub enum Mode {
     Zen,
     Time(Duration),
     Words(usize),
+    /// Practice: short lessons one after the other, apart from the history.
+    Practice(PracticeKind),
+}
+
+/// What practice mode practises.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PracticeKind {
+    /// Made-up words from the unlocked letters. A new letter unlocks when
+    /// all the letters are fast enough.
+    Adaptive,
+    /// Words with the weakest letters.
+    WeakKeys,
+    /// Words with the slowest letter pairs, like "th".
+    WeakPairs,
+    /// Words typed wrong before.
+    Mistakes,
+}
+
+/// The practice kinds in menu order.
+pub const PRACTICE_KINDS: [PracticeKind; 4] = [
+    PracticeKind::Adaptive,
+    PracticeKind::WeakKeys,
+    PracticeKind::WeakPairs,
+    PracticeKind::Mistakes,
+];
+
+impl PracticeKind {
+    /// The name, which is also the old word list name of the weak kinds.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Adaptive => "adaptive",
+            Self::WeakKeys => "weak-keys",
+            Self::WeakPairs => "weak-pairs",
+            Self::Mistakes => "mistakes",
+        }
+    }
+
+    pub fn parse(name: &str) -> Option<Self> {
+        PRACTICE_KINDS.into_iter().find(|k| k.name() == name)
+    }
 }
 
 /// Which quotes quote mode uses, by word count.
@@ -157,7 +197,7 @@ impl Session {
         let count = match mode {
             Mode::Zen => return Self::zen(),
             Mode::Words(n) => n,
-            Mode::Untimed | Mode::Quote(_) | Mode::Custom => 25,
+            Mode::Untimed | Mode::Quote(_) | Mode::Custom | Mode::Practice(_) => 25,
             Mode::Time(_) | Mode::Momo => WORDS_AHEAD * 2,
         };
         let words: Vec<String> = (0..count).map(|_| next_word()).collect();
@@ -299,7 +339,12 @@ impl Session {
         match self.mode {
             Mode::Time(limit) => Some(limit),
             Mode::Momo => Some(MOMO_TIME),
-            Mode::Untimed | Mode::Quote(_) | Mode::Custom | Mode::Zen | Mode::Words(_) => None,
+            Mode::Untimed
+            | Mode::Quote(_)
+            | Mode::Custom
+            | Mode::Zen
+            | Mode::Words(_)
+            | Mode::Practice(_) => None,
         }
     }
 

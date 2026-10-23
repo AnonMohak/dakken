@@ -35,7 +35,7 @@ use badges::Badges;
 use best_runs::BestRuns;
 use config::{Caret, Config};
 use engine::words::{WORD_LISTS, WordList};
-use engine::{Mode, QuoteLength, STRICT_MODES, Strict};
+use engine::{Mode, PracticeKind, QuoteLength, STRICT_MODES, Strict};
 use history::History;
 use keystats::KeyStats;
 use mistakes::Mistakes;
@@ -76,6 +76,11 @@ struct Cli {
     #[arg(long, value_name = "PATH", conflicts_with_all = ["time", "words", "quote", "file", "zen", "daily"])]
     race: Option<PathBuf>,
 
+    /// Adaptive practice: made-up words from a few letters, and a new letter
+    /// when they are fast enough. Practice is not saved in the history.
+    #[arg(long, conflicts_with_all = ["time", "words", "quote", "file", "zen", "daily", "race"])]
+    practice: bool,
+
     /// Add capitals and punctuation to the words.
     #[arg(short, long)]
     punctuation: bool,
@@ -85,7 +90,8 @@ struct Cli {
     numbers: bool,
 
     /// Word list: english (default), english-1k, code, spanish, german,
-    /// french, portuguese, mistakes, weak-keys or weak-pairs.
+    /// french or portuguese. mistakes, weak-keys and weak-pairs start that
+    /// kind of practice.
     #[arg(short = 'l', long, value_name = "NAME")]
     words_list: Option<String>,
 
@@ -239,18 +245,25 @@ fn main() -> io::Result<()> {
         (Some(t), None) => config.mode = Mode::Time(Duration::from_secs(t.max(1))),
         (None, None) => {}
     }
+    if cli.practice {
+        config.mode = Mode::Practice(PracticeKind::Adaptive);
+    }
     config.options.punctuation |= cli.punctuation;
     config.options.numbers |= cli.numbers;
     if let Some(name) = &cli.words_list {
-        let Some(list) = WordList::parse(name) else {
+        // The weak lists of old versions are practice kinds now.
+        if let Some(kind) = PracticeKind::parse(name).filter(|&k| k != PracticeKind::Adaptive) {
+            config.mode = Mode::Practice(kind);
+        } else if let Some(list) = WordList::parse(name) {
+            config.options.list = list;
+        } else {
             let names: Vec<&str> = WORD_LISTS.iter().map(|l| l.name()).collect();
             eprintln!(
                 "error: unknown word list \"{name}\". Lists: {}",
                 names.join(", ")
             );
             std::process::exit(2);
-        };
-        config.options.list = list;
+        }
     }
     if let Some(caret) = cli.caret.as_deref().and_then(Caret::parse) {
         config.caret = caret;

@@ -9,7 +9,7 @@ use ratatui::{
 use super::column;
 use crate::app::{App, MODES, mode_label};
 use crate::challenge::Challenge;
-use crate::engine::{Strict, words::WordList};
+use crate::engine::{Mode, PracticeKind, Strict, words::WordList};
 use crate::progress::{self, Level};
 use crate::ui::theme::Theme;
 
@@ -46,6 +46,27 @@ pub fn draw(frame: &mut Frame, app: &App) {
         (None, Some(_)) => "race".to_string(),
         (None, None) => mode_label(app.mode),
     };
+    // The weak kinds of practice show what they practise.
+    let weak = match app.mode {
+        Mode::Practice(PracticeKind::WeakKeys) => {
+            app.weak_letters().iter().map(char::to_string).collect()
+        }
+        Mode::Practice(PracticeKind::WeakPairs) => app.weak_pairs(),
+        _ => Vec::new(),
+    };
+    // Only the mode name counts for the width of the menu: the weak letters
+    // go out to the right.
+    let mode_width = format!("o{}mode {mode}", " ".repeat(GAP)).chars().count();
+    let mode = match (app.daily, &app.race, app.mode) {
+        (None, None, Mode::Practice(PracticeKind::WeakKeys | PracticeKind::WeakPairs)) => {
+            if weak.is_empty() {
+                format!("{mode} (no data yet)")
+            } else {
+                format!("{mode} ({})", weak.join(" "))
+            }
+        }
+        _ => mode,
+    };
     setting('o', "mode", &mode, t.main);
     // Each setting shows the key that changes it. In modes with their own
     // text the word options do not apply: they are gray, and the list
@@ -60,28 +81,10 @@ pub fn draw(frame: &mut Frame, app: &App) {
     setting('p', "punctuation", state, color);
     let (state, color) = on_off(app.options.numbers);
     setting('n', "numbers", state, color);
-    let list = match app.options.list {
-        WordList::WeakKeys => {
-            let letters: Vec<String> = app.weak_letters().iter().map(char::to_string).collect();
-            if letters.is_empty() {
-                "weak-keys (no data yet)".to_string()
-            } else {
-                format!("weak-keys ({})", letters.join(" "))
-            }
-        }
-        WordList::WeakPairs => {
-            let pairs = app.weak_pairs();
-            if pairs.is_empty() {
-                "weak-pairs (no data yet)".to_string()
-            } else {
-                format!("weak-pairs ({})", pairs.join(" "))
-            }
-        }
-        list => list.name().to_string(),
-    };
+    let list = app.options.list.name().to_string();
     let list = app.word_file.as_ref().map_or(list, |f| f.name.clone());
-    // Only the list name counts for the width of the menu: the letters of
-    // weak-keys or a long file name go out to the right.
+    // Only the list name counts for the width of the menu: a long file name
+    // goes out to the right.
     let list_name = (app.word_file.as_ref()).map_or(app.options.list.name(), |_| "file");
     let list_width = format!("l{}words {list_name}", " ".repeat(GAP))
         .chars()
@@ -149,12 +152,12 @@ pub fn draw(frame: &mut Frame, app: &App) {
             Style::new().fg(t.main).add_modifier(Modifier::BOLD),
         ),
     ]));
-    let is_list_row =
-        |line: &Line| (line.spans.first()).is_some_and(|s| s.content.starts_with('l'));
+    let is_wide_row =
+        |line: &Line| (line.spans.first()).is_some_and(|s| s.content.starts_with(['l', 'o']));
     let width = (settings.iter())
-        .filter(|line| !is_list_row(line))
+        .filter(|line| !is_wide_row(line))
         .map(Line::width)
-        .chain([list_width])
+        .chain([list_width, mode_width])
         .max()
         .unwrap_or(0) as u16;
     // The logo and the level go on top when there is room for them.

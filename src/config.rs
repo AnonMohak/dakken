@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::app::{Options, mode_label, parse_mode};
 use crate::challenge::Challenge;
-use crate::engine::{Mode, Strict, words::WordList};
+use crate::engine::{Mode, PracticeKind, Strict, words::WordList};
 use crate::layout::Layout;
 use crate::ui::theme::Theme;
 use ratatui::style::Color;
@@ -137,9 +137,14 @@ impl Config {
                 "symbols" => config.ascii = value == "ascii",
                 "underline_errors" => config.underline_errors = value == "true",
                 "numbers" => config.options.numbers = value == "true",
-                "words" => {
-                    config.options.list = WordList::parse(value).unwrap_or(config.options.list)
-                }
+                "words" => match (WordList::parse(value), PracticeKind::parse(value)) {
+                    (Some(list), _) => config.options.list = list,
+                    // The weak lists of old versions are practice kinds now.
+                    (None, Some(kind)) if kind != PracticeKind::Adaptive => {
+                        config.mode = Mode::Practice(kind)
+                    }
+                    _ => {}
+                },
                 _ => {}
             }
         }
@@ -288,5 +293,21 @@ mod tests {
         assert_eq!(config.mode, Mode::Time(Duration::from_secs(30)));
         assert_eq!(config.theme, Theme::default());
         assert!(config.options.numbers);
+    }
+
+    #[test]
+    fn old_weak_lists_become_practice_modes() {
+        let config = Config::parse(
+            "mode = \"time 30\"
+words = \"weak-pairs\"
+",
+        );
+        assert_eq!(config.mode, Mode::Practice(PracticeKind::WeakPairs));
+        assert_eq!(config.options.list, WordList::English);
+        let config = Config::parse(
+            "words = \"adaptive\"
+",
+        );
+        assert_eq!(config.mode, Config::default().mode);
     }
 }
