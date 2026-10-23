@@ -227,6 +227,11 @@ impl Progress {
             s.presses += n;
         }
         let count = self.letters(language, order).len();
+        // The first lesson saves the language, so the profile shows it as
+        // started before its first new letter.
+        (self.unlocked)
+            .entry(language.name().to_string())
+            .or_insert(count);
         if count >= order.len() || self.focus(&order[..count], target).is_some() {
             return None;
         }
@@ -466,6 +471,23 @@ mod tests {
             model(WordList::English)
         ));
         assert!(model(WordList::Spanish).order().contains(&'ñ'));
+    }
+
+    #[test]
+    fn a_language_is_started_from_its_first_lesson() {
+        let mut p = Progress::default();
+        let all = KeyStats::in_memory();
+        let slow = lesson("eaeaea", 1000, &[]);
+        for language in [WordList::English, WordList::Spanish] {
+            let order = model(language).order();
+            assert_eq!(p.add_lesson(language, order, 35, &slow), None);
+        }
+        // With the list on German, English and Spanish are still started.
+        let text = report(&p, 35, WordList::German, &all, false);
+        assert!(text.contains("  english     6 of 26 letters"), "{text}");
+        assert!(text.contains("  spanish     6 of "), "{text}");
+        assert!(text.contains("  german      6 of "), "{text}");
+        assert!(text.contains("  french      not started"), "{text}");
     }
 
     #[test]
