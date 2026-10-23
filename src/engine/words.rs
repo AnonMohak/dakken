@@ -23,78 +23,50 @@ pub fn quotes() -> Vec<Quote> {
     parse_quotes(QUOTES)
 }
 
-/// A quote of momo mode: the text to type, who said it, the series, and a
-/// mood symbol from its theme.
+/// A quote of momo mode: the text to type, who said it, and its mood
+/// symbol.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MomoQuote {
     pub text: String,
     pub speaker: &'static str,
-    pub series: &'static str,
     pub mood: char,
 }
 
-/// The quotes of momo mode, from `assets/quotes/momo.md`: quotes,
-/// paraphrases and longer speeches from One Piece, Hunter x Hunter and
-/// Vinland Saga. These are not public domain; they belong to their owners.
+/// The quotes of momo mode, from `assets/quotes/momo.md`: quotes from One
+/// Piece, Hunter x Hunter and Vinland Saga. These are not public domain;
+/// they belong to their owners.
 pub fn momo_quotes() -> Vec<MomoQuote> {
     parse_momo(MOMO)
 }
 
-/// Read the momo collection. A `## ` heading names the series. A short
-/// entry is `1. **Speaker** — text` with `*... · Theme: X*` on the next
-/// line. A long speech is `### 121. Speaker — title`, then lines; the lines
-/// that start with `**` (context, theme, core idea, reference) are not typed.
+/// Read the momo collection. Each quote is `1. text`, then `— Speaker` on
+/// the next line, then `*Mood: ♥ love*`. The mood symbol is one of ♥ love,
+/// ≈ peace, † darkness, ▼ sorrow, ↑ change, ▲ resolve and ¤ dreams; each is
+/// in Cascadia Mono, Consolas and JetBrains Mono, so no terminal draws it
+/// from a color emoji font. A quote with no mood gets ¤.
 fn parse_momo(md: &'static str) -> Vec<MomoQuote> {
     let mut quotes = Vec::new();
-    let mut series = "";
     let mut lines = md.lines().map(str::trim).peekable();
     while let Some(line) = lines.next() {
-        if let Some(name) = line.strip_prefix("## ") {
-            series = name.trim();
-            continue;
-        }
-        if let Some(head) = line.strip_prefix("### ") {
-            let speaker = head.split_once(". ").map_or(head, |(_, rest)| rest);
-            let speaker = speaker.split_once(" — ").map_or(speaker, |(who, _)| who);
-            let (mut theme, mut text) = ("", String::new());
-            while let Some(&next) = lines.peek() {
-                if next.starts_with("#") || next == "---" {
-                    break;
-                }
-                lines.next();
-                if let Some(t) = next.strip_prefix("**Theme:**") {
-                    theme = t.trim();
-                } else if !next.is_empty() && !next.starts_with("**") {
-                    text = format!("{text} {next}");
-                }
-            }
-            quotes.push(MomoQuote {
-                text: typeable(&text),
-                speaker: speaker.trim(),
-                series,
-                mood: mood(theme),
-            });
-            continue;
-        }
-        let Some((number, rest)) = line.split_once(". **") else {
-            continue;
-        };
-        let Some((speaker, text)) = rest.split_once("** — ") else {
+        let Some((number, text)) = line.split_once(". ") else {
             continue;
         };
         if number.is_empty() || !number.chars().all(|c| c.is_ascii_digit()) {
             continue;
         }
-        let theme = lines
-            .peek()
-            .and_then(|next| next.trim_matches('*').split_once("Theme: "))
-            .map_or("", |(_, theme)| theme.trim());
-        let text = text.trim().trim_start_matches('“').trim_end_matches('”');
+        let Some(speaker) = lines.next().and_then(|l| l.strip_prefix("— ")) else {
+            continue;
+        };
+        let mood = (lines.peek())
+            .and_then(|l| l.trim_matches('*').strip_prefix("Mood: "))
+            .and_then(|m| m.chars().next());
+        if mood.is_some() {
+            lines.next();
+        }
         quotes.push(MomoQuote {
             text: typeable(text),
             speaker: speaker.trim(),
-            series,
-            mood: mood(theme),
+            mood: mood.unwrap_or('¤'),
         });
     }
     quotes
@@ -110,100 +82,6 @@ fn typeable(text: &str) -> String {
         .replace('…', "...")
         .replace('×', "x");
     text.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-/// The mood symbol of a theme: ♥ love, ≈ peace, † darkness, ▼ sorrow,
-/// ↑ change, ▲ resolve, and ¤ dreams for the rest. Each symbol is in
-/// Cascadia Mono, Consolas and JetBrains Mono, so no terminal draws it from
-/// a color emoji font.
-pub fn mood(theme: &str) -> char {
-    let theme = theme.to_lowercase();
-    let has = |words: &[&str]| words.iter().any(|w| theme.contains(w));
-    if has(&["love"]) {
-        '♥'
-    } else if has(&[
-        "peace",
-        "restraint",
-        "self-control",
-        "nonviolence",
-        "without violence",
-        "breaking cycles",
-        "rebuilding",
-        "healing",
-        "recovery",
-        "nature",
-        "humility",
-    ]) {
-        '≈'
-    } else if has(&[
-        "power",
-        "violence",
-        "danger",
-        "obsession",
-        "revenge",
-        "prejudice",
-        "survival",
-        "morality",
-        "justice",
-        "idealism",
-        "consequences",
-        "human nature",
-        "trauma",
-    ]) {
-        '†'
-    } else if has(&[
-        "grief",
-        "loneliness",
-        "legacy",
-        "memory",
-        "sacrifice",
-        "duty",
-        "apart",
-    ]) {
-        '▼'
-    } else if has(&[
-        "change",
-        "transformation",
-        "redemption",
-        "accountability",
-        "humanity",
-    ]) {
-        '↑'
-    } else if has(&[
-        "courage",
-        "bravery",
-        "resolve",
-        "commitment",
-        "discipline",
-        "perseverance",
-        "training",
-        "responsibility",
-        "intensity",
-        "craft",
-        "strategy",
-        "judgment",
-        "leadership",
-    ]) {
-        '▲'
-    } else if has(&[
-        "family",
-        "friend",
-        "compassion",
-        "devotion",
-        "loyalty",
-        "belonging",
-        "acceptance",
-        "trust",
-        "empathy",
-        "mercy",
-        "forgiveness",
-        "community",
-        "protection",
-    ]) {
-        '♥'
-    } else {
-        '¤'
-    }
 }
 
 fn parse_quotes(text: &'static str) -> Vec<Quote> {
@@ -437,45 +315,19 @@ mod tests {
     use rand::{SeedableRng, rngs::StdRng};
 
     #[test]
-    fn momo_collection_has_150_typeable_quotes_with_moods() {
+    fn momo_collection_has_typeable_quotes_with_moods() {
         let q = momo_quotes();
-        assert_eq!(q.len(), 150);
-        assert_eq!(q[0].text, "I'm gonna be King of the Pirates!");
-        assert_eq!(
-            (q[0].speaker, q[0].series, q[0].mood),
-            ("Monkey D. Luffy", "One Piece", '¤')
-        );
-        // A paraphrase is typed as it is written.
-        assert_eq!(q[3].speaker, "Gol D. Roger");
-        assert!(q[3].text.starts_with("A final challenge"), "{:?}", q[3]);
-        assert_eq!(q[43].series, "Hunter × Hunter");
-        // A long speech: only its paragraph, with straight quotes.
-        let speech = &q[120];
-        assert_eq!(speech.speaker, "Donquixote Doflamingo");
-        assert!(
-            speech
-                .text
-                .starts_with("Doflamingo mocks the idea that \"justice\""),
-            "{speech:?}"
-        );
-        assert!(!speech.text.contains("Marineford") && !speech.text.contains("Core idea"));
-        assert_eq!(speech.mood, '†');
-        assert_eq!(q[149].series, "Vinland Saga");
+        assert_eq!(q.len(), 36);
+        assert!(q[0].text.starts_with("Pirates are evil?"), "{:?}", q[0]);
+        assert_eq!((q[0].speaker, q[0].mood), ("Donquixote Doflamingo", '†'));
+        assert_eq!(q[6].text, "I want to live!!");
+        assert_eq!((q[6].speaker, q[6].mood), ("Nico Robin", '▲'));
+        assert_eq!(q[24].speaker, "Narrator, Hunter x Hunter");
+        assert_eq!((q[35].speaker, q[35].mood), ("Thorfinn", '▼'));
         for quote in &q {
             assert!(quote.text.is_ascii() && !quote.text.is_empty(), "{quote:?}");
+            assert!("♥≈†▼↑▲¤".contains(quote.mood), "{quote:?}");
         }
-    }
-
-    #[test]
-    fn moods_come_from_themes() {
-        assert_eq!(mood("Love and humility"), '♥');
-        assert_eq!(mood("Found family"), '♥');
-        assert_eq!(mood("Strength without violence"), '≈');
-        assert_eq!(mood("Power and ideals"), '†');
-        assert_eq!(mood("Memory and legacy"), '▼');
-        assert_eq!(mood("Redemption"), '↑');
-        assert_eq!(mood("Pride and resolve"), '▲');
-        assert_eq!(mood("Dreams and freedom"), '¤');
     }
 
     #[test]

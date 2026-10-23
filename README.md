@@ -84,8 +84,8 @@ files on your computer.
 
 The word lists (English, code, Spanish, German, French and Portuguese) were
 written for this project. The quotes of quote mode are from public-domain books, poems and
-speeches. The momo mode collection (`assets/quotes/momo.md`) has quotes,
-paraphrases and longer speeches about One Piece (Eiichiro Oda), Hunter x Hunter (Yoshihiro Togashi) and
+speeches. The momo mode collection (`assets/quotes/momo.md`) has quotes
+from One Piece (Eiichiro Oda), Hunter x Hunter (Yoshihiro Togashi) and
 Vinland Saga (Makoto Yukimura). They are not public domain and belong to
 their owners; the MIT license does not cover them.
 

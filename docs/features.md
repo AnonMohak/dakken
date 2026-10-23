@@ -7,9 +7,8 @@
 - The text fills 70% of the terminal, with an empty row between lines.
 - Quote mode: one quote from a public-domain book, poem or speech. Choose
   short (up to 15 words), medium (16 to 30) or long (more than 30) quotes.
-- Momo mode: press `x` in the menu to start it at once. 150 quotes,
-  paraphrases and longer speeches from One Piece, Hunter x Hunter and
-  Vinland Saga come one after the other for 60 seconds (the next quote
+- Momo mode: press `x` in the menu to start it at once. 36 quotes
+  from One Piece, Hunter x Hunter and Vinland Saga come one after the other for 60 seconds (the next quote
   starts as soon as you type the last letter, with no space), with the timer on
   the right above the words. The screen shows one quote at a time; two rows
   under it, on the right and in gray, a mood symbol and who said it (not

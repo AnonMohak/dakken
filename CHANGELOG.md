@@ -39,6 +39,9 @@ All notable changes to dakken. Versions follow [Semantic Versioning](https://sem
 
 ### Changed
 
+- Momo mode has a new collection of 36 quotes, each with a mood. The
+  results no longer show the series.
+
 - The `mistakes`, `weak-keys` and `weak-pairs` word lists are now practice
   kinds in the `o` list. `-l weak-keys` (and the others) and old config
   files start that practice.

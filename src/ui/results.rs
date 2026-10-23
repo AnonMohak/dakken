@@ -342,7 +342,7 @@ fn source_text(app: &App) -> String {
             .collect();
         return match done.len() {
             0 => "no quote to the end".to_string(),
-            1 => format!("1 quote — {}, {}", speakers[0], done[0].series),
+            1 => format!("1 quote — {}", speakers[0]),
             n => format!("{n} quotes — {}", speakers.join(", ")),
         };
     }
