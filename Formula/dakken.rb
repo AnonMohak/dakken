@@ -1,29 +1,29 @@
 class Dakken < Formula
   desc "Typing-speed test for the terminal"
   homepage "https://github.com/AnonMohak/dakken"
-  version "0.6.1"
+  version "0.6.2"
   license "MIT"
 
   on_macos do
     on_arm do
-      url "https://github.com/AnonMohak/dakken/releases/download/v0.6.1/dakken-v0.6.1-aarch64-apple-darwin"
-      sha256 "7835762472de67fc26f545aeb1f1c03833ee0abb3e99c1a6db62da61f9adc3d6"
+      url "https://github.com/AnonMohak/dakken/releases/download/v0.6.2/dakken-v0.6.2-aarch64-apple-darwin"
+      sha256 "203457c9939396644a50824349cab6980e0178dde899089503f8bd93e9e31ac6"
     end
     on_intel do
-      url "https://github.com/AnonMohak/dakken/releases/download/v0.6.1/dakken-v0.6.1-x86_64-apple-darwin"
-      sha256 "e6d82f9a0a5561fc6c4e65f127aedfa7fd6f124a7066efda421e8527428a9569"
+      url "https://github.com/AnonMohak/dakken/releases/download/v0.6.2/dakken-v0.6.2-x86_64-apple-darwin"
+      sha256 "b5261791b6237e26b7cc4449915f897808b5a0de847b8aec60bc106024bf801a"
     end
   end
 
   # Static musl binaries: they run on old and new Linux systems.
   on_linux do
     on_arm do
-      url "https://github.com/AnonMohak/dakken/releases/download/v0.6.1/dakken-v0.6.1-aarch64-unknown-linux-musl"
-      sha256 "dc4374b02d75d3e3f86f63c6e7462d33b63893bdcdc4d3d1268243cba7d8ac56"
+      url "https://github.com/AnonMohak/dakken/releases/download/v0.6.2/dakken-v0.6.2-aarch64-unknown-linux-musl"
+      sha256 "fdbd45cfc4df027a63b7c06ffb03cc09bf35e1a2ddec14648b9ece0d9c08eb21"
     end
     on_intel do
-      url "https://github.com/AnonMohak/dakken/releases/download/v0.6.1/dakken-v0.6.1-x86_64-unknown-linux-musl"
-      sha256 "9f9858ae46ce3d282671041ba8ccaa2cdcc6b0940f6c1acb6bbadf827b48669d"
+      url "https://github.com/AnonMohak/dakken/releases/download/v0.6.2/dakken-v0.6.2-x86_64-unknown-linux-musl"
+      sha256 "a59751f155632eabc82d3f0a3f78c51e16dd308fc7ace703fdcad1541da4b187"
     end
   end
 
