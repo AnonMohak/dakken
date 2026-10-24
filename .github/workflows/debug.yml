@@ -1,0 +1,22 @@
+# Temporary: open an SSH session on a runner to try dakken by hand.
+# Delete this file after the macOS test.
+name: debug
+
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: Runner
+        type: choice
+        options: [macos-latest, macos-13, ubuntu-latest, windows-latest]
+        default: macos-latest
+
+jobs:
+  tmate:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
