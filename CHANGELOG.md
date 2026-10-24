@@ -2,6 +2,14 @@
 
 All notable changes to dakken. Versions follow [Semantic Versioning](https://semver.org).
 
+## 0.6.2 - 2026-10-24
+
+### Added
+
+- The settings screen (`e`) tells how to change the text size: dakken cannot
+  set the font, so zoom the terminal with `Ctrl` + `+` and `Ctrl` + `-`
+  (`Cmd` on macOS). The README tells it too.
+
 ## 0.6.1 - 2026-10-24
 
 ### Changed
