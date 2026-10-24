@@ -60,6 +60,10 @@ dakken --help     # all the options
 | `Enter` (on the results) | Start the next test |
 | `q` (in the menu or on the results) | Quit |
 
+Text too small? dakken cannot set the font size, but your terminal can:
+press `Ctrl` + `+` to zoom in and `Ctrl` + `-` to zoom out (`Cmd` on
+macOS).
+
 More in [docs/usage.md](docs/usage.md).
 
 ## Privacy

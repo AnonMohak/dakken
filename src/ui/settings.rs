@@ -20,6 +20,9 @@ fn value_width() -> usize {
         .unwrap_or(0)
 }
 
+/// The terminal owns the font, so dakken can only tell how to zoom it.
+const TEXT_SIZE: &str = "  text size: ctrl + or ctrl - (mac: cmd + or cmd -)";
+
 /// The settings that are not test options, one row each, from `e` in the
 /// menu. The selected row is in the theme color.
 pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
@@ -31,7 +34,8 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
         Line::default(),
     ];
     // In a short terminal, show only the rows around the selected one.
-    let rows = (screen.height.saturating_sub(HINT_ROWS + 2) as usize).clamp(1, SETTINGS.len());
+    // Two more rows hold the text size note.
+    let rows = (screen.height.saturating_sub(HINT_ROWS + 4) as usize).clamp(1, SETTINGS.len());
     let first = selected.saturating_sub(rows / 2).min(SETTINGS.len() - rows);
     for (i, &setting) in SETTINGS.iter().enumerate().skip(first).take(rows) {
         let name = format!("{:<width$}", setting.name());
@@ -49,11 +53,15 @@ pub fn draw(frame: &mut Frame, app: &App, selected: usize) {
             ])
         });
     }
+    lines.push(Line::default());
+    lines.push(Line::styled(TEXT_SIZE, Style::new().fg(t.sub)));
     let height = lines.len() as u16;
     // "> " + name + "< " + value + " >", the same for every row.
     let width = (2 + width + 2 + value_width() + 2) as u16;
     let area = column(screen, height);
     let left = (screen.width.saturating_sub(width) / 2).max(MARGIN);
+    // The note can be wider than the rows; it starts where they start.
+    let width = width.max(TEXT_SIZE.len() as u16);
     let area = Rect {
         x: screen.x + left.min(screen.width),
         width: width.min(screen.width.saturating_sub(left)),
