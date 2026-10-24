@@ -25,6 +25,9 @@ All the features are in [docs/features.md](docs/features.md).
 
 ## Install
 
+Never used a terminal? Read [New to the terminal?](#new-to-the-terminal)
+below first.
+
 **Windows** (no admin rights):
 
 ```powershell
@@ -42,6 +45,26 @@ is not ready yet: the package waits for approval, so do not use
 `winget install AnonMohak.dakken` for now.) See
 [docs/install.md](docs/install.md), which also tells how to update and
 uninstall.
+
+### New to the terminal?
+
+The terminal is a window where you type commands. Every computer has one.
+You do steps 1 to 4 only once.
+
+1. Open the terminal:
+   - **Windows:** press the Windows key, type `PowerShell`, and press Enter.
+   - **macOS:** press `Cmd` + `Space`, type `Terminal`, and press Enter.
+   - **Linux:** press `Ctrl` + `Alt` + `T`, or find "Terminal" in your apps.
+2. Copy the command for your system from the boxes above. Click the copy
+   button at the right side of the box.
+3. Paste the command in the terminal and press Enter. To paste, press
+   `Ctrl` + `V` on Windows, `Cmd` + `V` on macOS, or `Ctrl` + `Shift` + `V`
+   on Linux. Wait until the terminal says that dakken is installed.
+4. Type `dakken` and press Enter. If the terminal does not know `dakken`,
+   close the terminal, open a new one, and try again.
+
+After that, each time you want to type: open the terminal, type `dakken`,
+and press Enter. Have fun!
 
 ## Use
 
