@@ -2,7 +2,7 @@
 
 All notable changes to dakken. Versions follow [Semantic Versioning](https://semver.org).
 
-## Unreleased
+## 0.7.0 - 2026-10-26
 
 ### Added
 
