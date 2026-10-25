@@ -1,3 +1,4 @@
+mod account;
 mod app;
 mod badges;
 mod best_runs;
@@ -158,10 +159,127 @@ struct Cli {
     /// Print each key event, to check how the terminal sends keys.
     #[arg(long)]
     keys: bool,
+
+    #[command(subcommand)]
+    command: Option<Command>,
+}
+
+/// The leaderboard profile at me-momo.co.in/dakken.
+#[derive(clap::Subcommand)]
+enum Command {
+    /// Make your leaderboard profile with this name, or change its name.
+    Name { name: String },
+    /// Without a code: show a code that links one more device to your
+    /// profile. With a code: join the profile of another device.
+    Link { code: Option<String> },
+    /// Get your profile back with its recovery code. A new code replaces it.
+    Recover { code: String },
+    /// Show your profile and its devices.
+    Account,
+}
+
+const BOARD: &str = "https://me-momo.co.in/dakken";
+
+/// Run a profile command. An error goes to stderr with exit code 1.
+fn profile_command(command: Command) -> io::Result<()> {
+    let result = match command {
+        Command::Name { name } => name_command(&name),
+        Command::Link { code: None } => link_command(),
+        Command::Link { code: Some(code) } => join_command(&code),
+        Command::Recover { code } => recover_command(&code),
+        Command::Account => account_command(),
+    };
+    if let Err(e) = result {
+        eprintln!("dakken: {e}");
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+fn keep(account: &account::Account) -> Result<(), String> {
+    account::save(account).map_err(|e| format!("cannot save the profile on this computer: {e}"))
+}
+
+fn show_recovery(code: &str) {
+    println!("recovery code: {code}");
+    println!("Keep it somewhere safe. It is shown only now, and it gives your profile");
+    println!("back if this computer's data is lost (`dakken recover <code>`).");
+}
+
+fn name_command(name: &str) -> Result<(), String> {
+    if let Some(mut account) = account::load() {
+        account.name = account::rename(&account, name)?;
+        keep(&account)?;
+        println!("your name is now {}", account.name);
+        return Ok(());
+    }
+    let (account, code) = account::create(name)?;
+    keep(&account)?;
+    println!(
+        "you are {} on the leaderboard: {BOARD}/leaderboard/{}/",
+        account.name, account.name
+    );
+    println!("Your time 30 and time 60 runs now go to the boards.");
+    println!();
+    show_recovery(&code);
+    Ok(())
+}
+
+fn link_command() -> Result<(), String> {
+    let account =
+        account::load().ok_or("no profile on this computer; make one with `dakken name <name>`")?;
+    let (code, _) = account::link_code(&account)?;
+    println!("link code: {code} (it works one time, for 10 minutes)");
+    println!("On the other device, run `dakken link {code}`,");
+    println!("or open {BOARD}/profile/ and use \"already have a profile?\".");
+    Ok(())
+}
+
+fn join_command(code: &str) -> Result<(), String> {
+    if let Some(account) = account::load() {
+        return Err(format!(
+            "this computer already has the profile {}",
+            account.name
+        ));
+    }
+    let account = account::join(code)?;
+    keep(&account)?;
+    println!("this computer is now {} on the leaderboard", account.name);
+    Ok(())
+}
+
+fn recover_command(code: &str) -> Result<(), String> {
+    let (account, new_code) = account::recover(code)?;
+    keep(&account)?;
+    println!(
+        "your profile {} is back on this computer. Your old recovery code stopped.",
+        account.name
+    );
+    println!();
+    show_recovery(&new_code);
+    Ok(())
+}
+
+fn account_command() -> Result<(), String> {
+    let Some(account) = account::load() else {
+        println!("no profile on this computer. Make one with `dakken name <name>`,");
+        println!("or join one with `dakken link <code>`.");
+        return Ok(());
+    };
+    println!("{} · {BOARD}/leaderboard/{}/", account.name, account.name);
+    println!();
+    println!("devices:");
+    for (label, this) in account::devices(&account)? {
+        println!("  {label}{}", if this { " (this one)" } else { "" });
+    }
+    Ok(())
 }
 
 fn main() -> io::Result<()> {
-    let cli = Cli::parse();
+    let mut cli = Cli::parse();
+    if let Some(command) = cli.command.take() {
+        return profile_command(command);
+    }
     if cli.keys {
         return key_test();
     }
