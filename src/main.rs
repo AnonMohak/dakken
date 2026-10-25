@@ -19,6 +19,7 @@ mod race;
 mod sha256;
 mod ui;
 mod update;
+mod upload;
 
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -446,6 +447,8 @@ fn main() -> io::Result<()> {
         key_stats,
         custom,
     );
+    // With a leaderboard profile, finished tests go to the server.
+    app.account = account::load();
     if let Some(path) = &cli.words_file {
         match CustomText::load(path) {
             Ok(mut file) => {

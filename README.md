@@ -92,9 +92,31 @@ macOS).
 
 More in [docs/usage.md](docs/usage.md).
 
+## Leaderboard
+
+Put your time 30 and time 60 runs on the boards at
+[me-momo.co.in/dakken/leaderboard](https://me-momo.co.in/dakken/leaderboard/):
+
+```sh
+dakken name momo       # make your profile (or change its name)
+dakken link            # a code to link one more device to your profile
+dakken link K7QX-29MF  # join your profile from another device
+dakken recover <code>  # get your profile back with its recovery code
+dakken account         # your profile and its devices
+```
+
+`dakken name` shows a recovery code one time. Keep it: it gives the profile
+back if the computer's data is lost. With a profile, each finished test goes
+to the leaderboard. The server makes the words of a time 30 or time 60 run
+again from its seed and replays your keys before it counts the run. Other
+tests count only for the time typed this week. A run with no connection
+waits and goes with the next one (for up to an hour).
+
 ## Privacy
 
-dakken has no account and sends no data about you. It sends one request to
+dakken has no account until you make one with `dakken name`, and then it
+sends only your runs (the mode, WPM, accuracy, time and, for time 30 and
+time 60, the keys you typed) and your profile name. It sends one request to
 GitHub each day to look for a newer version (`update_check = false` in
 `config.toml` turns it off). Your history, settings and badges stay in
 files on your computer.

@@ -4,7 +4,7 @@
 //! one line: the name, a tab, then the key.
 //!
 //! `dakken name`, `dakken link` and `dakken recover` make, join or get back a
-//! profile.
+//! profile; then the app sends its runs (`upload`).
 
 use std::fs;
 use std::io;
@@ -231,6 +231,26 @@ pub fn devices(account: &Account) -> Result<Vec<(String, bool)>, String> {
         .iter())
     .map(|d| (text(d, "label"), d["this"].as_bool().unwrap_or(false)))
     .collect())
+}
+
+/// Why a run did not go: no connection (try again later), or the server
+/// said no (the run goes away).
+pub enum SendError {
+    Offline,
+    Refused(String),
+}
+
+/// Send a run (the JSON of `POST /api/runs`). Gives the server's answer:
+/// whether it is on a board, its WPM, and whether it is a new best.
+pub fn send_run(account: &Account, run: &Value) -> Result<Value, SendError> {
+    let (status, body) = call(Method::Post, "/runs", Some(&account.key), run.clone())
+        .map_err(|_| SendError::Offline)?;
+    match status {
+        201 => Ok(body),
+        // A server that is down is like no connection.
+        500.. => Err(SendError::Offline),
+        _ => Err(SendError::Refused(reason(status, &body))),
+    }
 }
 
 #[cfg(test)]

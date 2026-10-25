@@ -353,6 +353,12 @@ pub struct App {
     /// The seed of the words of a competitive test (time 30 or time 60),
     /// so the leaderboard server can make the same words again.
     pub seed: Option<u64>,
+    /// The leaderboard profile of this computer; with it, finished tests
+    /// go to the server (see `upload`).
+    pub account: Option<crate::account::Account>,
+    /// The server's answer for the last test, for the results screen.
+    pub board_note: Option<String>,
+    board_reply: Option<std::sync::mpsc::Receiver<String>>,
     /// Momo mode is on. Only `x` starts it; `self.mode` stays the chosen
     /// mode, which `Enter` starts.
     pub momo: bool,
@@ -478,6 +484,9 @@ impl App {
             session,
             source: None,
             seed: None,
+            account: None,
+            board_note: None,
+            board_reply: None,
             momo: false,
             momo_quotes: Rc::default(),
             custom: None,
@@ -1219,8 +1228,28 @@ impl App {
         parts.join(" · ")
     }
 
+    /// Send a finished test to the leaderboard, with a profile on this
+    /// computer. The answer comes later (see `tick`).
+    fn send_to_board(&mut self, label: &str, result: &TestResult) {
+        self.board_note = None;
+        let Some(account) = self.account.clone() else {
+            return;
+        };
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+        let run = crate::upload::run_json(label, result, self.seed, self.session.log(), now);
+        self.board_reply = Some(crate::upload::send(account, Some(run), now));
+    }
+
     /// Show the results screen if the test ended. Call this on each frame.
     pub fn tick(&mut self, now: Instant) {
+        if let Some(reply) = &self.board_reply
+            && let Ok(note) = reply.try_recv()
+        {
+            self.board_note = Some(note);
+            self.board_reply = None;
+        }
         if let Screen::Replay(replay) = &mut self.screen {
             let log = self.session.log();
             let since = now.saturating_duration_since(replay.start);
@@ -1258,6 +1287,7 @@ impl App {
                 let presses = self.session.presses();
                 self.save_failed = (new_best && self.mode != Mode::Zen)
                     && self.best_runs.set(&label, presses).is_err();
+                self.send_to_board(&label, &result);
                 let mut record = Record::new(label, &result);
                 if self.boss_on() {
                     record.bonus = self.bosses().0 as u64 * challenge::BOSS_XP;

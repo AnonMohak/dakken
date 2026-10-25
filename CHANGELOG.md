@@ -16,6 +16,16 @@ All notable changes to dakken. Versions follow [Semantic Versioning](https://sem
   (SplitMix64 over the english list), the same as the leaderboard server, so
   the server can make the same words again and check a run. Repeat (`r`)
   keeps the seed.
+- The leaderboard at me-momo.co.in/dakken: `dakken name` makes your profile
+  (or changes its name) and shows a recovery code one time; `dakken link`
+  shows a code for one more device, and `dakken link <code>` joins it;
+  `dakken recover <code>` gets the profile back; `dakken account` lists the
+  devices. The profile is in `account.tsv` in the data folder.
+- With a profile, each finished test goes to the leaderboard in the
+  background. Time 30 and time 60 go with their seed and key log, so the
+  server replays them; the results show "leaderboard: new best ✓" or the
+  reason a run did not count. A run with no connection waits in
+  `pending.tsv` and goes with the next run (for up to an hour).
 
 ## 0.6.2 - 2026-10-24
 

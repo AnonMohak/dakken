@@ -211,7 +211,10 @@ fn race_line(app: &App, r: &TestResult) -> Line<'static> {
         return Line::styled(saved.clone(), Style::new().fg(t.sub));
     }
     let Some(race) = &app.race else {
-        return Line::default();
+        // The leaderboard's answer, when there is no race.
+        return app.board_note.as_ref().map_or_else(Line::default, |note| {
+            Line::styled(note.clone(), Style::new().fg(t.sub))
+        });
     };
     let gap = r.wpm - race.wpm;
     if gap > 0.0 {
