@@ -198,6 +198,32 @@ pub fn daily_words(day: i64) -> Vec<String> {
         .collect()
 }
 
+/// The words of a competitive run (time 30 and time 60) from its seed: the
+/// english list (200 words), the same for the same seed everywhere.
+///
+/// The leaderboard server makes the same words again to replay the run
+/// (`server/replay.js` in dakken-landing-page, with the same fixed lists in
+/// its tests), so this is a fixed algorithm and not `rand`. Do not change it.
+/// The steps:
+/// 1. Start SplitMix64 with the state `seed`.
+/// 2. For each word, take the next number modulo the length of the list
+///    (200) as the index.
+/// 3. If the index is the same as the last word's, take the next number.
+pub fn seeded_words(seed: u64) -> impl FnMut() -> String {
+    let list = WordList::English.words();
+    let mut rng = SplitMix64(seed);
+    let mut last = None;
+    move || {
+        loop {
+            let i = (rng.next() % list.len() as u64) as usize;
+            if Some(i) != last {
+                last = Some(i);
+                return list[i].to_string();
+            }
+        }
+    }
+}
+
 /// SplitMix64 (Steele, Lea and Flood, 2014): a small generator that is easy
 /// to write the same way in other languages.
 struct SplitMix64(u64);
@@ -359,6 +385,24 @@ mod tests {
             daily_words(20_747).join(" "),
             "next pretty discover science office performance idea party establish mother low action send weight egg best anything pretty beyond sister toward wind power explain offer street avoid machine collection everyone"
         );
+    }
+
+    #[test]
+    fn seeded_words_match_the_server() {
+        // The same lists as in the server's test/replay.test.js.
+        let first = |seed, n| {
+            let mut next = seeded_words(seed);
+            (0..n).map(|_| next()).collect::<Vec<_>>().join(" ")
+        };
+        assert_eq!(
+            first(0, 12),
+            "school good day so want long nation while because group be mean"
+        );
+        assert_eq!(
+            first(12345, 12),
+            "real help to than open time might any do turn even home"
+        );
+        assert_eq!(first(u64::MAX, 6), "never again be out in think");
     }
 
     #[test]

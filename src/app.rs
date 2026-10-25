@@ -350,6 +350,9 @@ pub struct App {
     pub session: Session,
     /// Where the quote of a quote test comes from.
     pub source: Option<&'static str>,
+    /// The seed of the words of a competitive test (time 30 or time 60),
+    /// so the leaderboard server can make the same words again.
+    pub seed: Option<u64>,
     /// Momo mode is on. Only `x` starts it; `self.mode` stays the chosen
     /// mode, which `Enter` starts.
     pub momo: bool,
@@ -474,6 +477,7 @@ impl App {
             size: (80, 24),
             session,
             source: None,
+            seed: None,
             momo: false,
             momo_quotes: Rc::default(),
             custom: None,
@@ -722,8 +726,10 @@ impl App {
             .map(|w| w.iter().collect())
             .collect();
         let mode = self.session.mode();
-        self.session = match mode {
-            Mode::Time(_) => {
+        self.session = match (mode, self.seed) {
+            // The same seed gives the same words again, as many as needed.
+            (Mode::Time(_), Some(seed)) => Session::new(mode, words::seeded_words(seed)),
+            (Mode::Time(_), None) => {
                 let mut next = 0;
                 Session::new(mode, move || {
                     next += 1;
@@ -740,6 +746,8 @@ impl App {
     }
 
     pub fn new_test(&mut self) {
+        // A competitive test takes its words from a new seed.
+        self.seed = self.competitive().then(rand::random);
         (self.session, self.source) = match &self.custom {
             _ if self.daily.is_some() => {
                 let words = words::daily_words(self.daily.unwrap_or_default());
@@ -756,6 +764,10 @@ impl App {
             _ if self.momo => (self.momo_session(), None),
             Some(custom) if self.mode == Mode::Custom => {
                 (Session::from_words(self.mode, &custom.words), None)
+            }
+            _ if self.seed.is_some() => {
+                let seed = self.seed.unwrap_or_default();
+                (Session::new(self.mode, words::seeded_words(seed)), None)
             }
             _ => {
                 let boss = self.boss_on().then(|| self.weak_pairs());
@@ -1892,6 +1904,31 @@ mod tests {
             Instant::now(),
         );
         assert_eq!(a.options.list, WordList::English1k);
+    }
+
+    #[test]
+    fn competitive_tests_take_words_from_a_seed() {
+        let mut a = app(&["hi"]);
+        a.mode = Mode::Time(Duration::from_secs(60));
+        a.new_test();
+        let seed = a.seed.expect("a competitive test has a seed");
+        let mut next = words::seeded_words(seed);
+        let want: Vec<String> = (0..20).map(|_| next()).collect();
+        let got: Vec<String> = (a.session.words().iter().take(20))
+            .map(|w| w.iter().collect())
+            .collect();
+        assert_eq!(got, want);
+        // Repeat keeps the seed and the words.
+        a.repeat_test();
+        assert_eq!(a.seed, Some(seed));
+        let again: Vec<String> = (a.session.words().iter().take(20))
+            .map(|w| w.iter().collect())
+            .collect();
+        assert_eq!(again, want);
+        // Other modes have no seed.
+        a.mode = Mode::Time(Duration::from_secs(15));
+        a.new_test();
+        assert_eq!(a.seed, None);
     }
 
     #[test]

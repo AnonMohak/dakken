@@ -12,6 +12,10 @@ All notable changes to dakken. Versions follow [Semantic Versioning](https://sem
   their keys do nothing, and the label is only "time 30" or "time 60". Your
   options stay saved and come back in the other modes. These are the modes of
   the speed boards on the dakken site.
+- Time 30 and time 60 take their words from a seed with a fixed algorithm
+  (SplitMix64 over the english list), the same as the leaderboard server, so
+  the server can make the same words again and check a run. Repeat (`r`)
+  keeps the seed.
 
 ## 0.6.2 - 2026-10-24
 
