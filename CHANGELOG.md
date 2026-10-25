@@ -2,6 +2,17 @@
 
 All notable changes to dakken. Versions follow [Semantic Versioning](https://semver.org).
 
+## Unreleased
+
+### Added
+
+- Competitive modes: `time 30` and `time 60` show "competitive" in the menu
+  and in the `o` list. They have plain words only: punctuation, numbers, the
+  word list, a word file, strict mode and the challenge are gray in the menu,
+  their keys do nothing, and the label is only "time 30" or "time 60". Your
+  options stay saved and come back in the other modes. These are the modes of
+  the speed boards on the dakken site.
+
 ## 0.6.2 - 2026-10-24
 
 ### Added

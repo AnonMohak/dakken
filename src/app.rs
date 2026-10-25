@@ -108,6 +108,13 @@ pub const MODES: [Mode; 18] = [
     Mode::Practice(PracticeKind::Mistakes),
 ];
 
+/// The competitive modes: the modes of the speed boards on the dakken
+/// site. They have plain words only, so all the test options are off.
+pub const COMPETITIVE: [Mode; 2] = [
+    Mode::Time(Duration::from_secs(30)),
+    Mode::Time(Duration::from_secs(60)),
+];
+
 /// Made-up words in each adaptive lesson, for the random order.
 const ADAPTIVE_WORDS: usize = 50;
 
@@ -528,7 +535,7 @@ impl App {
     /// The challenge of the test on screen. Momo mode and practice are modes
     /// on their own, so they have no challenge, whatever the menu says.
     pub fn challenge_now(&self) -> Challenge {
-        if self.momo || self.practising() {
+        if self.momo || self.practising() || self.competitive() {
             Challenge::Off
         } else {
             self.challenge
@@ -538,7 +545,7 @@ impl App {
     /// The strict mode of the test on screen. Momo mode and practice have
     /// none, whatever the menu says.
     pub fn strict_now(&self) -> Strict {
-        if self.momo || self.practising() {
+        if self.momo || self.practising() || self.competitive() {
             Strict::Off
         } else {
             self.strict
@@ -634,7 +641,32 @@ impl App {
     /// own text, so the menu shows these options gray and `p`, `n` and `l`
     /// do nothing.
     pub fn word_options_apply(&self) -> bool {
-        !self.fixed_text() && !matches!(self.mode, Mode::Quote(_) | Mode::Zen | Mode::Custom)
+        !self.fixed_text()
+            && !self.competitive()
+            && !matches!(self.mode, Mode::Quote(_) | Mode::Zen | Mode::Custom)
+    }
+
+    /// A competitive test (time 30 or time 60): plain words, with no
+    /// punctuation, numbers, word list, word file, strict mode or challenge.
+    /// The menu shows these options gray and their keys do nothing. The
+    /// chosen options stay saved for the other modes.
+    pub fn competitive(&self) -> bool {
+        !self.fixed_text() && !self.momo && COMPETITIVE.contains(&self.mode)
+    }
+
+    /// The word options of the test on screen: the defaults in a
+    /// competitive test.
+    fn options_now(&self) -> Options {
+        if self.competitive() {
+            Options::default()
+        } else {
+            self.options
+        }
+    }
+
+    /// The word file of the test on screen: none in a competitive test.
+    fn word_file_now(&self) -> Option<&CustomText> {
+        self.word_file.as_ref().filter(|_| !self.competitive())
     }
 
     /// Save the finished test as a race file, for `--race`.
@@ -732,7 +764,13 @@ impl App {
                 } else {
                     self.mode
                 };
-                new_test(mode, self.options, self.size, self.practice_words(), boss)
+                new_test(
+                    mode,
+                    self.options_now(),
+                    self.size,
+                    self.practice_words(),
+                    boss,
+                )
             }
         };
         self.lesson_letters =
@@ -760,7 +798,7 @@ impl App {
             self.mode_now(),
             Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
         );
-        let list = (!own_text).then_some(self.options.list);
+        let list = (!own_text).then_some(self.options_now().list);
         let wrong: Vec<String> = (self.session.checked_words().into_iter())
             .filter(|(_, correct)| !correct)
             .filter_map(|(word, _)| mistakes::practice_word(&word, list))
@@ -1030,7 +1068,7 @@ impl App {
     /// `--words-file`. `None` uses the chosen list.
     fn practice_words(&self) -> Option<Vec<String>> {
         let Mode::Practice(kind) = self.mode else {
-            return self.word_file.as_ref().map(|f| f.words.clone());
+            return self.word_file_now().map(|f| f.words.clone());
         };
         let weak = |keep: &dyn Fn(&str) -> bool| -> Vec<String> {
             let all = WordList::English1k.words();
@@ -1135,10 +1173,11 @@ impl App {
             self.mode_now(),
             Mode::Quote(_) | Mode::Momo | Mode::Custom | Mode::Zen
         );
-        if !own_text && self.options.punctuation {
+        let options = self.options_now();
+        if !own_text && options.punctuation {
             parts.push("punctuation".to_string());
         }
-        if !own_text && self.options.numbers {
+        if !own_text && options.numbers {
             parts.push("numbers".to_string());
         }
         if self.strict_now() != Strict::Off {
@@ -1149,7 +1188,7 @@ impl App {
         }
         // The defaults add nothing, so old history labels stay the same.
         let practising = self.practising();
-        if let (false, false, Some(file)) = (own_text, practising, &self.word_file) {
+        if let (false, false, Some(file)) = (own_text, practising, self.word_file_now()) {
             parts.push(file.name.clone());
         } else if practising {
             // Only adaptive practice has a language; the other kinds pick
@@ -1159,8 +1198,8 @@ impl App {
             {
                 parts.push(language.name().to_string());
             }
-        } else if !own_text && self.options.list != WordList::English {
-            parts.push(self.options.list.name().to_string());
+        } else if !own_text && options.list != WordList::English {
+            parts.push(options.list.name().to_string());
         }
         if self.layout != Layout::Qwerty {
             parts.push(self.layout.name().to_string());
@@ -1427,6 +1466,7 @@ impl App {
                 }
                 // New words are needed, so these start a new test.
                 KeyCode::Char('p' | 'n' | 'l') if !self.word_options_apply() => {}
+                KeyCode::Char('m' | 'g') if self.competitive() => {}
                 KeyCode::Char('p') => {
                     self.options.punctuation = !self.options.punctuation;
                     self.save_config();
@@ -1852,6 +1892,39 @@ mod tests {
             Instant::now(),
         );
         assert_eq!(a.options.list, WordList::English1k);
+    }
+
+    #[test]
+    fn competitive_modes_have_plain_words_only() {
+        let mut a = app(&["hi"]);
+        a.options = Options {
+            punctuation: true,
+            numbers: true,
+            list: WordList::German,
+        };
+        a.strict = Strict::NoBackspace;
+        a.challenge = Challenge::Survival;
+        a.mode = Mode::Time(Duration::from_secs(30));
+        assert!(a.competitive());
+        assert_eq!(a.label(), "time 30");
+        assert_eq!(a.strict_now(), Strict::Off);
+        assert_eq!(a.challenge_now(), Challenge::Off);
+        // The keys of the options do nothing, and the options stay saved.
+        a.screen = Screen::Menu;
+        for key in ['p', 'n', 'l', 'm', 'g'] {
+            a.on_key(
+                press(KeyCode::Char(key), KeyModifiers::NONE),
+                Instant::now(),
+            );
+        }
+        assert!(a.options.punctuation && a.options.numbers);
+        assert_eq!(a.options.list, WordList::German);
+        assert_eq!(a.strict, Strict::NoBackspace);
+        assert_eq!(a.challenge, Challenge::Survival);
+        // The other modes still have them.
+        a.mode = Mode::Time(Duration::from_secs(15));
+        assert!(!a.competitive());
+        assert!(a.label().starts_with("time 15 · punctuation · numbers"));
     }
 
     #[test]

@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use super::column;
-use crate::app::{App, MODES, mode_label};
+use crate::app::{App, COMPETITIVE, MODES, mode_label};
 use crate::challenge::Challenge;
 use crate::engine::{Mode, PracticeKind, Strict, words::WordList};
 use crate::progress::{self, Level};
@@ -23,6 +23,18 @@ const LOGO: [&str; 7] = [
     r"  /_________/  /",
     r"  \_________\ /",
 ];
+/// After the name of a competitive mode, in the menu and the mode list.
+const COMPETITIVE_NOTE: &str = " · competitive";
+
+/// The note after the name of a mode: only competitive modes have one.
+fn mode_note(mode: Mode) -> &'static str {
+    if COMPETITIVE.contains(&mode) {
+        COMPETITIVE_NOTE
+    } else {
+        ""
+    }
+}
+
 /// Space between the key column and the text column.
 const GAP: usize = 6;
 /// Space kept free on the left and the right of the menu.
@@ -44,7 +56,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let mode = match (app.daily, &app.race) {
         (Some(_), _) => "daily".to_string(),
         (None, Some(_)) => "race".to_string(),
-        (None, None) => mode_label(app.mode),
+        (None, None) => format!("{}{}", mode_label(app.mode), mode_note(app.mode)),
     };
     // The weak kinds of practice show what they practise.
     let weak = match app.mode {
@@ -69,8 +81,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
     };
     setting('o', "mode", &mode, t.main);
     // Each setting shows the key that changes it. In modes with their own
-    // text the word options do not apply: they are gray, and the list
-    // shows english.
+    // text and in competitive modes the word options do not apply: they are
+    // gray, and the list shows english.
     let apply = app.word_options_apply();
     let on_off = |on: bool| match (apply, on) {
         (false, _) => ("off", t.sub),
@@ -94,18 +106,21 @@ pub fn draw(frame: &mut Frame, app: &App) {
     } else {
         setting('l', "words", WordList::English.name(), t.sub);
     }
-    let strict_color = if app.strict == Strict::Off {
-        t.text
-    } else {
-        t.main
+    // A competitive test has no strict mode and no challenge: both are
+    // gray and off.
+    let competitive = app.competitive();
+    let (strict, strict_color) = match app.strict {
+        _ if competitive => (Strict::Off, t.sub),
+        Strict::Off => (Strict::Off, t.text),
+        strict => (strict, t.main),
     };
-    setting('m', "strict", app.strict.name(), strict_color);
-    let challenge_color = if app.challenge == Challenge::Off {
-        t.text
-    } else {
-        t.main
+    setting('m', "strict", strict.name(), strict_color);
+    let (challenge, challenge_color) = match app.challenge {
+        _ if competitive => (Challenge::Off, t.sub),
+        Challenge::Off => (Challenge::Off, t.text),
+        challenge => (challenge, t.main),
     };
-    setting('g', "challenge", app.challenge.name(), challenge_color);
+    setting('g', "challenge", challenge.name(), challenge_color);
 
     let sub = Style::new().fg(t.sub);
     let settings: Vec<Line> = rows
@@ -219,20 +234,25 @@ pub fn draw_modes(frame: &mut Frame, app: &App, selected: usize) {
         Line::default(),
     ];
     for (i, &mode) in MODES.iter().enumerate().skip(first).take(rows) {
-        lines.push(if i == selected {
-            Line::styled(
-                format!("> {}", mode_label(mode)),
-                Style::new().fg(t.main).add_modifier(Modifier::BOLD),
-            )
+        // The competitive note is gray, after the mode name.
+        let (name, style) = if i == selected {
+            ("> ", Style::new().fg(t.main).add_modifier(Modifier::BOLD))
         } else {
-            Line::styled(format!("  {}", mode_label(mode)), Style::new().fg(t.text))
-        });
+            ("  ", Style::new().fg(t.text))
+        };
+        lines.push(Line::from(vec![
+            Span::styled(format!("{name}{}", mode_label(mode)), style),
+            Span::styled(mode_note(mode), Style::new().fg(t.sub)),
+        ]));
     }
     let height = lines.len() as u16;
     // The width of all the modes, not only the ones on screen, so the list
     // does not move to the side when it scrolls.
-    let width =
-        (MODES.iter().map(|&m| mode_label(m).chars().count()).max()).unwrap_or(0) as u16 + 2;
+    let width = (MODES.iter())
+        .map(|&m| mode_label(m).chars().count() + mode_note(m).chars().count())
+        .max()
+        .unwrap_or(0) as u16
+        + 2;
     let area = column(screen, height);
     let left = (screen.width.saturating_sub(width) / 2).max(MARGIN);
     let area = Rect {

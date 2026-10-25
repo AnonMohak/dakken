@@ -9,6 +9,9 @@ and Linux, with no account and nothing else to install.
 
 - **Many ways to type:** time, words, quotes, untimed, zen, your own text,
   and a daily challenge with the same words for everyone.
+- **Competitive modes:** `time 30` and `time 60` have plain words only. The
+  options (punctuation, numbers, word list, strict, challenge) are gray, so
+  every run is the same kind of test.
 - **Practice mode:** short lessons of made-up words from a few letters,
   with a new letter when you are fast enough. Or practise your weak keys,
   slow letter pairs and past mistakes. Practice stays apart from your
