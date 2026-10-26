@@ -21,7 +21,7 @@ and Linux, with no account and nothing else to install.
   that you can send to a friend.
 - **Clear results:** WPM, accuracy, consistency, a graph, your slowest word,
   and a score card to paste in a chat.
-- **Your look:** 10 themes and your own colors, three caret shapes, and
+- **Your look:** 15 themes and your own colors, three caret shapes, and
   Dvorak and Colemak practice on a QWERTY keyboard.
 
 All the features are in [docs/features.md](docs/features.md).

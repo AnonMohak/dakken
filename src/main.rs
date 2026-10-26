@@ -121,8 +121,9 @@ struct Cli {
     challenge: Option<String>,
 
     /// Color theme: tokyo-night (default), terminal, dracula, serika-dark,
-    /// nord, catppuccin-mocha, rose-pine, one-dark, catppuccin-latte,
-    /// github-light, or custom (from the color_* keys in config.toml).
+    /// nord, catppuccin-mocha, rose-pine, one-dark, blueprint, matcha, abyss,
+    /// synthwave, sumi, catppuccin-latte, github-light, or custom (from the
+    /// color_* keys in config.toml).
     #[arg(long, value_name = "NAME")]
     theme: Option<String>,
 

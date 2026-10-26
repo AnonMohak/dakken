@@ -4,6 +4,13 @@ All notable changes to dakken. Versions follow [Semantic Versioning](https://sem
 
 ## Unreleased
 
+### Added
+
+- Five new themes: `blueprint` (white on blueprint blue), `matcha` (tea
+  green on dark moss), `abyss` (glowing teal in the deep sea), `synthwave`
+  (neon pink on a purple night) and the light `sumi` (black ink on washi
+  paper, with a red seal for errors).
+
 ### Changed
 
 - The printed reports (`--badges`, `--heatmap`, `--skills`) take the colors

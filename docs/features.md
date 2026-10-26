@@ -79,8 +79,9 @@
   letters, also if some are wrong. Accuracy shows the errors.
 - Tokyo Night colors by default. The `terminal` theme uses your terminal's
   palette, so the test follows your shell theme. Other dark themes:
-  `dracula`, `serika-dark`, `nord`, `catppuccin-mocha`, `rose-pine` and
-  `one-dark`. Light themes: `catppuccin-latte` and `github-light`. You can
+  `dracula`, `serika-dark`, `nord`, `catppuccin-mocha`, `rose-pine`,
+  `one-dark`, `blueprint`, `matcha`, `abyss` and `synthwave`. Light themes:
+  `sumi`, `catppuccin-latte` and `github-light`. You can
   also make your own `custom` theme.
 - Settings are saved: the menu remembers the mode, options and theme.
 - Optional live WPM and accuracy during the test (off by default).

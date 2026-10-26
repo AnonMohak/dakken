@@ -32,7 +32,7 @@ pub const MOMO: Theme = Theme {
 };
 
 /// The themes in menu order. The first is the default.
-pub const THEMES: [Theme; 10] = [
+pub const THEMES: [Theme; 15] = [
     // The default.
     Theme {
         name: "tokyo-night",
@@ -107,7 +107,57 @@ pub const THEMES: [Theme; 10] = [
         error: rgb(0xe06c75),
         error_extra: rgb(0x9b4a50),
     },
+    // White lines on blueprint blue; errors in yellow.
+    Theme {
+        name: "blueprint",
+        bg: Some(rgb(0x0f3057)),
+        main: rgb(0xffffff),
+        sub: rgb(0x6f8fb4),
+        text: rgb(0xdbe7f5),
+        error: rgb(0xffcc4d),
+        error_extra: rgb(0xa3832f),
+    },
+    // Tea green on dark moss.
+    Theme {
+        name: "matcha",
+        bg: Some(rgb(0x1f241c)),
+        main: rgb(0xa8c686),
+        sub: rgb(0x5f6d53),
+        text: rgb(0xe6ead8),
+        error: rgb(0xe07a5f),
+        error_extra: rgb(0x9b5442),
+    },
+    // The deep sea, with a glowing teal.
+    Theme {
+        name: "abyss",
+        bg: Some(rgb(0x031926)),
+        main: rgb(0x2ec4b6),
+        sub: rgb(0x3d6f80),
+        text: rgb(0xcfe8ef),
+        error: rgb(0xff6b6b),
+        error_extra: rgb(0xa34545),
+    },
+    // Neon pink on a purple night; errors in pale yellow.
+    Theme {
+        name: "synthwave",
+        bg: Some(rgb(0x241734)),
+        main: rgb(0xff71ce),
+        sub: rgb(0x7a5c9c),
+        text: rgb(0xe0d6ff),
+        error: rgb(0xfffb96),
+        error_extra: rgb(0xa3a060),
+    },
     // Light themes.
+    // Black ink on washi paper, with a red seal for errors.
+    Theme {
+        name: "sumi",
+        bg: Some(rgb(0xf2ece0)),
+        main: rgb(0x1c1c1c),
+        sub: rgb(0x857c6f),
+        text: rgb(0x3a3530),
+        error: rgb(0xb7282e),
+        error_extra: rgb(0x7a1a1f),
+    },
     Theme {
         name: "catppuccin-latte",
         bg: Some(rgb(0xeff1f5)),
