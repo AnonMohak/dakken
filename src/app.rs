@@ -45,6 +45,10 @@ pub enum Setting {
     UpdateCheck,
 }
 
+/// The results line after a time 30 or time 60 test with no profile.
+const NO_PROFILE_NOTE: &str =
+    "leaderboard: make a profile with `dakken name <name>` to send your runs";
+
 /// After a test ends, the results take no keys for this long.
 const KEY_PAUSE: Duration = Duration::from_secs(1);
 
@@ -1236,10 +1240,14 @@ impl App {
     }
 
     /// Send a finished test to the leaderboard, with a profile on this
-    /// computer. The answer comes later (see `tick`).
+    /// computer. The answer comes later (see `tick`). With no profile, a
+    /// competitive test says how to make one.
     fn send_to_board(&mut self, label: &str, result: &TestResult) {
         self.board_note = None;
         let Some(account) = self.account.clone() else {
+            if self.competitive() {
+                self.board_note = Some(NO_PROFILE_NOTE.to_string());
+            }
             return;
         };
         let now = std::time::SystemTime::now()
@@ -3073,6 +3081,21 @@ mod tests {
         assert_eq!(replay.session.typed()[0], ['h']);
         a.tick(later + Duration::from_secs(2));
         assert!(matches!(a.screen, Screen::Results(_)), "the replay ended");
+    }
+
+    #[test]
+    fn with_no_profile_a_competitive_test_says_how_to_make_one() {
+        let time = Mode::Time(Duration::from_secs(30));
+        let mut a = App::with_session(time, Session::from_words(time, &["hi"]));
+        assert!(a.account.is_none() && a.competitive());
+        let result = a.session.result();
+        a.send_to_board("time 30", &result);
+        assert_eq!(a.board_note.as_deref(), Some(NO_PROFILE_NOTE));
+        // Other modes do not go to the boards, so they say nothing.
+        let mut b = app(&["hi"]);
+        let result = b.session.result();
+        b.send_to_board("words 1", &result);
+        assert_eq!(b.board_note, None);
     }
 
     #[test]

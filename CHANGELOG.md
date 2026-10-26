@@ -4,6 +4,12 @@ All notable changes to dakken. Versions follow [Semantic Versioning](https://sem
 
 ## Unreleased
 
+### Added
+
+- With no profile on this computer, the results of a time 30 or time 60 test
+  say "leaderboard: make a profile with `dakken name <name>` to send your
+  runs".
+
 ### Fixed
 
 - For one second after a test ends, the results (and a new rank or badge
