@@ -71,7 +71,7 @@
   letters a quest, for example "q under 180 ms": type that letter at least 3
   times in one test, faster than the target and with no errors.
   `practice weak-keys` practises the quest letters first, the results say when
-  you finish a quest, and the key turns teal on the skill map.
+  you finish a quest, and the key turns the theme color on the skill map.
 - `--heatmap` shows your slowest letter pairs.
 - Clear errors: wrong and missed letters in red, extra letters in dark red,
   backspace into a previous word only if it has an error.

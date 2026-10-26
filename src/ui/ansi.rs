@@ -1,5 +1,6 @@
 //! The colored reports of the command line (`--heatmap`, `--skills`, ...)
-//! on the app screens: their ANSI color codes become ratatui styles.
+//! on the app screens: their ANSI color codes become ratatui styles, and
+//! back to ANSI codes for the printed reports in the theme colors.
 
 use ratatui::{
     style::{Color, Modifier, Style},
@@ -30,6 +31,57 @@ pub fn line(text: &str, base: Style) -> Line<'static> {
         spans.push(Span::styled(rest.to_string(), style));
     }
     Line::from(spans)
+}
+
+/// A styled line as text with ANSI codes, the opposite of `line`.
+pub fn to_ansi(line: &Line) -> String {
+    let mut out = String::new();
+    for span in &line.spans {
+        let mut codes = Vec::new();
+        if span.style.add_modifier.contains(Modifier::BOLD) {
+            codes.push("1".to_string());
+        }
+        if let Some(c) = span.style.fg.and_then(|c| sgr(c, 30)) {
+            codes.push(c);
+        }
+        if let Some(c) = span.style.bg.and_then(|c| sgr(c, 40)) {
+            codes.push(c);
+        }
+        if codes.is_empty() {
+            out += &span.content;
+        } else {
+            out += &format!("\x1b[{}m{}\x1b[0m", codes.join(";"), span.content);
+        }
+    }
+    out
+}
+
+/// The SGR parameters of a color: `base` is 30 for the text and 40 for the
+/// background. `None` for the terminal's own color.
+fn sgr(color: Color, base: u8) -> Option<String> {
+    let named = |n: u8| Some((base + n).to_string());
+    let bright = |n: u8| Some((base + 60 + n).to_string());
+    match color {
+        Color::Reset => None,
+        Color::Black => named(0),
+        Color::Red => named(1),
+        Color::Green => named(2),
+        Color::Yellow => named(3),
+        Color::Blue => named(4),
+        Color::Magenta => named(5),
+        Color::Cyan => named(6),
+        Color::Gray => named(7),
+        Color::DarkGray => bright(0),
+        Color::LightRed => bright(1),
+        Color::LightGreen => bright(2),
+        Color::LightYellow => bright(3),
+        Color::LightBlue => bright(4),
+        Color::LightMagenta => bright(5),
+        Color::LightCyan => bright(6),
+        Color::White => bright(7),
+        Color::Indexed(n) => Some(format!("{};5;{n}", base + 8)),
+        Color::Rgb(r, g, b) => Some(format!("{};2;{r};{g};{b}", base + 8)),
+    }
 }
 
 /// The text with the ANSI codes taken out.
@@ -78,6 +130,13 @@ fn apply(mut style: Style, base: Style, params: &str) -> Style {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn to_ansi_reads_back_the_same_line() {
+        let text = "a \x1b[1;38;2;1;2;3mbold\x1b[0m \x1b[30;48;5;43mkey\x1b[0m \x1b[96mcyan\x1b[0m";
+        let parsed = line(text, Style::new());
+        assert_eq!(line(&to_ansi(&parsed), Style::new()), parsed);
+    }
 
     #[test]
     fn color_codes_become_styles() {

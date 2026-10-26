@@ -69,6 +69,25 @@ pub fn draw(frame: &mut Frame, app: &App, now: Instant) {
 
 pub use profile::{PRACTICE_PAGE, STATS_PAGES};
 
+/// A colored report of the command line (`--heatmap`, `--skills`,
+/// `--badges`) in the colors of the theme, as the app shows it. With no
+/// truecolor, the colors become the nearest of the 256 colors.
+pub fn themed_report(text: &str, t: theme::Theme, truecolor: bool) -> String {
+    text.split_inclusive('\n')
+        .map(|row| {
+            let (body, end) = row.strip_suffix('\n').map_or((row, ""), |b| (b, "\n"));
+            let mut line = profile::themed(ansi::line(body, Style::new()), t);
+            if !truecolor {
+                for span in &mut line.spans {
+                    span.style.fg = span.style.fg.map(color256::nearest);
+                    span.style.bg = span.style.bg.map(color256::nearest);
+                }
+            }
+            ansi::to_ansi(&line) + end
+        })
+        .collect()
+}
+
 /// The most rows that a stats page can scroll in the terminal now.
 pub fn stats_max_scroll(app: &App, page: usize) -> usize {
     profile::stats_max_scroll(app, page, app.size.1)
@@ -172,6 +191,21 @@ mod tests {
     use crate::engine::{Mode, Session};
     use crate::history::{History, Record};
     use ratatui::{Terminal, backend::TestBackend};
+
+    #[test]
+    fn printed_reports_take_the_theme_colors() {
+        let dracula = theme::Theme::find("dracula").unwrap();
+        // A done key of the skill map (teal) and a gray letter.
+        let report = "\x1b[30;48;5;43m a \x1b[0m \x1b[38;5;244mb\x1b[0m\n";
+        let out = themed_report(report, dracula, true);
+        // Teal becomes the main color, gray the theme's gray.
+        assert!(out.contains("48;2;189;147;249"), "{out:?}");
+        assert!(out.contains("38;2;98;114;164"), "{out:?}");
+        assert!(out.ends_with('\n'));
+        assert_eq!(ansi::plain(&out), " a  b\n");
+        // With no truecolor, the nearest of the 256 colors.
+        assert!(!themed_report(report, dracula, false).contains(";2;"));
+    }
 
     fn render(app: &App, width: u16, height: u16) -> String {
         let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();

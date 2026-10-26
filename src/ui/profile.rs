@@ -118,7 +118,7 @@ const SHADE_COLORS: [u8; 4] = [159, 116, 37, 23];
 /// the theme color, dark teal and red the two error colors, gray the gray
 /// of the theme. A day of the speed calendar keeps its shade character in the
 /// theme color.
-fn themed(mut line: Line<'static>, t: Theme) -> Line<'static> {
+pub(super) fn themed(mut line: Line<'static>, t: Theme) -> Line<'static> {
     for span in &mut line.spans {
         let s = span.style;
         if let (Some(Color::Indexed(f)), Some(Color::Indexed(b))) = (s.fg, s.bg)

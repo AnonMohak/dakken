@@ -325,17 +325,18 @@ fn main() -> io::Result<()> {
             ))
             .1;
         let color = color_output();
-        print!("{}", badges::report(&history, &badges, color));
+        print!(
+            "{}",
+            themed(&badges::report(&history, &badges, color), &cli)
+        );
         return Ok(());
     }
     let key_stats = keystats::default_path().map_or_else(KeyStats::in_memory, KeyStats::load);
     if cli.heatmap {
         let color = color_output();
-        print!("{}", keystats::heatmap(&key_stats, color));
-        print!(
-            "\n{}",
-            history::day_heatmap(&history, history::today(), color)
-        );
+        print!("{}", themed(&keystats::heatmap(&key_stats, color), &cli));
+        let days = history::day_heatmap(&history, history::today(), color);
+        print!("\n{}", themed(&days, &cli));
         return Ok(());
     }
     let mut quests = quests::default_path().map_or_else(Quests::in_memory, Quests::load);
@@ -343,7 +344,10 @@ fn main() -> io::Result<()> {
         let color = color_output();
         let now = history.records().last().map_or(0, |r| r.time);
         let _ = quests.fill(&key_stats, now);
-        print!("{}", quests::skill_map(&key_stats, &quests, color));
+        print!(
+            "{}",
+            themed(&quests::skill_map(&key_stats, &quests, color), &cli)
+        );
         return Ok(());
     }
     // The saved settings, with the command-line flags on top.
@@ -564,6 +568,19 @@ fn cursor_style(caret: Caret) -> SetCursorStyle {
         Caret::Bar => SetCursorStyle::SteadyBar,
         Caret::Underline => SetCursorStyle::SteadyUnderScore,
     }
+}
+
+/// A printed report in the colors of the theme: the saved one, or the one
+/// of `--theme`.
+fn themed(report: &str, cli: &Cli) -> String {
+    let config = config::default_path().map_or_else(Config::default, |p| Config::load(&p));
+    let custom = config
+        .custom_theme
+        .filter(|_| cli.theme.as_deref() == Some("custom"));
+    let theme = (cli.theme.as_deref().and_then(Theme::find))
+        .or(custom)
+        .unwrap_or(config.theme);
+    ui::themed_report(report, theme, ui::color256::truecolor())
 }
 
 /// Color in the printed reports: only in a terminal, and not with the

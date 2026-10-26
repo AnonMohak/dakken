@@ -27,7 +27,7 @@ pub fn reduce(buffer: &mut Buffer) {
 const CUBE: [u8; 6] = [0, 95, 135, 175, 215, 255];
 
 /// The nearest of the 256 colors to an RGB color. Other colors stay.
-fn nearest(color: Color) -> Color {
+pub fn nearest(color: Color) -> Color {
     let Color::Rgb(r, g, b) = color else {
         return color;
     };

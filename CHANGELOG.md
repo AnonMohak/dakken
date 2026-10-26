@@ -2,6 +2,13 @@
 
 All notable changes to dakken. Versions follow [Semantic Versioning](https://semver.org).
 
+## Unreleased
+
+### Changed
+
+- The printed reports (`--badges`, `--heatmap`, `--skills`) take the colors
+  of your theme (or of `--theme`), as the app does, in place of fixed teal.
+
 ## 0.7.1 - 2026-10-26
 
 ### Added
