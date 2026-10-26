@@ -50,7 +50,7 @@ const NO_PROFILE_NOTE: &str =
     "leaderboard: make a profile with `dakken name <name>` to send your runs";
 
 /// After a test ends, the results take no keys for this long.
-const KEY_PAUSE: Duration = Duration::from_secs(1);
+const KEY_PAUSE: Duration = Duration::from_secs(2);
 
 pub const SETTINGS: [Setting; 9] = [
     Setting::Theme,

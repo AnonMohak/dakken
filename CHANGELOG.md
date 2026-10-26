@@ -2,7 +2,7 @@
 
 All notable changes to dakken. Versions follow [Semantic Versioning](https://semver.org).
 
-## Unreleased
+## 0.7.1 - 2026-10-26
 
 ### Added
 
@@ -12,7 +12,7 @@ All notable changes to dakken. Versions follow [Semantic Versioning](https://sem
 
 ### Fixed
 
-- For one second after a test ends, the results (and a new rank or badge
+- For two seconds after a test ends, the results (and a new rank or badge
   before them) take no keys. A key typed for the test just as it ended, like
   `q` or `a`, no longer quits or starts one more test. Ctrl+C still quits.
 
