@@ -8,6 +8,9 @@ All notable changes to dakken. Versions follow [Semantic Versioning](https://sem
 
 - The printed reports (`--badges`, `--heatmap`, `--skills`) take the colors
   of your theme (or of `--theme`), as the app does, in place of fixed teal.
+- The app sends its version to the leaderboard (`Dakken-Version`). If the
+  server stops an old version, the results say "this dakken is too old for
+  the leaderboard; update it (u in the menu)".
 
 ## 0.7.1 - 2026-10-26
 

@@ -74,6 +74,11 @@ enum Method {
     Put,
 }
 
+/// The version of this app goes with each call, so the server can refuse
+/// runs from a version that is too old (`old_app`).
+const VERSION_HEADER: &str = "Dakken-Version";
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// One call to the API: the status and the JSON answer. An error is a
 /// short text for the player.
 fn call(
@@ -91,7 +96,7 @@ fn call(
     let auth = key.map(|k| format!("Bearer {k}"));
     let result = match method {
         Method::Get => {
-            let mut request = agent.get(&url);
+            let mut request = agent.get(&url).header(VERSION_HEADER, VERSION);
             if let Some(auth) = &auth {
                 request = request.header("Authorization", auth);
             }
@@ -101,7 +106,8 @@ fn call(
             let mut request = match method {
                 Method::Post => agent.post(&url),
                 _ => agent.put(&url),
-            };
+            }
+            .header(VERSION_HEADER, VERSION);
             if let Some(auth) = &auth {
                 request = request.header("Authorization", auth);
             }
@@ -132,6 +138,9 @@ fn reason(status: u16, body: &Value) -> String {
                 .to_string()
         }
         "too_many" => "too many tries; try again in an hour".to_string(),
+        "old_app" => {
+            "this dakken is too old for the leaderboard; update it (u in the menu)".to_string()
+        }
         "" => format!("the leaderboard answered {status}"),
         other => other.replace('_', " "),
     }
@@ -278,6 +287,7 @@ mod tests {
         assert_eq!(err("bad_name"), "at least 4 characters");
         assert_eq!(err("name_taken"), "that name is taken");
         assert_eq!(err("something_new"), "something new");
+        assert!(err("old_app").contains("update it"));
         assert_eq!(reason(500, &Value::Null), "the leaderboard answered 500");
     }
 }
