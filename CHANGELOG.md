@@ -2,6 +2,13 @@
 
 All notable changes to dakken. Versions follow [Semantic Versioning](https://semver.org).
 
+## Unreleased
+
+### Changed
+
+- `sumi` is the default theme and the first in the list. A saved theme in
+  `config.toml` stays as it is.
+
 ## 0.7.2 - 2026-10-26
 
 ### Added

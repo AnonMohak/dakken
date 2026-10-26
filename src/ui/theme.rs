@@ -1,4 +1,4 @@
-//! Color themes. The default is tokyo-night. "terminal" uses the terminal's own
+//! Color themes. The default is sumi. "terminal" uses the terminal's own
 //! palette, so the test follows the shell theme.
 
 use ratatui::style::Color;
@@ -33,7 +33,16 @@ pub const MOMO: Theme = Theme {
 
 /// The themes in menu order. The first is the default.
 pub const THEMES: [Theme; 15] = [
-    // The default.
+    // The default: black ink on washi paper, with a red seal for errors.
+    Theme {
+        name: "sumi",
+        bg: Some(rgb(0xf2ece0)),
+        main: rgb(0x1c1c1c),
+        sub: rgb(0x857c6f),
+        text: rgb(0x3a3530),
+        error: rgb(0xb7282e),
+        error_extra: rgb(0x7a1a1f),
+    },
     Theme {
         name: "tokyo-night",
         bg: Some(rgb(0x1a1b26)),
@@ -148,16 +157,6 @@ pub const THEMES: [Theme; 15] = [
         error_extra: rgb(0xa3a060),
     },
     // Light themes.
-    // Black ink on washi paper, with a red seal for errors.
-    Theme {
-        name: "sumi",
-        bg: Some(rgb(0xf2ece0)),
-        main: rgb(0x1c1c1c),
-        sub: rgb(0x857c6f),
-        text: rgb(0x3a3530),
-        error: rgb(0xb7282e),
-        error_extra: rgb(0x7a1a1f),
-    },
     Theme {
         name: "catppuccin-latte",
         bg: Some(rgb(0xeff1f5)),
@@ -179,7 +178,7 @@ pub const THEMES: [Theme; 15] = [
 ];
 
 /// The theme with the terminal's own palette.
-const TERMINAL: Theme = THEMES[1];
+const TERMINAL: Theme = THEMES[2];
 
 impl Default for Theme {
     fn default() -> Self {
@@ -232,7 +231,8 @@ mod tests {
 
     #[test]
     fn default_theme_is_tokyo_night() {
-        assert_eq!(Theme::default().name, "tokyo-night");
+        assert_eq!(Theme::default().name, "sumi");
+        assert_eq!(TERMINAL.name, "terminal");
         let t = Theme::find("terminal").unwrap();
         assert_eq!((t.bg, t.text), (None, Color::Reset));
     }

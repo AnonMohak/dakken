@@ -77,11 +77,11 @@
   backspace into a previous word only if it has an error.
 - Mistakes do not stop you: the test ends when the last word has all its
   letters, also if some are wrong. Accuracy shows the errors.
-- Tokyo Night colors by default. The `terminal` theme uses your terminal's
-  palette, so the test follows your shell theme. Other dark themes:
-  `dracula`, `serika-dark`, `nord`, `catppuccin-mocha`, `rose-pine`,
-  `one-dark`, `blueprint`, `matcha`, `abyss` and `synthwave`. Light themes:
-  `sumi`, `catppuccin-latte` and `github-light`. You can
+- The `sumi` theme by default: black ink on washi paper. The `terminal`
+  theme uses your terminal's palette, so the test follows your shell theme.
+  Dark themes: `tokyo-night`, `dracula`, `serika-dark`, `nord`,
+  `catppuccin-mocha`, `rose-pine`, `one-dark`, `blueprint`, `matcha`, `abyss`
+  and `synthwave`. Other light themes: `catppuccin-latte` and `github-light`. You can
   also make your own `custom` theme.
 - Settings are saved: the menu remembers the mode, options and theme.
 - Optional live WPM and accuracy during the test (off by default).

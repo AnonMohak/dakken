@@ -750,7 +750,7 @@ mod tests {
             ("g", "challenge off"),
             ("d", "daily challenge"),
             ("f", "profile"),
-            ("e", "settings theme tokyo-night"),
+            ("e", "settings theme sumi"),
         ] {
             assert!(
                 row(text).trim_start().starts_with(&format!("{key}      ")),

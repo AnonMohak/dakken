@@ -7,7 +7,7 @@ never saved as the mode.
 
 ```toml
 mode = "time 30"     # untimed, quote, quote short/medium/long, zen, time N, words N or practice adaptive/weak-keys/weak-pairs/mistakes
-theme = "tokyo-night"  # tokyo-night, terminal, dracula, nord, github-light, ...
+theme = "sumi"  # sumi, tokyo-night, terminal, dracula, nord, github-light, ...
 punctuation = false
 numbers = false
 words = "english"    # english, english-1k, code, spanish, german, french or portuguese
