@@ -45,6 +45,9 @@ pub enum Setting {
     UpdateCheck,
 }
 
+/// After a test ends, the results take no keys for this long.
+const KEY_PAUSE: Duration = Duration::from_secs(1);
+
 pub const SETTINGS: [Setting; 9] = [
     Setting::Theme,
     Setting::Live,
@@ -386,6 +389,9 @@ pub struct App {
     /// `r` on the practice page of the profile: one more `r` resets the
     /// adaptive practice of the chosen language.
     pub reset_armed: bool,
+    /// When the last test ended. For `KEY_PAUSE` after it, the results and
+    /// the celebration take no keys.
+    ended_at: Option<Instant>,
     /// The letters of the adaptive lesson on screen.
     pub lesson_letters: Option<LessonLetters>,
     /// The key times of each personal-best test, for the pace caret.
@@ -501,6 +507,7 @@ impl App {
             practice_mistakes: Mistakes::in_memory(),
             lessons: Lessons::default(),
             reset_armed: false,
+            ended_at: None,
             lesson_letters: None,
             best_runs: BestRuns::in_memory(),
             badges: Badges::in_memory(),
@@ -1306,6 +1313,7 @@ impl App {
             self.copied = false;
             self.card_file = None;
             self.race_saved = None;
+            self.ended_at = Some(now);
             let celebrate = self
                 .reward
                 .as_ref()
@@ -1328,6 +1336,15 @@ impl App {
         }
         if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
             self.quit = true;
+            return;
+        }
+        // A key typed for the test just as it ends must not act on the
+        // results (like `q`, or `a` for one more test).
+        if matches!(self.screen, Screen::Results(_) | Screen::Celebration { .. })
+            && self
+                .ended_at
+                .is_some_and(|end| now.saturating_duration_since(end) < KEY_PAUSE)
+        {
             return;
         }
         match self.screen {
@@ -1632,15 +1649,17 @@ impl App {
         self.screen = Screen::Menu;
     }
 
-    /// Press tab through the celebration pages, to the results.
+    /// Press tab through the celebration pages, to the results, and end the
+    /// key pause.
     #[cfg(test)]
     pub fn skip_celebration(&mut self) {
+        let at = self
+            .ended_at
+            .map_or_else(Instant::now, |end| end + KEY_PAUSE);
         while let Screen::Celebration { .. } = self.screen {
-            self.on_key(
-                KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE),
-                Instant::now(),
-            );
+            self.on_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE), at);
         }
+        self.ended_at = None;
     }
 }
 
@@ -2075,9 +2094,10 @@ mod tests {
         assert!(matches!(a.screen, Screen::Celebration { page: 0 }));
         // Other keys do nothing, so a late key does not skip the page.
         type_text(&mut a, "x");
-        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), Instant::now());
+        let later = Instant::now() + KEY_PAUSE;
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), later);
         assert!(matches!(a.screen, Screen::Celebration { page: 0 }));
-        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), Instant::now());
+        a.on_key(press(KeyCode::Tab, KeyModifiers::NONE), later);
         assert!(matches!(a.screen, Screen::Results(_)));
         // With no new badge, the results come at once.
         let mut b = app(&["hi"]);
@@ -2386,7 +2406,8 @@ mod tests {
         // On the results, enter restarts momo and x saves a race, as for
         // other tests.
         assert!(a.can_save_race());
-        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), now);
+        let later = now + crate::engine::session::MOMO_TIME + KEY_PAUSE;
+        a.on_key(press(KeyCode::Enter, KeyModifiers::NONE), later);
         assert!(a.momo && matches!(a.screen, Screen::Typing));
         // The o list still has the mode from before momo.
         assert_eq!(a.mode, Mode::Words(1));
@@ -3039,6 +3060,7 @@ mod tests {
         let later = start + Duration::from_millis(500);
         a.on_key(press(KeyCode::Char('i'), KeyModifiers::NONE), later);
         a.skip_celebration();
+        let later = later + KEY_PAUSE;
         a.on_key(press(KeyCode::Char('r'), KeyModifiers::NONE), later);
         let Screen::Replay(replay) = &a.screen else {
             panic!("r starts the replay");
@@ -3051,6 +3073,31 @@ mod tests {
         assert_eq!(replay.session.typed()[0], ['h']);
         a.tick(later + Duration::from_secs(2));
         assert!(matches!(a.screen, Screen::Results(_)), "the replay ended");
+    }
+
+    #[test]
+    fn the_results_take_no_keys_just_after_the_test() {
+        let mut a = app(&["hi"]);
+        // All badges already: no celebration, the results come at once.
+        let all: Vec<&str> = badges::BADGES.iter().map(|b| b.name).collect();
+        let _ = a.badges.add(&all);
+        let start = Instant::now();
+        a.on_key(press(KeyCode::Char('h'), KeyModifiers::NONE), start);
+        let end = start + Duration::from_millis(300);
+        a.on_key(press(KeyCode::Char('i'), KeyModifiers::NONE), end);
+        assert!(matches!(a.screen, Screen::Results(_)));
+        // A key typed for the test as it ends does nothing.
+        a.on_key(
+            press(KeyCode::Char('q'), KeyModifiers::NONE),
+            end + Duration::from_millis(200),
+        );
+        assert!(!a.quit && matches!(a.screen, Screen::Results(_)));
+        // After the pause, keys work again.
+        a.on_key(
+            press(KeyCode::Char('q'), KeyModifiers::NONE),
+            end + KEY_PAUSE,
+        );
+        assert!(a.quit);
     }
 
     #[test]
