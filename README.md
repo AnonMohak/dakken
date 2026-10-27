@@ -110,16 +110,17 @@ back if the computer's data is lost. With a profile, each finished test goes
 to the leaderboard. The server makes the words of a time 30 or time 60 run
 again from its seed and replays your keys before it counts the run. Other
 tests count only for the time typed this week. A run with no connection
-waits and goes with the next one (for up to an hour).
+waits and goes with the next one (for up to an hour). Your badges and your
+XP go too, so your profile page shows them and your level.
 
 ## Privacy
 
 dakken has no account until you make one with `dakken name`, and then it
 sends only your runs (the mode, WPM, accuracy, time and, for time 30 and
-time 60, the keys you typed) and your profile name. It sends one request to
-GitHub each day to look for a newer version (`update_check = false` in
-`config.toml` turns it off). Your history, settings and badges stay in
-files on your computer.
+time 60, the keys you typed), your badges with the time you got them, your
+XP and your profile name. It sends one request to GitHub each day to look
+for a newer version (`update_check = false` in `config.toml` turns it off).
+Your history and settings stay in files on your computer.
 
 ## Documentation
 

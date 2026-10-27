@@ -471,6 +471,8 @@ fn main() -> io::Result<()> {
     app.best_runs = best_runs::default_path().map_or_else(BestRuns::in_memory, BestRuns::load);
     app.badges = badges;
     app.quests = quests;
+    // The website shows the badges and the level from the last send.
+    app.send_progress();
     // Practice keeps its own data, apart from the tests. The first lesson
     // needs it and the quests, so it is made again.
     app.practice = practice::default_path().map_or_else(Progress::default, Progress::load);

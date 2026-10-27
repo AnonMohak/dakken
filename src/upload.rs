@@ -10,6 +10,10 @@
 //! A run that finds no connection waits in `pending.tsv` (one JSON run on each
 //! line) and goes with the next run. The server takes a run only in the first
 //! hour after it ends, so older lines go.
+//!
+//! The badges and the XP go too, at the start and after each test, so the
+//! website shows them. Each send has all of them, so a send that fails needs
+//! no queue: the next one puts it right.
 
 use std::fs;
 use std::io::Write;
@@ -68,6 +72,25 @@ pub fn run_json(
         run["log"] = key_log(log);
     }
     run
+}
+
+/// The JSON of `PUT /api/me/progress`: the XP of this computer's history and
+/// every badge with the time you got it.
+pub fn progress_json(xp: u64, badges: &[(String, u64)]) -> Value {
+    json!({
+        "xp": xp,
+        "badges": badges
+            .iter()
+            .map(|(name, at)| json!({ "name": name, "at": at }))
+            .collect::<Vec<_>>(),
+    })
+}
+
+/// Send the badges and the XP in a thread; the answer does not matter.
+pub fn send_progress(account: Account, progress: Value) {
+    std::thread::spawn(move || {
+        let _ = account::send_progress(&account, &progress);
+    });
 }
 
 fn pending_path() -> Option<PathBuf> {
@@ -219,6 +242,22 @@ mod tests {
     }
 
     #[test]
+    fn progress_has_the_xp_and_every_badge_with_its_time() {
+        let badges = [
+            ("first press".to_string(), 100),
+            ("night owl".to_string(), 200),
+        ];
+        assert_eq!(
+            progress_json(450, &badges),
+            json!({
+                "xp": 450,
+                "badges": [{ "name": "first press", "at": 100 }, { "name": "night owl", "at": 200 }],
+            })
+        );
+        assert_eq!(progress_json(0, &[]), json!({ "xp": 0, "badges": [] }));
+    }
+
+    #[test]
     fn waiting_runs_older_than_an_hour_go() {
         let text = format!(
             "{}\n{}\nnot json\n",
@@ -299,6 +338,29 @@ mod tests {
         println!("ONLINE {line:?}");
         std::thread::sleep(Duration::from_millis(300));
         println!("PENDING AFTER {}", path.exists());
+    }
+
+    /// Sends badges and XP to a local server on port 8788 and prints its
+    /// answer. Needs DAKKEN_TEST_KEY: `cargo test send_progress_to_a_server
+    /// -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn send_progress_to_a_server() {
+        let key = std::env::var("DAKKEN_TEST_KEY").expect("DAKKEN_TEST_KEY");
+        let account = Account {
+            name: "test".into(),
+            key,
+        };
+        // SAFETY: the test runs alone (it is ignored and run by name).
+        unsafe { std::env::set_var("DAKKEN_API", "http://127.0.0.1:8788/api") };
+        let badges = [
+            ("first press".to_string(), 100),
+            ("regular".to_string(), 200),
+        ];
+        println!(
+            "PROGRESS {:?}",
+            account::send_progress(&account, &progress_json(1234, &badges))
+        );
     }
 
     #[test]

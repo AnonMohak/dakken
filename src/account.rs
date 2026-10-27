@@ -262,6 +262,21 @@ pub fn send_run(account: &Account, run: &Value) -> Result<Value, SendError> {
     }
 }
 
+/// Send the badges and the XP (the JSON of `PUT /api/me/progress`), so the
+/// website shows them.
+pub fn send_progress(account: &Account, progress: &Value) -> Result<(), String> {
+    let (status, body) = call(
+        Method::Put,
+        "/me/progress",
+        Some(&account.key),
+        progress.clone(),
+    )?;
+    if status != 200 {
+        return Err(reason(status, &body));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

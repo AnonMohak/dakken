@@ -228,6 +228,11 @@ impl Badges {
         }
     }
 
+    /// Every badge you have, with the time you got it.
+    pub fn list(&self) -> &[(String, u64)] {
+        &self.got
+    }
+
     /// When you got the badge, if you have it.
     pub fn time(&self, name: &str) -> Option<u64> {
         self.got.iter().find(|(n, _)| n == name).map(|&(_, t)| t)

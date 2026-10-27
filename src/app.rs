@@ -922,6 +922,7 @@ impl App {
         if new.is_empty() {
             return false;
         }
+        self.send_progress();
         let level = Level::from_xp(progress::total_xp(self.history.records()));
         self.reward = Some(Reward {
             xp: 0,
@@ -1257,6 +1258,18 @@ impl App {
         self.board_reply = Some(crate::upload::send(account, Some(run), now));
     }
 
+    /// Send the badges and the XP to the website, with a profile on this
+    /// computer.
+    pub fn send_progress(&self) {
+        if let Some(account) = self.account.clone() {
+            let xp = progress::total_xp(self.history.records());
+            crate::upload::send_progress(
+                account,
+                crate::upload::progress_json(xp, self.badges.list()),
+            );
+        }
+    }
+
     /// Show the results screen if the test ended. Call this on each frame.
     pub fn tick(&mut self, now: Instant) {
         if let Some(reply) = &self.board_reply
@@ -1312,6 +1325,9 @@ impl App {
             }
             self.save_failed |= self.update_mistakes().is_err();
             self.reward = (!failed).then(|| self.give_reward(xp_before));
+            if !failed {
+                self.send_progress();
+            }
             self.climb_result = None;
             if let (true, Some(climb)) = (self.climb_on(), self.climb) {
                 let passed = !failed && climb.passed(result.wpm, result.accuracy);
