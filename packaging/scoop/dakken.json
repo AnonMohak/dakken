@@ -1,16 +1,16 @@
 {
-    "version": "0.7.3",
+    "version": "0.7.4",
     "description": "A typing-speed test for the terminal",
     "homepage": "https://github.com/AnonMohak/dakken",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/AnonMohak/dakken/releases/download/v0.7.3/dakken-v0.7.3-x86_64-pc-windows-msvc.exe#/dakken.exe",
-            "hash": "20531be0fbe5507aefb76d00d1cdc8538bccdfdf1bcefd9ac312847b72abd581"
+            "url": "https://github.com/AnonMohak/dakken/releases/download/v0.7.4/dakken-v0.7.4-x86_64-pc-windows-msvc.exe#/dakken.exe",
+            "hash": "c1889a2ba4f312403a20bba0a3874d6fd5e1fb8e93e00803f8fd2527d9308af0"
         },
         "arm64": {
-            "url": "https://github.com/AnonMohak/dakken/releases/download/v0.7.3/dakken-v0.7.3-aarch64-pc-windows-msvc.exe#/dakken.exe",
-            "hash": "e4685af56c625c5af774789a3878afe205b4c195b3e90be464d7d466f996d0d1"
+            "url": "https://github.com/AnonMohak/dakken/releases/download/v0.7.4/dakken-v0.7.4-aarch64-pc-windows-msvc.exe#/dakken.exe",
+            "hash": "b9f76d0ccb7bd249ed183f4bd3083b758670436e0ae432dd078e37222a645a61"
         }
     },
     "bin": "dakken.exe",
