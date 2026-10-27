@@ -2,6 +2,14 @@
 
 All notable changes to dakken. Versions follow [Semantic Versioning](https://semver.org).
 
+## 0.7.4 - 2026-10-27
+
+### Fixed
+
+- Your badges and your level now show on your profile page on the website.
+  With a profile, the app sends your badges and your XP when it starts and
+  after each test. The first start sends the badges you already have.
+
 ## 0.7.3 - 2026-10-26
 
 ### Changed
