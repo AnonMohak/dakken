@@ -32,7 +32,7 @@ pub const MOMO: Theme = Theme {
 };
 
 /// The themes in menu order. The first is the default.
-pub const THEMES: [Theme; 15] = [
+pub const THEMES: [Theme; 17] = [
     // The default: black ink on washi paper, with a red seal for errors.
     Theme {
         name: "sumi",
@@ -174,6 +174,24 @@ pub const THEMES: [Theme; 15] = [
         text: rgb(0x1f2328),
         error: rgb(0xcf222e),
         error_extra: rgb(0x8a1820),
+    },
+    Theme {
+        name: "rose-pine-dawn",
+        bg: Some(rgb(0xfaf4ed)),
+        main: rgb(0xd7827e),
+        sub: rgb(0x9893a5),
+        text: rgb(0x575279),
+        error: rgb(0xb4637a),
+        error_extra: rgb(0x7e4555),
+    },
+    Theme {
+        name: "ayu-light",
+        bg: Some(rgb(0xfcfcfc)),
+        main: rgb(0xfa8d3e),
+        sub: rgb(0x8a9199),
+        text: rgb(0x5c6166),
+        error: rgb(0xe65050),
+        error_extra: rgb(0xa13838),
     },
 ];
 

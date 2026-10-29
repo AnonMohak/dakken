@@ -122,8 +122,8 @@ struct Cli {
 
     /// Color theme: sumi (default), tokyo-night, terminal, dracula, serika-dark,
     /// nord, catppuccin-mocha, rose-pine, one-dark, blueprint, matcha, abyss,
-    /// synthwave, catppuccin-latte, github-light, or custom (from the
-    /// color_* keys in config.toml).
+    /// synthwave, catppuccin-latte, github-light, rose-pine-dawn, ayu-light,
+    /// or custom (from the color_* keys in config.toml).
     #[arg(long, value_name = "NAME")]
     theme: Option<String>,
 

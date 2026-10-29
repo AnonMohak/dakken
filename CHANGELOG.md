@@ -2,6 +2,13 @@
 
 All notable changes to dakken. Versions follow [Semantic Versioning](https://semver.org).
 
+## Unreleased
+
+### Added
+
+- Two new light themes: `rose-pine-dawn` (rose on warm dawn paper) and
+  `ayu-light` (warm orange on white).
+
 ## 0.7.4 - 2026-10-27
 
 ### Fixed

@@ -81,8 +81,9 @@
   theme uses your terminal's palette, so the test follows your shell theme.
   Dark themes: `tokyo-night`, `dracula`, `serika-dark`, `nord`,
   `catppuccin-mocha`, `rose-pine`, `one-dark`, `blueprint`, `matcha`, `abyss`
-  and `synthwave`. Other light themes: `catppuccin-latte` and `github-light`. You can
-  also make your own `custom` theme.
+  and `synthwave`. Other light themes: `catppuccin-latte`, `github-light`,
+  `rose-pine-dawn` and `ayu-light`. You can also make your own `custom`
+  theme.
 - Settings are saved: the menu remembers the mode, options and theme.
 - Optional live WPM and accuracy during the test (off by default).
 - Practise Dvorak or Colemak on a QWERTY keyboard: each key gives the
